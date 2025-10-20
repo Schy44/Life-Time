@@ -1,50 +1,79 @@
-
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-router-dom';
-import Home from './pages/Home';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProfilePage from './pages/profile_page';
-import './App.css';
+import EditProfilePage from './pages/EditProfilePage';
+import CreateProfilePage from './pages/CreateProfilePage';
+import PublicProfilePage from './pages/PublicProfilePage';
+import ProfilesListPage from './pages/ProfilesListPage';
+import Navbar from './components/Navbar';
+import Home from './pages/Home';
+
+const PrivateRoute = ({ children }) => {
+  const { token } = useAuth();
+  return token ? children : <Navigate to="/login" />;
+};
 
 function App() {
-    const [token, setToken] = useState(localStorage.getItem('token'));
+  return (
+    <Router>
+      <ThemeProvider>
+        <AuthProvider>
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route
+            path="/profile"
+            element={
+              <PrivateRoute>
+                <ProfilePage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/profile/edit/:id"
+            element={
+              <PrivateRoute>
+                <EditProfilePage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/profile/create"
+            element={
+              <PrivateRoute>
+                <CreateProfilePage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/profiles"
+            element={
+              <PrivateRoute>
+                <ProfilesListPage />
+              </PrivateRoute>
+            }
+          />
 
-    const setAuthToken = (token) => {
-        if (token) {
-            localStorage.setItem('token', token);
-        } else {
-            localStorage.removeItem('token');
-        }
-        setToken(token);
-    };
-
-    return (
-        <Router>
-            <div className="App">
-                <nav>
-                    <ul>
-                        <li><Link to="/">Home</Link></li>
-                        {token && (
-                            <li><Link to="/profile">Profile</Link></li>
-                        )}
-                        {!token && (
-                            <>
-                                <li><Link to="/login">Login</Link></li>
-                                <li><Link to="/register">Register</Link></li>
-                            </>
-                        )}
-                    </ul>
-                </nav>
-                <Routes>
-                    <Route path="/" element={<Home token={token} setToken={setAuthToken} />} />
-                    <Route path="/login" element={!token ? <Login setToken={setAuthToken} /> : <Navigate to="/" />} />
-                    <Route path="/register" element={!token ? <Register setToken={setAuthToken} /> : <Navigate to="/" />} />
-                    <Route path="/profile" element={token ? <ProfilePage token={token} /> : <Navigate to="/login" />} />
-                </Routes>
-            </div>
-        </Router>
-    );
+          <Route
+            path="/profiles/:id"
+            element={
+              <PrivateRoute>
+                <PublicProfilePage />
+              </PrivateRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </AuthProvider>
+      </ThemeProvider>
+    </Router>
+  );
 }
 
 export default App;
