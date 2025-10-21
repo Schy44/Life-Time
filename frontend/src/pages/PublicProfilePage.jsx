@@ -6,7 +6,7 @@ import InfoTabs from '../components/InfoTabs';
 import LanguageProficiency from '../components/LanguageProficiency';
 import Socials from '../components/Socials';
 import GlassCard from '../components/GlassCard';
-import { getProfileById, sendInterest, getProfile, getInterests, acceptInterest, rejectInterest } from '../services/api';
+import { getProfileById, sendInterest, getProfile, getInterests, acceptInterest, rejectInterest, cancelInterest } from '../services/api';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 
@@ -81,6 +81,16 @@ const PublicProfilePage = () => {
     }
   };
 
+  const handleCancelInterest = async () => {
+    try {
+      await cancelInterest(interestStatus.id);
+      setInterestStatus(null); // Interest is cancelled, so no active interest status
+      alert('Interest cancelled successfully!');
+    } catch (error) {
+      alert('Failed to cancel interest.');
+    }
+  };
+
   const renderInterestButton = () => {
     if (!interestStatus) {
       return (
@@ -92,7 +102,11 @@ const PublicProfilePage = () => {
 
     if (interestStatus.sender.id === currentUserProfile?.id) {
       if (interestStatus.status === 'sent') {
-        return <button className="bg-gray-500 text-white px-6 py-2 rounded-md cursor-not-allowed">Interest Sent</button>;
+        return (
+          <button onClick={handleCancelInterest} className="bg-purple-400 text-white px-6 py-2 rounded-md hover:bg-purple-500">
+            Cancel Interest
+          </button>
+        );
       }
       if (interestStatus.status === 'accepted') {
         return <button className="bg-purple-500 text-white px-6 py-2 rounded-md cursor-not-allowed">Interest Accepted</button>;

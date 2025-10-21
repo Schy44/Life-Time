@@ -162,4 +162,14 @@ export const rejectInterest = async (interestId) => {
   }
 };
 
+export const cancelInterest = async (interestId) => {
+  try {
+    const response = await api.post(`/interests/${interestId}/cancel/`);
+    return response.data;
+  } catch (error) {
+    console.error('Error canceling interest:', error);
+    throw error;
+  }
+};
+
 export default api;
