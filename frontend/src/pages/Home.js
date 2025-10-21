@@ -9,26 +9,45 @@ import { useAuth } from '../context/AuthContext';
 import { Users, Zap, Heart } from 'lucide-react';
 import FaqsPage from '../components/FaqsPage';
 import PricingPage from '../components/PricingPage';
+import Footer from '../components/Footer'; // Import the new Footer component
 gsap.registerPlugin(ScrollTrigger);
 
 // --- Reusable Components ---
 const FeatureCard = ({ icon, title, children, index }) => {
   const cardVariants = {
-    hidden: { opacity: 0, y: 50 },
-    visible: { opacity: 1, y: 0 },
+    hidden: { opacity: 0, y: 50, scale: 0.9 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: { delay: index * 0.15, duration: 0.6, ease: "easeOut" }
+    },
+    hover: { scale: 1.05, boxShadow: "0 10px 30px rgba(147,51,234,0.3)" },
+    tap: { scale: 0.98 },
   };
+
   return (
     <motion.div
       variants={cardVariants}
       initial="hidden"
       whileInView="visible"
+      whileHover="hover"
+      whileTap="tap"
       viewport={{ once: true, amount: 0.5 }}
-      transition={{ delay: index * 0.2 }}
     >
-      <GlassCard className="p-6 text-center h-full hover:shadow-purple-400/50 transition-shadow duration-300">
-        <div className="flex justify-center mb-4 text-purple-400">{icon}</div>
-        <h3 className="text-2xl font-semibold mb-2">{title}</h3>
-        <p className="text-gray-600 dark:text-gray-300">{children}</p>
+      <GlassCard className="p-8 text-center flex flex-col justify-between border border-purple-500/20 hover:border-purple-500 transition-all duration-300">
+        <div className="flex justify-center mb-6">
+          <motion.div
+            initial={{ scale: 0, rotate: 0 }}
+            animate={{ scale: 1, rotate: 360 }}
+            transition={{ delay: index * 0.2 + 0.5, duration: 1, type: "spring", stiffness: 100 }}
+            className="p-4 rounded-full bg-purple-600/20 text-purple-400 shadow-lg"
+          >
+            {icon}
+          </motion.div>
+        </div>
+        <h3 className="text-3xl font-bold mb-4 text-gray-800 dark:text-white">{title}</h3>
+        <p className="text-lg text-gray-600 dark:text-gray-300 flex-grow">{children}</p>
       </GlassCard>
     </motion.div>
   );
@@ -74,6 +93,95 @@ const StoryCard = ({ image, quote, author, index }) => {
   );
 };
 
+const RoadmapSection = () => {
+  const steps = [
+    {
+      id: 1,
+      title: '1. Tell Your Story',
+      copy:
+        'Create a rich, detailed profile that goes beyond the surface. Share your passions, your dreams, and what makes you, you.',
+      icon: <Users size={24} />,
+    },
+    {
+      id: 2,
+      title: '2. Discover & Connect',
+      copy:
+        'Explore profiles of people who share your values. Our smart matching helps you find compatibility.',
+      icon: <Zap size={24} />,
+    },
+    {
+      id: 3,
+      title: '3. Build Something Real',
+      copy:
+        'Move beyond the swipe. Have meaningful conversations and build connections that have the potential to last a lifetime.',
+      icon: <Heart size={24} />,
+    },
+  ];
+
+  const stepVariants = {
+    hidden: { opacity: 0, x: -100 },
+    visible: (i) => ({
+      opacity: 1,
+      x: 0,
+      transition: {
+        delay: i * 0.3,
+        duration: 0.6,
+        ease: "easeOut",
+      },
+    }),
+  };
+
+  return (
+    <section className="py-20 px-4 relative overflow-hidden">
+      <div className="max-w-6xl mx-auto text-center relative z-10">
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.5 }}
+          className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 text-gray-800 dark:text-white"
+        >
+          Your Journey to Connection
+        </motion.h2>
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.5 }}
+          transition={{ delay: 0.1 }}
+          className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-16"
+        >
+          Discover how Life-Time empowers you to find meaningful relationships through a simple, guided process.
+        </motion.p>
+
+        <div className="relative flex flex-col items-center w-full max-w-3xl mx-auto mt-12">
+          {/* Vertical Line */}
+          <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-purple-300 z-0"></div>
+
+          {steps.map((step, index) => (
+            <motion.div
+              key={step.id}
+              className={`relative flex items-center w-full mb-12 ${index % 2 === 0 ? 'justify-start pr-10' : 'justify-end pl-10'}`}
+              custom={index}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.3 }}
+              variants={stepVariants}
+            >
+              {/* Timeline Dot */}
+              <div className="absolute left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white shadow-lg z-10 border-4 border-white dark:border-gray-800"></div>
+
+              {/* Step Content */}
+              <div className={`w-1/2 ${index % 2 === 0 ? 'text-right pr-8' : 'text-left pl-8'}`}>
+                <h3 className="text-xl font-bold mb-2 text-gray-800 dark:text-white">{step.title}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300">{step.copy}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
 const Home = () => {
   const { token } = useAuth();
   return (
@@ -84,8 +192,8 @@ const Home = () => {
         {/* Hero Section */}
         <section className="relative min-h-screen flex flex-col justify-center items-start text-left px-6 md:px-12 overflow-hidden">
           {/* Decorative Blobs */}
-          <motion.div 
-            animate={{ 
+          <motion.div
+            animate={{
               scale: [1, 1.1, 1, 1.2, 1],
               rotate: [0, 90, 180, 270, 360],
               x: [0, 50, 0, -50, 0]
@@ -93,8 +201,8 @@ const Home = () => {
             transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
             className="absolute top-1/4 right-0 w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-20"
           ></motion.div>
-          <motion.div 
-            animate={{ 
+          <motion.div
+            animate={{
               scale: [1, 1.2, 1, 1.1, 1],
               rotate: [0, -90, -180, -270, -360],
               y: [0, -50, 0, 50, 0]
@@ -104,7 +212,7 @@ const Home = () => {
           ></motion.div>
 
           <div className="max-w-4xl z-10">
-            <motion.h1 
+            <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
@@ -114,8 +222,8 @@ const Home = () => {
               SOULS, NOT<br />
               JUST PROFILES.
             </motion.h1>
-            
-            <motion.p 
+
+            <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.8, ease: 'easeOut' }}
@@ -124,7 +232,7 @@ const Home = () => {
               A private, secure, and authentic space for educated professionals to build meaningful relationships. Your journey to a lifetime of companionship starts here.
             </motion.p>
 
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.8, ease: 'easeOut' }}
@@ -166,30 +274,8 @@ const Home = () => {
           </div>
         </section>
 
-        {/* How It Works Section */}
-        <section className="py-20 px-4">
-          <div className="max-w-5xl mx-auto text-center">
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.5 }}
-              className="text-3xl font-bold mb-12"
-            >
-              Your Journey to Connection
-            </motion.h2>
-            <div className="grid md:grid-cols-3 gap-8">
-              <FeatureCard icon={<Users size={40} />} title="1. Tell Your Story" index={0}>
-                Create a rich, detailed profile that goes beyond the surface. Share your passions, your dreams, and what makes you, you.
-              </FeatureCard>
-              <FeatureCard icon={<Zap size={40} />} title="2. Discover & Connect" index={1}>
-                Explore profiles of people who share your values. Our smart matching helps you find compatibility.
-              </FeatureCard>
-              <FeatureCard icon={<Heart size={40} />} title="3. Build Something Real" index={2}>
-                Move beyond the swipe. Have meaningful conversations and build connections that have the potential to last a lifetime.
-              </FeatureCard>
-            </div>
-          </div>
-        </section>
+        {/* Roadmap Section */}
+        <RoadmapSection />
 
         {/* Success Stories Section */}
         <section className="py-20 px-4 bg-white/5">
@@ -229,52 +315,7 @@ const Home = () => {
 
         <FaqsPage />
 
-        {/* Final CTA Section */}
-        <section className="py-20 px-4 text-center">
-          <div className="max-w-4xl mx-auto">
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.5 }}
-              className="text-4xl font-bold mb-4"
-            >
-              Ready to Write Your Next Chapter?
-            </motion.h2>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.5 }}
-              transition={{ delay: 0.2 }}
-              className="text-lg mb-8 text-gray-600 dark:text-gray-300"
-            >
-              Your story is waiting to be shared. Your connection is waiting to be found.
-            </motion.p>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.5 }}
-              transition={{ delay: 0.4 }}
-            >
-              <Link to="/register" className="inline-block">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  animate={{
-                    scale: [1, 1.02, 1],
-                    transition: {
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    },
-                  }}
-                  className="bg-purple-600 text-white px-10 py-5 rounded-full hover:bg-purple-700 text-xl font-bold"
-                >
-                  Start Your Story Today
-                </motion.button>
-              </Link>
-            </motion.div>
-          </div>
-        </section>
+        <Footer />
       </main>
     </>
   );
