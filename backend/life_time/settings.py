@@ -27,14 +27,26 @@ SECRET_KEY = 'django-insecure-naq7tg)x(o8xd+^d3f8qr=p^l*%n1t)w4@svcbb+&f1hyq58__
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = 'RENDER' not in os.environ
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "life-time-pxjp.onrender.com",   # backend Render domain
+    "life-time-2jnrxe9xm-s-chys-projects.vercel.app",  # frontend Vercel domain
+    "localhost",
+    "127.0.0.1"
+]
 
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
+
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
+    "https://life-time-2jnrxe9xm-s-chys-projects.vercel.app",
+    "http://localhost:3000",
+]
+CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = [
+    "https://life-time-2jnrxe9xm-s-chys-projects.vercel.app",
+    "https://life-time-pxjp.onrender.com",
 ]
 
 
@@ -56,6 +68,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -139,3 +152,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+
+# Tell Django to serve static files using WhiteNoise
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STATICFILES_DIRS = []
