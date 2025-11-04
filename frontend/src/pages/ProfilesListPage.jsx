@@ -16,6 +16,7 @@ const ProfilesListPage = () => {
   const [genderFilter, setGenderFilter] = useState('');
   const [interestFilter, setInterestFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [sortBy, setSortBy] = useState('default');
 
   useEffect(() => {
     const fetchProfiles = async () => {
@@ -78,8 +79,13 @@ const ProfilesListPage = () => {
       );
     }
 
+    // Apply sorting
+    if (sortBy === 'compatibility') {
+      currentProfiles.sort((a, b) => (b.compatibility_score || 0) - (a.compatibility_score || 0));
+    }
+
     setFilteredProfiles(currentProfiles);
-  }, [searchTerm, ageFilter, genderFilter, interestFilter, profiles]);
+  }, [searchTerm, ageFilter, genderFilter, interestFilter, profiles, sortBy]);
 
   const handleClearFilters = () => {
     setSearchTerm('');
@@ -158,6 +164,16 @@ const ProfilesListPage = () => {
                 <Filter size={20} className="mr-2" />
                 {showFilters ? 'Hide Filters' : 'Show Filters'}
               </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors"
+                onClick={() => setSortBy(sortBy === 'compatibility' ? 'default' : 'compatibility')}
+              >
+                <Zap size={20} className="mr-2" />
+                {sortBy === 'compatibility' ? 'Default Order' : 'Sort by Compatibility'}
+              </motion.button>
+
             </div>
 
             {showFilters && (
@@ -226,7 +242,40 @@ const ProfilesListPage = () => {
               filteredProfiles.map((profile) => (
                 <motion.div key={profile.id} variants={itemVariants}>
                   <Link to={`/profiles/${profile.id}`} className="group block h-full">
-                    <GlassCard className="p-6 flex flex-col items-center text-center h-full hover:bg-white/20 transition-colors duration-300">
+                    <GlassCard className="relative p-6 flex flex-col items-center text-center h-full hover:bg-white/20 transition-colors duration-300">
+                      {profile.compatibility_score === null ? (
+                          <div className="absolute top-4 right-4 text-sm text-gray-500 text-center">
+                              Not applicable
+                          </div>
+                      ) : (
+                          <div className="absolute top-4 right-4">
+                              <div className="relative w-16 h-16">
+                                  <svg className="w-full h-full" viewBox="0 0 36 36">
+                                      <path
+                                          className="text-gray-200"
+                                          d="M18 2.0845
+                                            a 15.9155 15.9155 0 0 1 0 31.831
+                                            a 15.9155 15.9155 0 0 1 0 -31.831"
+                                          fill="none"
+                                          strokeWidth="3"
+                                      />
+                                      <path
+                                          className="text-purple-600"
+                                          strokeDasharray={`${profile.compatibility_score || 0}, 100`}
+                                          d="M18 2.0845
+                                            a 15.9155 15.9155 0 0 1 0 31.831
+                                            a 15.9155 15.9155 0 0 1 0 -31.831"
+                                          fill="none"
+                                          strokeWidth="3"
+                                          strokeLinecap="round"
+                                      />
+                                  </svg>
+                                  <div className="absolute inset-0 flex items-center justify-center">
+                                      <span className="text-lg font-bold text-purple-600">{profile.compatibility_score || 0}%</span>
+                                  </div>
+                              </div>
+                          </div>
+                      )}
                       {profile.profile_image ? (
                         <img
                           src={profile.profile_image}
@@ -263,11 +312,7 @@ const ProfilesListPage = () => {
                           ))}
                         </div>
                       )}
-                      {!profile.bio && (!profile.interests || profile.interests.length === 0) && (
-                        <p className="text-gray-500 dark:text-gray-400 text-xs italic mt-2">
-                          No additional details available.
-                        </p>
-                      )}
+
                     </GlassCard>
                   </Link>
                 </motion.div>

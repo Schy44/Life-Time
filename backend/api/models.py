@@ -4,13 +4,9 @@ from datetime import date
 
 # --- Enums ---
 class Religion(models.TextChoices):
-    ISLAM = 'islam', 'Islam'
-    CHRISTIANITY = 'christianity', 'Christianity'
-    HINDUISM = 'hinduism', 'Hinduism'
-    BUDDHISM = 'buddhism', 'Buddhism'
-    JUDAISM = 'judaism', 'Judaism'
-    OTHER = 'other', 'Other'
-    NONE = 'none', 'None'
+    MUSLIM = 'muslim', 'Muslim'
+    HINDU = 'hindu', 'Hindu'
+    CHRISTIAN = 'christian', 'Christian'
 
 class Alcohol(models.TextChoices):
     NEVER = 'never', 'Never'
@@ -150,6 +146,7 @@ class WorkExperience(models.Model):
     profile = models.ForeignKey(Profile, related_name='work_experience', on_delete=models.CASCADE)
     title = models.CharField(max_length=120)
     company = models.CharField(max_length=150, blank=True, null=True)
+    currently_working = models.BooleanField(default=False)
   
 class UserLanguage(models.Model):
     LEVEL = [('A1','A1'),('A2','A2'),('B1','B1'),('B2','B2'),('C1','C1'),('C2','C2'),('native','Native')]
@@ -168,17 +165,15 @@ class Preference(models.Model):
     min_age = models.PositiveSmallIntegerField(blank=True, null=True)
     max_age = models.PositiveSmallIntegerField(blank=True, null=True)
     min_height_cm = models.PositiveSmallIntegerField(blank=True, null=True)
-    max_height_cm = models.PositiveSmallIntegerField(blank=True, null=True)
-    religions = models.JSONField(default=list, blank=True)           # e.g., ['islam']
+    religion = models.CharField(max_length=20, choices=Religion.choices, blank=True, null=True)
     marital_statuses = models.JSONField(default=list, blank=True)    # e.g., ['never_married']
-    countries_whitelist = models.JSONField(default=list, blank=True) # ISO-2: ['US','BD']
-    required_immigration = models.JSONField(default=list, blank=True) # ['US_citizen','US_green_card']
+    country = models.CharField(max_length=2, blank=True, null=True)
+    profession = models.CharField(max_length=100, blank=True, null=True)
     require_non_alcoholic = models.BooleanField(default=False)
     require_non_smoker = models.BooleanField(default=False)
 
 
-    # Soft flag to interpret strictness of above
-    is_hard_filter = models.BooleanField(default=True)
+
 
 class AdditionalImage(models.Model):
     profile = models.ForeignKey(

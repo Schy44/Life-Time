@@ -85,9 +85,8 @@ const ProfilePage = () => {
     isVerified: is_verified,
     profileImage: profile_image,
     isOnline: true, // Placeholder, as this is not in the model
-    compatibility: 85, // Placeholder, as this is not in the model
     profileImagePrivacy: profile_image_privacy, // Pass privacy setting
-    hasAcceptedInterest: true, // Always true for own profile
+    hasAcceptedInterest: true, // Always true for own profile,
   };
 
   const aboutData = {

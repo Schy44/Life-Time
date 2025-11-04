@@ -8,20 +8,19 @@ from .models import Profile, AdditionalImage, Education, WorkExperience, UserLan
 class UserSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(
         style={'input_type': 'password'}, write_only=True)
-    name = serializers.CharField(write_only=True)
+    email = serializers.EmailField(required=False)
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'name', 'password', 'password2')
+        fields = ('id', 'username', 'email', 'password', 'password2')
         extra_kwargs = {
             'password': {'write_only': True}
         }
 
     def save(self):
         user = User(
-            email=self.validated_data['email'],
+            email=self.validated_data.get('email', ''), # Use .get for optional field
             username=self.validated_data['username'],
-            first_name=self.validated_data['name']
         )
         password = self.validated_data['password']
         password2 = self.validated_data['password2']
@@ -47,7 +46,7 @@ class EducationSerializer(serializers.ModelSerializer):
 class WorkExperienceSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkExperience
-        fields = ('id', 'title', 'company')
+        fields = ('id', 'title', 'company', 'currently_working')
 
 class UserLanguageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -57,7 +56,7 @@ class UserLanguageSerializer(serializers.ModelSerializer):
 class PreferenceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Preference
-        fields = ('id', 'min_age', 'max_age', 'min_height_cm', 'max_height_cm', 'religions', 'marital_statuses', 'countries_whitelist', 'required_immigration', 'require_non_alcoholic', 'require_non_smoker', 'is_hard_filter')
+        fields = ('id', 'min_age', 'max_age', 'min_height_cm', 'religion', 'marital_statuses', 'country', 'profession', 'require_non_alcoholic', 'require_non_smoker')
 
 class NestedProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -73,6 +72,7 @@ class InterestSerializer(serializers.ModelSerializer):
         fields = ('id', 'sender', 'receiver', 'status', 'created_at', 'updated_at')
 
 class ProfileSerializer(serializers.ModelSerializer):
+    compatibility_score = serializers.SerializerMethodField()
     additional_images = AdditionalImageSerializer(many=True, read_only=True)
     education = EducationSerializer(many=True, required=False)
     work_experience = WorkExperienceSerializer(many=True, required=False)
@@ -99,10 +99,81 @@ class ProfileSerializer(serializers.ModelSerializer):
             'father_occupation', 'mother_occupation', 'siblings', 'family_type', 'marital_status', 'about', 'looking_for', 'email', 'phone',
             'hobbies', 'facebook_profile', 'instagram_profile', 'linkedin_profile', 'is_verified',
             'profile_image_privacy', 'additional_images_privacy', 'is_deleted', 'created_at', 'updated_at',
-            'education', 'work_experience', 'languages', 'preference', 'uploaded_images', 'additional_images_to_keep'
+            'education', 'work_experience', 'languages', 'preference', 'uploaded_images', 'additional_images_to_keep',
+            'compatibility_score'
         )
         read_only_fields = ('user', 'is_verified', 'birth_year',
                             'additional_images', 'created_at', 'updated_at',)
+
+    def get_compatibility_score(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated or not hasattr(request.user, 'profile') or obj == request.user.profile:
+            return None
+
+        user_profile = request.user.profile
+
+        # Don't show compatibility score for same gender
+        if user_profile.gender == obj.gender:
+            return None
+        if not hasattr(user_profile, 'preference'):
+            return None # Return None if the user has no preference object
+
+        preferences = user_profile.preference
+        score = 0
+        max_score = 0
+
+        # Age
+        if preferences.min_age is not None and preferences.max_age is not None and obj.age is not None:
+            max_score += 20 # Higher weight for age
+            if preferences.min_age <= obj.age <= preferences.max_age:
+                score += 20
+
+        # Height
+        if preferences.min_height_cm is not None and obj.height_cm is not None:
+            max_score += 10 # Lower weight for height
+            if preferences.min_height_cm <= obj.height_cm:
+                score += 10
+
+        # Religion
+        if preferences.religion and obj.religion:
+            max_score += 20 # Higher weight for religion
+            if obj.religion == preferences.religion:
+                score += 20
+
+        # Marital Status
+        if preferences.marital_statuses and obj.marital_status:
+            max_score += 15 # Medium weight for marital status
+            if obj.marital_status in preferences.marital_statuses:
+                score += 15
+
+        # Country
+        if preferences.country and obj.current_country:
+            max_score += 15 # Medium weight for country
+            if obj.current_country == preferences.country:
+                score += 15
+        
+        # Profession
+        if preferences.profession and obj.work_experience.exists():
+            max_score += 10
+            if preferences.profession.lower() in [work.title.lower() for work in obj.work_experience.all()]:
+                score += 10
+
+        # Alcohol
+        if preferences.require_non_alcoholic and obj.alcohol:
+            max_score += 5 # Lower weight for lifestyle
+            if obj.alcohol == 'never':
+                score += 5
+        
+        # Smoking
+        if preferences.require_non_smoker and obj.smoking:
+            max_score += 5 # Lower weight for lifestyle
+            if obj.smoking == 'never':
+                score += 5
+
+        if max_score == 0:
+            return 0 # Return 0 if no preferences are set
+
+        return int((score / max_score) * 100)
 
     def _has_accepted_interest(self, requesting_user_profile, profile_owner):
         if not requesting_user_profile or not profile_owner:
@@ -134,7 +205,15 @@ class ProfileSerializer(serializers.ModelSerializer):
         return representation
 
     def to_internal_value(self, data):
-        mutable_data = data.copy()
+        # Manually create a mutable dictionary from the QueryDict
+        mutable_data = {}
+        for key, value in data.lists():
+            if len(value) == 1:
+                mutable_data[key] = value[0]
+            else:
+                mutable_data[key] = value
+
+        profile_image = mutable_data.pop('profile_image', None) # Pop profile_image here
 
         # --- Coerce JSON strings to Python objects ---
         json_fields = ['education', 'work_experience', 'languages',
@@ -148,10 +227,13 @@ class ProfileSerializer(serializers.ModelSerializer):
                         {field: f"Invalid JSON format for {field}."})
 
         # --- Handle image clearing ---
-        if 'profile_image' in mutable_data and mutable_data['profile_image'] == '':
-            mutable_data['profile_image'] = None
+        if profile_image == '': # Check the popped profile_image
+            profile_image = None
 
-        return super().to_internal_value(mutable_data)
+        internal_value = super().to_internal_value(mutable_data)
+        if profile_image is not None:
+            internal_value['profile_image'] = profile_image
+        return internal_value
 
     def create(self, validated_data):
         education_data = validated_data.pop('education', [])
@@ -182,16 +264,25 @@ class ProfileSerializer(serializers.ModelSerializer):
         return profile
 
     def update(self, instance, validated_data):
+        # Pop file fields (profile_image is already handled in to_internal_value)
+        uploaded_images = validated_data.pop('uploaded_images', [])
+
         # Pop nested data
         education_data = validated_data.pop('education', None)
         work_experience_data = validated_data.pop('work_experience', None)
         languages_data = validated_data.pop('languages', None)
         preference_data = validated_data.pop('preference', None)
-        uploaded_images = validated_data.pop('uploaded_images', [])
         additional_images_to_keep = validated_data.pop('additional_images_to_keep', None)
 
         # --- Update main profile fields ---
         instance = super().update(instance, validated_data)
+
+        # Handle additional images
+        if additional_images_to_keep is not None:
+            instance.additional_images.exclude(id__in=additional_images_to_keep).delete()
+
+        for image in uploaded_images:
+            AdditionalImage.objects.create(profile=instance, image=image)
 
         # --- Handle Education (Create, Update, Delete) ---
         if education_data is not None:
@@ -249,18 +340,11 @@ class ProfileSerializer(serializers.ModelSerializer):
                     lang_instance.level = item.get('level', lang_instance.level)
                     lang_instance.save()
                 else:
-                    # Create new
                     UserLanguage.objects.create(profile=instance, **item)
 
         # --- Handle Preferences ---
         if preference_data is not None:
             Preference.objects.update_or_create(profile=instance, defaults=preference_data)
 
-        # --- Handle Additional Images ---
-        if additional_images_to_keep is not None:
-            instance.additional_images.exclude(id__in=additional_images_to_keep).delete()
-
-        for image in uploaded_images:
-            AdditionalImage.objects.create(profile=instance, image=image)
-
+        instance.save() # Save the instance after all updates
         return instance

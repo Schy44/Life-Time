@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { FaPlus, FaTrash } from 'react-icons/fa';
+import Select from 'react-select'; // Import react-select
 import GlassCard from './GlassCard';
+import { getCountries } from '../services/api'; // Import getCountries
 
 // Choices from models.py
 const PROFILE_FOR_CHOICES = [
@@ -25,13 +27,9 @@ const BLOOD_GROUP_CHOICES = [
 ];
 
 const RELIGION_CHOICES = [
-  { value: 'islam', label: 'Islam' },
-  { value: 'christianity', label: 'Christianity' },
-  { value: 'hinduism', label: 'Hinduism' },
-  { value: 'buddhism', label: 'Buddhism' },
-  { value: 'judaism', label: 'Judaism' },
-  { value: 'other', label: 'Other' },
-  { value: 'none', label: 'None' },
+  { value: 'muslim', label: 'Muslim' },
+  { value: 'hindu', label: 'Hindu' },
+  { value: 'christian', label: 'Christian' },
 ];
 
 const ALCOHOL_CHOICES = [
@@ -83,16 +81,56 @@ const COUNTRIES = [
 ];
 
 const ProfileForm = ({ initialData, onSubmit }) => {
-  const [formData, setFormData] = useState(initialData);
+  const [formData, setFormData] = useState({
+    ...initialData,
+    preference: initialData.preference || {},
+  });
   const [profileImageFile, setProfileImageFile] = useState(null);
   const [additionalImageFiles, setAdditionalImageFiles] = useState([]);
   const [additionalImagesToKeep, setAdditionalImagesToKeep] = useState(initialData.additional_images ? initialData.additional_images.map(img => img.id) : []);
   const [errors, setErrors] = useState({});
+  const [countries, setCountries] = useState([]); // Add countries state
 
   useEffect(() => {
-    setFormData(initialData);
+    setFormData({
+      ...initialData,
+      preference: initialData.preference || {},
+    });
     setAdditionalImagesToKeep(initialData.additional_images ? initialData.additional_images.map(img => img.id) : []);
   }, [initialData]);
+
+  useEffect(() => {
+    const fetchCountries = async () => {
+      try {
+        const data = await getCountries();
+        setCountries(data);
+      } catch (error) {
+        console.error('Error fetching countries:', error);
+      }
+    };
+    fetchCountries();
+  }, []);
+
+  useEffect(() => {
+    if (formData.religion && !RELIGION_CHOICES.some(choice => choice.value === formData.religion)) {
+      setFormData(prev => ({
+        ...prev,
+        religion: '', // Or a default value
+      }));
+    }
+  }, [formData.religion]);
+
+  useEffect(() => {
+    if (formData.preference?.religion && !RELIGION_CHOICES.some(choice => choice.value === formData.preference.religion)) {
+      setFormData(prev => ({
+        ...prev,
+        preference: {
+          ...prev.preference,
+          religion: '', // Or a default value
+        },
+      }));
+    }
+  }, [formData.preference?.religion]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -163,6 +201,30 @@ const ProfileForm = ({ initialData, onSubmit }) => {
       preference: {
         ...(prev.preference || {}),
         [name]: value.split(',').map(item => item.trim()).filter(item => item !== ''),
+      },
+    }));
+  };
+
+  const handlePreferenceMultiSelectChange = (e) => {
+    const { name, selectedOptions } = e.target;
+    const value = Array.from(selectedOptions, option => option.value);
+    setFormData(prev => ({
+      ...prev,
+      preference: {
+        ...(prev.preference || {}),
+        [name]: value,
+      },
+    }));
+  };
+
+  const handlePreferenceReactSelectChange = (selectedOptions, actionMeta) => {
+    const { name } = actionMeta;
+    const value = selectedOptions ? selectedOptions.map(option => option.value) : [];
+    setFormData(prev => ({
+      ...prev,
+      preference: {
+        ...(prev.preference || {}),
+        [name]: value,
       },
     }));
   };
@@ -250,7 +312,9 @@ const ProfileForm = ({ initialData, onSubmit }) => {
     
     // Only send additional_images_to_keep on update
     if (initialData && initialData.id) {
-        data.append('additional_images_to_keep', JSON.stringify(additionalImagesToKeep));
+        additionalImagesToKeep.forEach(id => {
+            data.append('additional_images_to_keep', id);
+        });
     }
 
     onSubmit(data);
@@ -534,10 +598,14 @@ const ProfileForm = ({ initialData, onSubmit }) => {
                 <label className="block text-sm font-medium mb-1">Company</label>
                 <input type="text" value={work.company || ''} onChange={(e) => handleNestedChange('work_experience', index, 'company', e.target.value)} className="form-input" />
               </div>
+              <div className="flex items-center">
+                <input type="checkbox" checked={work.currently_working || false} onChange={(e) => handleNestedChange('work_experience', index, 'currently_working', e.target.checked)} className="mr-2" />
+                <label className="block text-sm font-medium">Currently working here</label>
+              </div>
             </div>
           </div>
         ))}
-        <button type="button" onClick={() => handleAddNested('work_experience', { title: '', company: '' })} className="btn-add"><FaPlus className="mr-2" />Add Work Experience</button>
+        <button type="button" onClick={() => handleAddNested('work_experience', { title: '', company: '', currently_working: false })} className="btn-add"><FaPlus className="mr-2" />Add Work Experience</button>
       </GlassCard>
 
       {/* Languages */}
@@ -584,36 +652,47 @@ const ProfileForm = ({ initialData, onSubmit }) => {
               <input type="number" name="min_height_cm" value={formData.preference.min_height_cm || ''} onChange={handlePreferenceChange} className="form-input" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Max Height (cm)</label>
-              <input type="number" name="max_height_cm" value={formData.preference.max_height_cm || ''} onChange={handlePreferenceChange} className="form-input" />
+              <label className="block text-sm font-medium mb-1">Religion</label>
+              <select name="religion" value={formData.preference.religion || ''} onChange={handlePreferenceChange} className="form-input">
+                <option value="">Select Religion</option>
+                <option value="muslim">Muslim</option>
+                <option value="hindu">Hindu</option>
+                <option value="christian">Christian</option>
+              </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Religions (comma separated)</label>
-              <input type="text" name="religions" value={formData.preference.religions ? formData.preference.religions.join(', ') : ''} onChange={handlePreferenceArrayChange} className="form-input" />
+              <label className="block text-sm font-medium mb-1">Marital Status</label>
+              <Select
+                isMulti
+                name="marital_statuses"
+                options={MARITAL_STATUS_CHOICES}
+                className="basic-multi-select"
+                classNamePrefix="select"
+                value={MARITAL_STATUS_CHOICES.filter(option => formData.preference.marital_statuses?.includes(option.value))}
+                onChange={handlePreferenceReactSelectChange}
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Marital Statuses (comma separated)</label>
-              <input type="text" name="marital_statuses" value={formData.preference.marital_statuses ? formData.preference.marital_statuses.join(', ') : ''} onChange={handlePreferenceArrayChange} className="form-input" />
+              <label className="block text-sm font-medium mb-1">Profession</label>
+              <input type="text" name="profession" value={formData.preference.profession || ''} onChange={handlePreferenceChange} className="form-input" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Countries Whitelist (ISO-2, comma separated)</label>
-              <input type="text" name="countries_whitelist" value={formData.preference.countries_whitelist ? formData.preference.countries_whitelist.join(', ') : ''} onChange={handlePreferenceArrayChange} className="form-input" />
+              <label className="block text-sm font-medium mb-1">Country</label>
+              <select name="country" value={formData.preference.country || ''} onChange={handlePreferenceChange} className="form-input">
+                <option value="">Select Country</option>
+                {countries.map(country => (
+                  <option key={country} value={country}>{country}</option>
+                ))}
+              </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Required Immigration (comma separated)</label>
-              <input type="text" name="required_immigration" value={formData.preference.required_immigration ? formData.preference.required_immigration.join(', ') : ''} onChange={handlePreferenceArrayChange} className="form-input" />
-            </div>
+
             <div className="flex items-center">
               <input type="checkbox" name="require_non_alcoholic" checked={formData.preference.require_non_alcoholic || false} onChange={handlePreferenceChange} className="mr-2" />
               <label className="block text-sm font-medium">Require Non-Alcoholic</label>
             </div>
             <div className="flex items-center">
               <input type="checkbox" name="require_non_smoker" checked={formData.preference.require_non_smoker || false} onChange={handlePreferenceChange} className="mr-2" />
-              <label className="block text-sm font-medium">Require Non-Smoker</label>
-            </div>
-            <div className="flex items-center">
-              <input type="checkbox" name="is_hard_filter" checked={formData.preference.is_hard_filter || false} onChange={handlePreferenceChange} className="mr-2" />
-              <label className="block text-sm font-medium">Is Hard Filter</label>
+              <label className="block text-sm font-medium">Non-Smoker</label>
             </div>
           </div>
         )}

@@ -26,6 +26,16 @@ if (token) {
   setAuthToken(token);
 }
 
+export const getUser = async () => {
+  try {
+    const response = await api.get('/user/');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    throw error;
+  }
+};
+
 export const getProfiles = async () => {
   try {
     const response = await api.get('/profiles/');
@@ -58,8 +68,11 @@ export const getProfileById = async (id) => {
 
 export const updateProfile = async (id, formData) => {
   try {
-    // Let axios set the Content-Type header automatically for FormData
-    const response = await api.patch(`/profiles/${id}/`, formData);
+    const response = await api.patch(`/profiles/${id}/`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   } catch (error) {
     if (error.response) {
@@ -111,9 +124,9 @@ export const loginUser = async (username, password) => {
   }
 };
 
-export const registerUser = async (name, email, username, password, password2) => {
+export const registerUser = async (email, username, password, password2) => {
   try {
-    const response = await api.post('/register/', { name, email, username, password, password2 });
+    const response = await api.post('/register/', { email, username, password, password2 });
     setAuthToken(response.data.token);
     return response.data.token;
   } catch (error) {
@@ -168,6 +181,16 @@ export const cancelInterest = async (interestId) => {
     return response.data;
   } catch (error) {
     console.error('Error canceling interest:', error);
+    throw error;
+  }
+};
+
+export const getCountries = async () => {
+  try {
+    const response = await api.get('/countries/');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching countries:', error);
     throw error;
   }
 };

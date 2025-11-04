@@ -12,6 +12,11 @@ from .models import Profile, Interest
 from rest_framework.decorators import action
 from django.db.models import Q
 
+class CountryListView(APIView):
+    def get(self, request):
+        countries = Profile.objects.exclude(current_country__isnull=True).exclude(current_country__exact='').values_list('current_country', flat=True).distinct()
+        return Response(countries)
+
 
 class RegisterView(APIView):
     def post(self, request):
@@ -37,7 +42,11 @@ class UserView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response({'username': request.user.username, 'name': request.user.first_name})
+        return Response({
+            'username': request.user.username,
+            'email': request.user.email,
+            'name': request.user.first_name
+        })
 
 
 class ProfileDetailView(APIView):
@@ -60,7 +69,9 @@ class ProfileViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Profile.objects.exclude(user=self.request.user)
+        if self.action == 'list':
+            return Profile.objects.exclude(user=self.request.user)
+        return Profile.objects.all()
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

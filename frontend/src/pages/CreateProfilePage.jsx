@@ -4,14 +4,16 @@ import { createProfile } from '../services/api';
 import ProfileForm from '../components/ProfileForm';
 import AnimatedBackground from '../components/AnimatedBackground';
 import GlassCard from '../components/GlassCard';
+import { useAuth } from '../context/AuthContext'; // Import useAuth
 
 const CreateProfilePage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth(); // Get user from AuthContext
 
   // Define the initial empty structure for the form
   const initialData = {
     profile_for: 'self',
-    name: '',
+    name: user?.name || '',
     date_of_birth: null,
     gender: 'male',
     profile_image: null,
@@ -33,7 +35,7 @@ const CreateProfilePage = () => {
     marital_status: 'never_married',
     about: '',
     looking_for: '',
-    email: '',
+    email: user?.email || '',
     phone: '',
     hobbies: [],
     facebook_profile: '',

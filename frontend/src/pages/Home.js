@@ -6,10 +6,11 @@ import { motion } from 'framer-motion';
 import AnimatedBackground from '../components/AnimatedBackground';
 import GlassCard from '../components/GlassCard';
 import { useAuth } from '../context/AuthContext';
-import { Users, Zap, Heart } from 'lucide-react';
+import { Users, Zap, Heart, Rocket, LogIn } from 'lucide-react';
 import FaqsPage from '../components/FaqsPage';
 import PricingPage from '../components/PricingPage';
 import Footer from '../components/Footer'; // Import the new Footer component
+import { FlipWords } from '../components/FlipWords';
 gsap.registerPlugin(ScrollTrigger);
 
 // --- Reusable Components ---
@@ -184,92 +185,129 @@ const RoadmapSection = () => {
 
 const Home = () => {
   const { token } = useAuth();
+  const words = ["Securely.", "Effortlessly."];
   return (
     <>
       <AnimatedBackground />
       <main className="relative w-full text-gray-800 dark:text-white overflow-x-hidden">
 
-        {/* Hero Section */}
-        <section className="relative min-h-screen flex flex-col justify-center items-start text-left px-6 md:px-12 overflow-hidden">
-          {/* Decorative Blobs */}
+        {/* Hero Section - Modular Glassmorphism Design */}
+        <section className="relative min-h-screen flex flex-col justify-center items-center text-center px-6 md:px-12 overflow-hidden">
+          {/* Subtle Animated Shapes (complementing AnimatedBackground) */}
           <motion.div
             animate={{
-              scale: [1, 1.1, 1, 1.2, 1],
-              rotate: [0, 90, 180, 270, 360],
-              x: [0, 50, 0, -50, 0]
+              scale: [1, 1.05, 1, 0.95, 1],
+              rotate: [0, 10, 0, -10, 0],
+              x: [0, 20, 0, -20, 0],
+              y: [0, -15, 0, 15, 0]
             }}
-            transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-            className="absolute top-1/4 right-0 w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-20"
+            transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-300/10 rounded-full mix-blend-screen filter blur-2xl opacity-50"
           ></motion.div>
           <motion.div
             animate={{
-              scale: [1, 1.2, 1, 1.1, 1],
-              rotate: [0, -90, -180, -270, -360],
-              y: [0, -50, 0, 50, 0]
+              scale: [1, 0.9, 1, 1.1, 1],
+              rotate: [0, -15, 0, 15, 0],
+              x: [0, -30, 0, 30, 0],
+              y: [0, 20, 0, -20, 0]
             }}
-            transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-            className="absolute top-1/2 right-1/4 w-80 h-80 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-20"
+            transition={{ duration: 25, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+            className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-indigo-300/10 rounded-full mix-blend-screen filter blur-2xl opacity-50"
           ></motion.div>
 
-          <div className="max-w-4xl z-10">
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, ease: 'easeOut' }}
-              className="hero-title text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tight leading-none mb-8"
-            >
-              CONNECTING<br />
-              SOULS, NOT<br />
-              JUST PROFILES.
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.8, ease: 'easeOut' }}
-              className="hero-subtitle text-lg md:text-xl max-w-2xl mb-10 text-gray-600 dark:text-gray-300"
-            >
-              A private, secure, and authentic space for educated professionals to build meaningful relationships. Your journey to a lifetime of companionship starts here.
-            </motion.p>
-
+          <div className="max-w-5xl z-10 relative grid grid-cols-1 lg:grid-cols-2 gap-8 items-center py-12">
+            {/* Left Part: Heading & Subtitle */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4, duration: 0.8, ease: 'easeOut' }}
-              className="hero-cta flex items-center space-x-4"
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              className="lg:text-left text-center lg:pr-8"
             >
-              {token ? (
-                <Link to="/profiles">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="bg-purple-600 text-white px-8 py-4 rounded-full font-bold text-base tracking-wide hover:bg-purple-700 transition-colors shadow-lg"
-                  >
-                    Browse Profiles
-                  </motion.button>
-                </Link>
-              ) : (
-                <>
-                  <Link to="/register">
+              <h1
+                className="hero-title text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-tight mb-4 text-gray-800 dark:text-white"
+              >
+                Find Your Perfect Match <br />
+                <FlipWords words={words} />
+              </h1>
+
+              <p
+                className="hero-subtitle text-lg md:text-xl max-w-xl lg:max-w-none mx-auto lg:mx-0 mb-8 text-gray-600 dark:text-gray-300"
+              >
+                Our platform connects brides and grooms, offering secure profile management, permission-based viewing, and a commitment-ensuring admin fee for access.
+              </p>
+            </motion.div>
+
+            {/* Right Part: CTA, Statistics, and New Content Blocks */}
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
+              className="lg:text-left text-center space-y-6"
+            >
+              {/* CTA Buttons */}
+              <GlassCard className="p-6 bg-white/10 dark:bg-gray-800/10 backdrop-blur-md border border-white/20 dark:border-gray-700/20 shadow-lg rounded-3xl">
+                <div className="hero-cta flex flex-col sm:flex-row justify-center lg:justify-start items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                  <Link to="/profiles">
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      className="bg-purple-600 text-white px-8 py-4 rounded-full font-bold text-base tracking-wide hover:bg-purple-700 transition-colors shadow-lg"
+                      className="bg-purple-600 text-white px-8 py-4 rounded-full font-bold text-base tracking-wide hover:bg-purple-700 transition-colors shadow-lg flex items-center space-x-2"
                     >
-                      GET STARTED
+                      <Rocket size={20} />
+                      <span>GET STARTED</span>
                     </motion.button>
                   </Link>
-                  <Link to="/login">
-                    <motion.button
-                      whileHover={{ scale: 1.05, backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
-                      whileTap={{ scale: 0.95 }}
-                      className="bg-transparent text-white px-8 py-4 rounded-full font-bold text-base tracking-wide border border-white/50 transition-colors"
-                    >
-                      LOGIN
-                    </motion.button>
-                  </Link>
-                </>
-              )}
+                </div>
+              </GlassCard>
+
+              {/* New Small Parts */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <GlassCard className="p-5 bg-white/10 dark:bg-gray-800/10 backdrop-blur-md border border-white/20 dark:border-gray-700/20 shadow-lg rounded-3xl text-gray-800 dark:text-white">
+                  <h4 className="font-bold mb-2">Secure Profile Creation</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Create and manage personal profiles with robust verification processes.</p>
+                </GlassCard>
+                <GlassCard className="p-5 bg-white/10 dark:bg-gray-800/10 backdrop-blur-md border border-white/20 dark:border-gray-700/20 shadow-lg rounded-3xl text-gray-800 dark:text-white">
+                  <h4 className="font-bold mb-2">Permission-Based Access</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Control who views your profile with our advanced permission system.</p>
+                </GlassCard>
+                <GlassCard className="p-5 bg-white/10 dark:bg-gray-800/10 backdrop-blur-md border border-white/20 dark:border-gray-700/20 shadow-lg rounded-3xl text-gray-800 dark:text-white sm:col-span-2">
+                  <h4 className="font-bold mb-2">Transparent Admin Fees</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Access profiles after a small, transparent admin fee, ensuring commitment and security.</p>
+                </GlassCard>
+              </div>
+
+              {/* Statistics Section */}
+              <GlassCard className="p-6 bg-white/10 dark:bg-gray-800/10 backdrop-blur-md border border-white/20 dark:border-gray-700/20 shadow-lg rounded-3xl">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4, duration: 0.6 }}
+                    className="flex flex-col items-center"
+                  >
+                    <h3 className="text-3xl md:text-4xl font-extrabold text-gray-800 dark:text-white">10M+</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">Verified Profiles</p>
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5, duration: 0.6 }}
+                    className="flex flex-col items-center"
+                  >
+                    <h3 className="text-3xl md:text-4xl font-extrabold text-gray-800 dark:text-white">500K+</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">Successful Matches</p>
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6, duration: 0.6 }}
+                    className="flex flex-col items-center"
+                  >
+                    <h3 className="text-3xl md:text-4xl font-extrabold text-gray-800 dark:text-white">100%</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">Privacy Control</p>
+                  </motion.div>
+                </div>
+              </GlassCard>
             </motion.div>
           </div>
         </section>
@@ -311,7 +349,7 @@ const Home = () => {
           </div>
         </section>
 
-        <PricingPage />
+        <PricingPage id="choose-your-journey" />
 
         <FaqsPage />
 

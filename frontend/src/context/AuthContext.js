@@ -1,21 +1,42 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { setAuthToken } from '../services/api';
+import { setAuthToken, getUser } from '../services/api'; // Import getUser
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [token, setTokenState] = useState(localStorage.getItem('authToken'));
+  const [user, setUser] = useState(null); // Add user state
 
   useEffect(() => {
-    if (token) {
-      setAuthToken(token);
-    } else {
-      setAuthToken(null);
-    }
+    const fetchUser = async () => {
+      if (token) {
+        setAuthToken(token);
+        try {
+          const userData = await getUser();
+          setUser(userData);
+        } catch (error)
+        {
+          console.error('Failed to fetch user', error);
+          // Handle error, e.g., by logging out the user
+          setToken(null);
+          setUser(null);
+          localStorage.removeItem('authToken');
+        }
+      } else {
+        setAuthToken(null);
+        setUser(null);
+      }
+    };
+    fetchUser();
   }, [token]);
 
   const setToken = (newToken) => {
     setTokenState(newToken);
+    if (newToken) {
+      localStorage.setItem('authToken', newToken);
+    } else {
+      localStorage.removeItem('authToken');
+    }
   };
 
   const logout = () => {
@@ -23,7 +44,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ token, setToken, logout }}>
+    <AuthContext.Provider value={{ token, user, setToken, logout }}>
       {children}
     </AuthContext.Provider>
   );

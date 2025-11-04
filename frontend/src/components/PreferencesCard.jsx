@@ -16,14 +16,32 @@ const PreferencesCard = ({ preferencesData }) => {
     <GlassCard className="p-6">
       <h2 className="section-title dark:text-white">Partner Preferences</h2>
       <ul className="info-list">
-        <li><span className="font-semibold text-gray-700 dark:text-white">Age Range</span><span className="text-gray-700 dark:text-gray-300">{preferencesData.min_age || 'N/A'} - {preferencesData.max_age || 'N/A'}</span></li>
-        <li><span className="font-semibold text-gray-700 dark:text-white">Min Height</span><span className="text-gray-700 dark:text-gray-300">{preferencesData.min_height_cm ? `${preferencesData.min_height_cm}cm` : 'N/A'}</span></li>
-        <li><span className="font-semibold text-gray-700 dark:text-white">Religion</span><span className="text-gray-700 dark:text-gray-300">{preferencesData.religions && preferencesData.religions.length > 0 ? preferencesData.religions.join(', ') : 'N/A'}</span></li>
-        <li><span className="font-semibold text-gray-700 dark:text-white">Marital Status</span><span className="text-gray-700 dark:text-gray-300">{preferencesData.marital_statuses && preferencesData.marital_statuses.length > 0 ? preferencesData.marital_statuses.join(', ') : 'N/A'}</span></li>
-        <li><span className="font-semibold text-gray-700 dark:text-white">Countries</span><span className="text-gray-700 dark:text-gray-300">{preferencesData.countries_whitelist && preferencesData.countries_whitelist.length > 0 ? preferencesData.countries_whitelist.join(', ') : 'N/A'}</span></li>
+        {preferencesData.min_age && preferencesData.max_age && (
+          <li><span className="font-semibold text-gray-700 dark:text-white">Age Range</span><span className="text-gray-700 dark:text-gray-300">{preferencesData.min_age} - {preferencesData.max_age}</span></li>
+        )}
+        {preferencesData.min_height_cm && (
+          <li><span className="font-semibold text-gray-700 dark:text-white">Min Height</span><span className="text-gray-700 dark:text-gray-300">{preferencesData.min_height_cm}cm</span></li>
+        )}
+        {preferencesData.religion && (
+          <li><span className="font-semibold text-gray-700 dark:text-white">Religion</span><span className="text-gray-700 dark:text-gray-300">{preferencesData.religion}</span></li>
+        )}
+        {preferencesData.marital_statuses && preferencesData.marital_statuses.length > 0 && (
+          <li><span className="font-semibold text-gray-700 dark:text-white">Marital Status</span><span className="text-gray-700 dark:text-gray-300">{preferencesData.marital_statuses.join(', ')}</span></li>
+        )}
+        {preferencesData.country && (
+          <li><span className="font-semibold text-gray-700 dark:text-white">Country</span><span className="text-gray-700 dark:text-gray-300">{preferencesData.country}</span></li>
+        )}
+        {preferencesData.profession && (
+          <li><span className="font-semibold text-gray-700 dark:text-white">Profession</span><span className="text-gray-700 dark:text-gray-300">{preferencesData.profession}</span></li>
+        )}
+        {preferencesData.require_non_alcoholic && (
+          <li><span className="font-semibold text-gray-700 dark:text-white">Require Non-Alcoholic</span><span className="text-gray-700 dark:text-gray-300">Yes</span></li>
+        )}
+        {preferencesData.require_non_smoker && (
+          <li><span className="font-semibold text-gray-700 dark:text-white">Non-Smoker</span><span className="text-gray-700 dark:text-gray-300">Yes</span></li>
+        )}
       </ul>
     </GlassCard>
   );
 };
-
 export default PreferencesCard;
