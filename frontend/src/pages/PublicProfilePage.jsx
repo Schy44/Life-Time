@@ -6,7 +6,7 @@ import InfoTabs from '../components/InfoTabs';
 import LanguageProficiency from '../components/LanguageProficiency';
 import Socials from '../components/Socials';
 import GlassCard from '../components/GlassCard';
-import { getProfileById, sendInterest, getProfile, getInterests, acceptInterest, rejectInterest, cancelInterest } from '../services/api';
+import { supabase } from '../lib/supabaseClient';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 
@@ -15,33 +15,44 @@ const PublicProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { id } = useParams();
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [interestStatus, setInterestStatus] = useState(null);
-  const [interests, setInterests] = useState([]); // Added this line
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const profile = await getProfileById(id);
+        // Fetch public profile
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*, education(*), work_experiences(*), user_languages(*), preferences(*), additional_images(*)')
+          .eq('id', id)
+          .single();
+        if (profileError) throw profileError;
         setProfileData(profile);
 
-        if (token) {
-          const userProfile = await getProfile();
+        if (user) {
+          // Fetch current user's profile
+          const { data: userProfile, error: userProfileError } = await supabase
+            .from('profiles')
+            .select('id') // Only need the ID for interest checks
+            .eq('user_id', user.id)
+            .single();
+          if (userProfileError) throw userProfileError;
           setCurrentUserProfile(userProfile);
 
-          const allInterests = await getInterests();
-          setInterests(allInterests);
-
-          const relevantInterest = allInterests.find(
-            (i) =>
-              (i.sender.id === userProfile.id && i.receiver.id === profile.id) ||
-              (i.sender.id === profile.id && i.receiver.id === userProfile.id)
-          );
-          if (relevantInterest) {
-            setInterestStatus(relevantInterest);
+          // Fetch interest status between current user and public profile
+          const { data: interest, error: interestError } = await supabase
+            .from('interests')
+            .select('*')
+            .or(`(sender_id.eq.${userProfile.id},receiver_id.eq.${profile.id}),(sender_id.eq.${profile.id},receiver_id.eq.${userProfile.id})`)
+            .single();
+          
+          if (interestError && interestError.code !== 'PGRST116') { // Ignore no rows found error
+            throw interestError;
           }
-        } // Closing brace for if (token) block
+          setInterestStatus(interest);
+        }
       } catch (err) {
         setError('Failed to fetch data.');
         console.error(err);
@@ -51,47 +62,77 @@ const PublicProfilePage = () => {
     };
 
     fetchData();
-  }, [id, token]);
+  }, [id, user]);
 
   const handleSendInterest = async () => {
+    if (!currentUserProfile || !profileData) return;
     try {
-      const newInterest = await sendInterest(profileData.id);
+      const { data: newInterest, error } = await supabase
+        .from('interests')
+        .insert({ sender_id: currentUserProfile.id, receiver_id: profileData.id, status: 'sent' })
+        .select()
+        .single();
+      if (error) throw error;
       setInterestStatus(newInterest);
       alert('Interest sent successfully!');
     } catch (error) {
-      alert('Failed to send interest. You may have already sent one to this user.');
+      alert(`Failed to send interest: ${error.message}`);
     }
   };
 
   const handleAccept = async () => {
+    if (!interestStatus) return;
     try {
-      await acceptInterest(interestStatus.id);
-      setInterestStatus({ ...interestStatus, status: 'accepted' });
+      const { data, error } = await supabase
+        .from('interests')
+        .update({ status: 'accepted' })
+        .eq('id', interestStatus.id)
+        .select()
+        .single();
+      if (error) throw error;
+      setInterestStatus(data);
     } catch (error) {
-      alert('Failed to accept interest.');
+      alert(`Failed to accept interest: ${error.message}`);
     }
   };
 
   const handleReject = async () => {
+    if (!interestStatus) return;
     try {
-      await rejectInterest(interestStatus.id);
-      setInterestStatus({ ...interestStatus, status: 'rejected' });
+      const { data, error } = await supabase
+        .from('interests')
+        .update({ status: 'rejected' })
+        .eq('id', interestStatus.id)
+        .select()
+        .single();
+      if (error) throw error;
+      setInterestStatus(data);
     } catch (error) {
-      alert('Failed to reject interest.');
+      alert(`Failed to reject interest: ${error.message}`);
     }
   };
 
   const handleCancelInterest = async () => {
+    if (!interestStatus) return;
     try {
-      await cancelInterest(interestStatus.id);
-      setInterestStatus(null); // Interest is cancelled, so no active interest status
+      const { error } = await supabase.from('interests').delete().eq('id', interestStatus.id);
+      if (error) throw error;
+      setInterestStatus(null);
       alert('Interest cancelled successfully!');
     } catch (error) {
-      alert('Failed to cancel interest.');
+      alert(`Failed to cancel interest: ${error.message}`);
     }
   };
 
   const renderInterestButton = () => {
+    if (!user || !currentUserProfile || !profileData) {
+      return null; // Not logged in or profiles not loaded
+    }
+
+    if (currentUserProfile.id === profileData.id) {
+      return null; // Cannot send interest to self
+    }
+
     if (!interestStatus) {
       return (
         <button onClick={handleSendInterest} className="bg-purple-600 text-white px-6 py-2 rounded-md hover:bg-purple-700">
@@ -100,7 +141,7 @@ const PublicProfilePage = () => {
       );
     }
 
-    if (interestStatus.sender.id === currentUserProfile?.id) {
+    if (interestStatus.sender_id === currentUserProfile.id) {
       if (interestStatus.status === 'sent') {
         return (
           <button onClick={handleCancelInterest} className="bg-purple-400 text-white px-6 py-2 rounded-md hover:bg-purple-500">
@@ -116,7 +157,7 @@ const PublicProfilePage = () => {
       }
     }
 
-    if (interestStatus.receiver.id === currentUserProfile?.id) {
+    if (interestStatus.receiver_id === currentUserProfile.id) {
       if (interestStatus.status === 'sent') {
         return (
           <div className="flex space-x-2">
@@ -156,7 +197,7 @@ const PublicProfilePage = () => {
   const showPreferences = profileData.id === currentUserProfile?.id || interestStatus?.status === 'accepted';
 
   // Destructure data for components
-  const { name, date_of_birth, profile_image, hobbies, facebook_profile, instagram_profile, linkedin_profile, education, work_experience, languages, preference, is_verified, height_cm, religion, alcohol, smoking, current_city, origin_city, citizenship, marital_status, about, additional_images, profile_image_privacy, additional_images_privacy } = profileData;
+  const { name, date_of_birth, profile_image, hobbies, facebook_profile, instagram_profile, linkedin_profile, education, work_experiences, user_languages, preferences, is_verified, height_cm, religion, alcohol, smoking, current_city, origin_city, citizenship, marital_status, about, additional_images, profile_image_privacy, additional_images_privacy } = profileData;
 
   // Calculate age from date_of_birth
   const age = date_of_birth ? new Date().getFullYear() - new Date(date_of_birth).getFullYear() : null;
@@ -210,7 +251,7 @@ const PublicProfilePage = () => {
               </div>
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
-              <LanguageProficiency languages={languages} />
+              <LanguageProficiency languages={user_languages} />
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
               <GlassCard className="p-6">
@@ -219,7 +260,7 @@ const PublicProfilePage = () => {
                   {additional_images && additional_images.map((img, index) => (
                     <motion.img
                       key={index}
-                      src={img.image}
+                      src={img.image_url}
                       alt={`gallery-${index}`}
                       className="rounded-lg object-cover w-full h-24 cursor-pointer"
                       whileHover={{ scale: 1.05 }}
@@ -236,8 +277,8 @@ const PublicProfilePage = () => {
               <InfoTabs 
                 aboutData={aboutData} 
                 educationData={education} 
-                careerData={work_experience} 
-                preferencesData={preference}
+                careerData={work_experiences} 
+                preferencesData={preferences ? preferences[0] : {}}
                 showPreferences={showPreferences}
               />
             </motion.div>

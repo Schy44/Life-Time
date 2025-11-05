@@ -5,12 +5,12 @@ import { useTheme } from '../context/ThemeContext';
 import { Sun, Moon } from 'lucide-react';
 
 const Navbar = () => {
-  const { token, setToken } = useAuth();
+  const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    setToken(null);
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -20,7 +20,7 @@ const Navbar = () => {
         <Link to="/" className="text-2xl font-bold text-gray-800 dark:text-white">Life-Time</Link>
         <div className="flex items-center space-x-4">
           <Link to="/" className="text-gray-800 dark:text-white hover:text-purple-500 dark:hover:text-purple-300">Home</Link>
-          {token ? (
+          {user ? (
             <>
               <Link to="/profile" className="text-gray-800 dark:text-white hover:text-purple-500 dark:hover:text-purple-300">My Profile</Link>
               <Link to="/profiles" className="text-gray-800 dark:text-white hover:text-purple-500 dark:hover:text-purple-300">All Profiles</Link>

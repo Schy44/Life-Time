@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getProfile, updateProfile } from '../services/api';
+import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthContext';
 import ProfileForm from '../components/ProfileForm';
 import AnimatedBackground from '../components/AnimatedBackground';
 import GlassCard from '../components/GlassCard';
@@ -8,18 +9,33 @@ import GlassCard from '../components/GlassCard';
 const EditProfilePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
+      if (!user) {
+        setError('You must be logged in to edit a profile.');
+        setLoading(false);
+        return;
+      }
+
       try {
-        const data = await getProfile();
-        if (data) {
-          setProfileData(data);
+        const { data, error: fetchError } = await supabase
+          .from('profiles')
+          .select('*, education(*), work_experiences(*), user_languages(*), preferences(*), additional_images(*)')
+          .eq('id', id)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        if (data.user_id !== user.id) {
+          setError('You are not authorized to edit this profile.');
+          setProfileData(null);
         } else {
-          setError('Profile not found.');
+          setProfileData(data);
         }
       } catch (err) {
         setError('Failed to fetch profile data for editing.');
@@ -30,11 +46,54 @@ const EditProfilePage = () => {
     };
 
     fetchProfile();
-  }, [id]);
+  }, [id, user]);
 
   const handleSubmit = async (formData) => {
+    if (!user) {
+      alert('You must be logged in to update a profile.');
+      return;
+    }
+
     try {
-      await updateProfile(id, formData);
+      const { education, work_experience, languages, additional_images, preference, ...profileData } = formData;
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update(profileData)
+        .eq('id', id);
+      if (profileError) throw profileError;
+
+      const profileId = id;
+
+      if (education && education.length > 0) {
+        const educationWithProfileId = education.map(item => ({ ...item, profile_id: profileId }));
+        const { error } = await supabase.from('education').upsert(educationWithProfileId);
+        if (error) throw error;
+      }
+
+      if (work_experience && work_experience.length > 0) {
+        const workWithProfileId = work_experience.map(item => ({ ...item, profile_id: profileId }));
+        const { error } = await supabase.from('work_experiences').upsert(workWithProfileId);
+        if (error) throw error;
+      }
+
+      if (languages && languages.length > 0) {
+        const langWithProfileId = languages.map(item => ({ ...item, profile_id: profileId }));
+        const { error } = await supabase.from('user_languages').upsert(langWithProfileId);
+        if (error) throw error;
+      }
+
+      if (additional_images && additional_images.length > 0) {
+        const imagesWithProfileId = additional_images.map(item => ({ ...item, profile_id: profileId, image_url: item.image }));
+        const { error } = await supabase.from('additional_images').upsert(imagesWithProfileId);
+        if (error) throw error;
+      }
+
+      if (preference) {
+        const { error } = await supabase.from('preferences').upsert({ ...preference, profile_id: profileId });
+        if (error) throw error;
+      }
+
       alert('Profile updated successfully!');
       navigate('/profile');
     } catch (err) {
