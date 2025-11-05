@@ -103,7 +103,7 @@ WSGI_APPLICATION = 'life_time.wsgi.application'
 DATABASES = {
     'default': dj_database_url.config(
         # Feel free to alter this value to suit your local development needs.
-        default='postgresql://postgres:postgres@localhost/postgres',
+        default='postgresql://lifetime_admin:password@localhost:5432/life_time_db',
         conn_max_age=600
     )
 }
