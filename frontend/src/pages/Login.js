@@ -1,54 +1,57 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { loginUser } from '../services/api';
+import { supabase } from '../lib/supabaseClient';
 import Logo from '../assets/images/Logo.png'; // Import the logo
 
 const Login = () => {
-    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const navigate = useNavigate();
-    const { setToken } = useAuth();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const token = await loginUser(username, password);
-            setToken(token);
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+
+            if (error) throw error;
+
             navigate('/profile');
         } catch (error) {
             console.error('Login failed', error);
-            alert('Login failed. Please check your credentials and try again.');
+            alert(`Login failed: ${error.message}`);
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100"> {/* Reverted to gray background */}
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
             <div className="flex bg-white rounded-lg shadow-xl overflow-hidden max-w-4xl w-full">
                 <div className="w-1/2 hidden md:block">
                     <img src={Logo} alt="Life Time Logo" className="object-cover h-full w-full" />
                 </div>
                 <div className="w-full md:w-1/2 p-8">
-                    <h2 className="text-3xl font-bold text-gray-800 mb-4 text-center">Welcome Back</h2> {/* Reverted to gray text */}
-                    <p className="text-gray-600 mb-6 text-center">Login to continue your journey</p> {/* Reverted to gray text */}
+                    <h2 className="text-3xl font-bold text-gray-800 mb-4 text-center">Welcome Back</h2>
+                    <p className="text-gray-600 mb-6 text-center">Login to continue your journey</p>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                            <label className="block text-gray-700 text-sm font-medium mb-1">Username</label> {/* Reverted to gray label */}
+                            <label className="block text-gray-700 text-sm font-medium mb-1">Email Address</label>
                             <input
-                                type="text"
-                                placeholder="Username"
-                                className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400" // Reverted to gray border and focus ring
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
+                                type="email"
+                                placeholder="Email Address"
+                                className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 required
                             />
                         </div>
                         <div>
-                            <label className="block text-gray-700 text-sm font-medium mb-1">Password</label> {/* Reverted to gray label */}
+                            <label className="block text-gray-700 text-sm font-medium mb-1">Password</label>
                             <input
                                 type="password"
                                 placeholder="Password"
-                                className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400" // Reverted to gray border and focus ring
+                                className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
@@ -56,18 +59,20 @@ const Login = () => {
                         </div>
                         <button
                             type="submit"
-                            className="w-full p-3 rounded-lg bg-lavender-600 text-white font-bold text-lg hover:bg-lavender-700 transition duration-300 shadow-md" // Keep lavender button
+                            className="w-full p-3 rounded-lg bg-lavender-600 text-white font-bold text-lg hover:bg-lavender-700 transition duration-300 shadow-md"
                         >
                             Login
                         </button>
                     </form>
                     <p className="text-gray-500 mt-6 text-center">
-                        Don't have an account? <Link to="/register" className="font-bold text-lavender-600 hover:underline">Register here</Link> {/* Keep lavender link */}
+                        Don't have an account? <Link to="/register" className="font-bold text-lavender-600 hover:underline">Register here</Link>
                     </p>
                 </div>
             </div>
         </div>
     );
 };
+
+export default Login;
 
 export default Login;
