@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getProfiles } from '../services/api';
+import { getProfiles, getProfile } from '../services/api';
 import GlassCard from '../components/GlassCard';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { motion } from 'framer-motion';
@@ -17,22 +17,28 @@ const ProfilesListPage = () => {
   const [interestFilter, setInterestFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('default');
+  const [currentUserProfile, setCurrentUserProfile] = useState(null);
+
 
   useEffect(() => {
-    const fetchProfiles = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getProfiles();
-        setProfiles(data);
-        setFilteredProfiles(data); // Initialize filtered profiles with all profiles
+        const [profilesData, userProfileData] = await Promise.all([
+          getProfiles(),
+          getProfile() // Fetch current user's profile
+        ]);
+        setProfiles(profilesData);
+        setFilteredProfiles(profilesData);
+        setCurrentUserProfile(userProfileData);
       } catch (err) {
-        setError('Failed to fetch profiles.');
+        setError('Failed to fetch data.');
         console.error(err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProfiles();
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -142,6 +148,15 @@ const ProfilesListPage = () => {
             Discover Connections
           </motion.h1>
 
+          {currentUserProfile && currentUserProfile.compatibility_score === null && (
+            <div className="p-3 mt-4 mb-6 bg-purple-800/30 border border-purple-600 rounded-lg flex items-center justify-center shadow-lg">
+              <User size={20} className="mr-3 text-purple-300" />
+              <p className="text-sm font-medium text-white text-center">
+                For seeing compatibility with other users, please <Link to="/profile" className="text-purple-200 underline hover:text-purple-100 transition-colors">complete your profile properly</Link>.
+              </p>
+            </div>
+          )}
+
           {/* Filter and Search Section */}
           <GlassCard className="p-6 mb-8">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
@@ -173,7 +188,6 @@ const ProfilesListPage = () => {
                 <Zap size={20} className="mr-2" />
                 {sortBy === 'compatibility' ? 'Default Order' : 'Sort by Compatibility'}
               </motion.button>
-
             </div>
 
             {showFilters && (

@@ -41,6 +41,7 @@ if RENDER_EXTERNAL_HOSTNAME:
 
 CORS_ALLOWED_ORIGINS = [
     "https://life-time-2jnrxe9xm-s-chys-projects.vercel.app",
+    "https://life-time-kohl.vercel.app", # New Vercel frontend domain
     "http://localhost:3000",
 ]
 CORS_ALLOW_CREDENTIALS = True
