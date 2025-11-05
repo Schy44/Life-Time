@@ -17,20 +17,17 @@ const Register = () => {
             return;
         }
         try {
-            const { data: authData, error: authError } = await supabase.auth.signUp({
+            const { error } = await supabase.auth.signUp({
                 email,
                 password,
+                options: {
+                    data: {
+                        username: username
+                    }
+                }
             });
 
-            if (authError) throw authError;
-
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .insert([
-                    { user_id: authData.user.id, name: username, email: email },
-                ]);
-
-            if (profileError) throw profileError;
+            if (error) throw error;
 
             alert('Registration successful! Please check your email to verify your account.');
             navigate('/login');

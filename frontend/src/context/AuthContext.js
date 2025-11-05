@@ -1,51 +1,49 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { setAuthToken, getUser } from '../services/api'; // Import getUser
+import { supabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [token, setTokenState] = useState(localStorage.getItem('authToken'));
-  const [user, setUser] = useState(null); // Add user state
+  const [user, setUser] = useState(null);
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      if (token) {
-        setAuthToken(token);
-        try {
-          const userData = await getUser();
-          setUser(userData);
-        } catch (error)
-        {
-          console.error('Failed to fetch user', error);
-          // Handle error, e.g., by logging out the user
-          setToken(null);
-          setUser(null);
-          localStorage.removeItem('authToken');
-        }
-      } else {
-        setAuthToken(null);
-        setUser(null);
-      }
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
     };
-    fetchUser();
-  }, [token]);
 
-  const setToken = (newToken) => {
-    setTokenState(newToken);
-    if (newToken) {
-      localStorage.setItem('authToken', newToken);
-    } else {
-      localStorage.removeItem('authToken');
-    }
+    getSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, []);
+
+  const logout = async () => {
+    await supabase.auth.signOut();
   };
 
-  const logout = () => {
-    setToken(null);
+  const value = {
+    session,
+    user,
+    logout,
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, setToken, logout }}>
-      {children}
+    <AuthContext.Provider value={value}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
