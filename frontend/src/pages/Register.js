@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { registerUser } from '../services/api';
+import { supabase } from '../lib/supabaseClient';
 import Logo from '../assets/images/Logo.png'; // Import the logo
 
 const Register = () => {
@@ -10,7 +9,6 @@ const Register = () => {
     const [password, setPassword] = useState('');
     const [password2, setPassword2] = useState('');
     const navigate = useNavigate();
-    const { setToken } = useAuth();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -19,24 +17,38 @@ const Register = () => {
             return;
         }
         try {
-            const token = await registerUser(email, username, password, password2);
-            setToken(token);
-            navigate('/profile');
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+                email,
+                password,
+            });
+
+            if (authError) throw authError;
+
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .insert([
+                    { user_id: authData.user.id, name: username, email: email },
+                ]);
+
+            if (profileError) throw profileError;
+
+            alert('Registration successful! Please check your email to verify your account.');
+            navigate('/login');
         } catch (error) {
             console.error('Registration failed', error);
-            alert('Registration failed. Please check your details and try again.');
+            alert(`Registration failed: ${error.message}`);
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100"> {/* Reverted to gray background */}
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
             <div className="flex bg-white rounded-lg shadow-xl overflow-hidden max-w-4xl w-full">
                 <div className="w-1/2 hidden md:block">
                     <img src={Logo} alt="Life Time Logo" className="object-cover h-full w-full" />
                 </div>
                 <div className="w-full md:w-1/2 p-8">
-                    <h2 className="text-3xl font-bold text-gray-800 mb-4 text-center">Create Account</h2> {/* Reverted to gray text */}
-                    <p className="text-gray-600 mb-6 text-center">Begin your journey to find your eternal partner</p> {/* Reverted to gray text */}
+                    <h2 className="text-3xl font-bold text-gray-800 mb-4 text-center">Create Account</h2>
+                    <p className="text-gray-600 mb-6 text-center">Begin your journey to find your eternal partner</p>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-gray-700 text-sm font-medium mb-1">Email Address</label>
