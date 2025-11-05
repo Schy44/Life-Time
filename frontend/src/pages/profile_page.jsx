@@ -6,7 +6,8 @@ import LanguageProficiency from '../components/LanguageProficiency';
 import Socials from '../components/Socials';
 import FloatingActionButton from '../components/FloatingActionButton';
 import GlassCard from '../components/GlassCard';
-import { getProfile, getInterests } from '../services/api';
+import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
@@ -16,18 +17,46 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const fetchAllData = async () => {
+    if (!user) {
+      setError('You must be logged in to view this page.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const profile = await getProfile();
-      const interestsData = await getInterests();
+      // Fetch profile data
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*, education(*), work_experiences(*), user_languages(*), preferences(*), additional_images(*)')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileError && profileError.code !== 'PGRST116') { // PGRST116 means no rows found
+        throw profileError;
+      }
+
+      if (profile) {
+        // Fetch interests data
+        const { data: interestsData, error: interestsError } = await supabase
+          .from('interests')
+          .select('*')
+          .or(`sender_id.eq.${profile.id},receiver_id.eq.${profile.id}`);
+
+        if (interestsError) {
+          throw interestsError;
+        }
+        setInterests(interestsData || []);
+      }
+
       setProfileData(profile);
-      setInterests(interestsData);
     } catch (err) {
-      if (err.response && err.response.status === 404) {
+      if (err.code === 'PGRST116') { // No profile found
         setProfileData(null);
       } else {
-        setError('Failed to fetch data. Please ensure you have a valid token in api.js and the backend is running.');
+        setError('Failed to fetch data from Supabase.');
         console.error(err);
       }
     } finally {
@@ -36,12 +65,23 @@ const ProfilePage = () => {
   };
 
   useEffect(() => {
-    fetchAllData();
-  }, []);
+    if (user) {
+      fetchAllData();
+    }
+  }, [user]);
 
-  const handleUpdateInterests = () => {
-    // Refetch interests after an update
-    getInterests().then(setInterests);
+  const handleUpdateInterests = async () => {
+    if (!profileData) return;
+    const { data: interestsData, error: interestsError } = await supabase
+      .from('interests')
+      .select('*')
+      .or(`sender_id.eq.${profileData.id},receiver_id.eq.${profileData.id}`);
+    
+    if (interestsError) {
+      console.error('Failed to refetch interests', interestsError);
+    } else {
+      setInterests(interestsData || []);
+    }
   };
 
   if (loading) {
@@ -73,7 +113,7 @@ const ProfilePage = () => {
   }
 
   // Destructure data for components
-  const { id, name, date_of_birth, gender, profile_image, hobbies, facebook_profile, instagram_profile, linkedin_profile, education, work_experience, languages, preference, is_verified, height_cm, blood_group, religion, alcohol, smoking, current_city, current_country, origin_city, origin_country, visa_status, citizenship, father_occupation, mother_occupation, siblings, family_type, marital_status, about, looking_for, email, phone, additional_images, profile_image_privacy, additional_images_privacy } = profileData;
+  const { id, name, date_of_birth, gender, profile_image, hobbies, facebook_profile, instagram_profile, linkedin_profile, education, work_experiences, user_languages, preferences, is_verified, height_cm, blood_group, religion, alcohol, smoking, current_city, current_country, origin_city, origin_country, visa_status, citizenship, father_occupation, mother_occupation, siblings, family_type, marital_status, about, looking_for, email, phone, additional_images, profile_image_privacy, additional_images_privacy } = profileData;
 
   // Calculate age from date_of_birth
   const age = date_of_birth ? new Date().getFullYear() - new Date(date_of_birth).getFullYear() : null;
@@ -127,7 +167,7 @@ const ProfilePage = () => {
               <ProfileHeader {...headerData} />
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
-              <LanguageProficiency languages={languages} />
+              <LanguageProficiency languages={user_languages} />
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
               <GlassCard className="p-6">
@@ -136,7 +176,7 @@ const ProfilePage = () => {
                   {additional_images && additional_images.map((img, index) => (
                     <motion.img 
                       key={index} 
-                      src={img.image} // Assuming image is a field in additional_images object
+                      src={img.image_url} // Assuming image_url is a field in additional_images object
                       alt={`gallery-${index}`}
                       className="rounded-lg object-cover w-full h-24 cursor-pointer"
                       whileHover={{ scale: 1.05 }}
@@ -153,8 +193,8 @@ const ProfilePage = () => {
               <InfoTabs 
                 aboutData={aboutData} 
                 educationData={education} 
-                careerData={work_experience} 
-                preferencesData={preference}
+                careerData={work_experiences} 
+                preferencesData={preferences ? preferences[0] : {}}
                 interestsData={interests}
                 currentUserProfile={profileData}
                 onUpdateInterests={handleUpdateInterests}
