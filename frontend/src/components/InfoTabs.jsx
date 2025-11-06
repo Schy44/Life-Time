@@ -6,7 +6,7 @@ import CareerSection from './CareerSection';
 import PreferencesCard from './PreferencesCard';
 import InterestsSection from './InterestsSection';
 
-const InfoTabs = ({ aboutData, educationData, careerData, preferencesData, interestsData, currentUserProfile, onUpdateInterests, showPreferences }) => {
+const InfoTabs = ({ aboutData, educationData, careerData, preferencesData, interestsData, currentUserProfile, onUpdateInterests, onUpdateProfile, showPreferences }) => {
   const [availableTabs, setAvailableTabs] = useState([]);
   const [selectedTab, setSelectedTab] = useState('');
 
@@ -29,10 +29,9 @@ const InfoTabs = ({ aboutData, educationData, careerData, preferencesData, inter
       case 'About':
         return <AboutSection aboutData={aboutData} />;
       case 'Education':
-        return <EducationTimeline educationData={educationData} />;
+        return <EducationTimeline educationData={educationData} onUpdateProfile={onUpdateProfile} />;
       case 'Career':
-        return <CareerSection careerData={careerData} />;
-      case 'Preferences':
+        return <CareerSection careerData={careerData} onUpdateProfile={onUpdateProfile} />;      case 'Preferences':
         return <PreferencesCard preferencesData={preferencesData} />;
       case 'Interests':
         return <InterestsSection interests={interestsData} currentUserProfile={currentUserProfile} onUpdate={onUpdateInterests} />;

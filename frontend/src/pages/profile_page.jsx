@@ -35,7 +35,11 @@ const ProfilePage = () => {
       setProfileData(profile);
 
       if (profile) {
-        const { data: interestsData } = await apiClient.get(`/interests/?profile_id=${profile.id}`);
+        const { data: interestsData } = await apiClient.get(`/interests/?profile_id=${profile.id}`, {
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
         setInterests(interestsData || []);
       }
 
@@ -72,7 +76,11 @@ const ProfilePage = () => {
   const handleUpdateInterests = async () => {
     if (!profileData) return;
     try {
-      const { data: interestsData } = await apiClient.get(`/interests/?profile_id=${profileData.id}`);
+      const { data: interestsData } = await apiClient.get(`/interests/?profile_id=${profileData.id}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
       setInterests(interestsData || []);
     } catch (error) {
       console.error('Failed to refetch interests', error);
@@ -190,6 +198,7 @@ const ProfilePage = () => {
                 interestsData={interests}
                 currentUserProfile={profileData}
                 onUpdateInterests={handleUpdateInterests}
+                onUpdateProfile={fetchAllData}
               />
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }}>

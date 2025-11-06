@@ -292,7 +292,9 @@ class ProfileSerializer(serializers.ModelSerializer):
             for item in education_data:
                 item_id = item.get('id')
                 if item_id:
-                    Education.objects.filter(id=item_id, profile=instance).update(**item)
+                    # Exclude 'id' from item before updating
+                    edu_item_data = {k: v for k, v in item.items() if k != 'id'}
+                    Education.objects.filter(id=item_id, profile=instance).update(**edu_item_data)
                 else:
                     Education.objects.create(profile=instance, **item)
 
@@ -308,7 +310,9 @@ class ProfileSerializer(serializers.ModelSerializer):
             for item in work_experience_data:
                 item_id = item.get('id')
                 if item_id:
-                    WorkExperience.objects.filter(id=item_id, profile=instance).update(**item)
+                    # Exclude 'id' from item before updating
+                    work_item_data = {k: v for k, v in item.items() if k != 'id'}
+                    WorkExperience.objects.filter(id=item_id, profile=instance).update(**work_item_data)
                 else:
                     WorkExperience.objects.create(profile=instance, **item)
 
