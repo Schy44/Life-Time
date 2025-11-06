@@ -7,4 +7,6 @@ sqlparse==0.4.4
 tzdata==2024.1
 django-storages
 boto3
-
+dj-database-url
+gunicorn
+whitenoise
