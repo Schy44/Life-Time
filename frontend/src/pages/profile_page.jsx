@@ -6,7 +6,7 @@ import LanguageProficiency from '../components/LanguageProficiency';
 import Socials from '../components/Socials';
 import FloatingActionButton from '../components/FloatingActionButton';
 import GlassCard from '../components/GlassCard';
-import { supabase } from '../lib/supabaseClient';
+import apiClient from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -27,36 +27,23 @@ const ProfilePage = () => {
     }
 
     try {
-      // Fetch profile data
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*, education(*), work_experiences(*), user_languages(*), preferences(*), additional_images(*)')
-        .eq('user_id', user.id)
-        .single();
-
-      if (profileError && profileError.code !== 'PGRST116') { // PGRST116 means no rows found
-        throw profileError;
-      }
+      const { data: profile } = await apiClient.get('/profile/', {
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
+      setProfileData(profile);
 
       if (profile) {
-        // Fetch interests data
-        const { data: interestsData, error: interestsError } = await supabase
-          .from('interests')
-          .select('*')
-          .or(`sender_id.eq.${profile.id},receiver_id.eq.${profile.id}`);
-
-        if (interestsError) {
-          throw interestsError;
-        }
+        const { data: interestsData } = await apiClient.get(`/interests/?profile_id=${profile.id}`);
         setInterests(interestsData || []);
       }
 
-      setProfileData(profile);
     } catch (err) {
-      if (err.code === 'PGRST116') { // No profile found
+      if (err.response && err.response.status === 404) {
         setProfileData(null);
       } else {
-        setError('Failed to fetch data from Supabase.');
+        setError('Failed to fetch data from the backend.');
         console.error(err);
       }
     } finally {
@@ -68,19 +55,27 @@ const ProfilePage = () => {
     if (user) {
       fetchAllData();
     }
+
+    const handleFocus = () => {
+      if (user) {
+        fetchAllData();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [user]);
 
   const handleUpdateInterests = async () => {
     if (!profileData) return;
-    const { data: interestsData, error: interestsError } = await supabase
-      .from('interests')
-      .select('*')
-      .or(`sender_id.eq.${profileData.id},receiver_id.eq.${profileData.id}`);
-    
-    if (interestsError) {
-      console.error('Failed to refetch interests', interestsError);
-    } else {
+    try {
+      const { data: interestsData } = await apiClient.get(`/interests/?profile_id=${profileData.id}`);
       setInterests(interestsData || []);
+    } catch (error) {
+      console.error('Failed to refetch interests', error);
     }
   };
 
@@ -113,7 +108,7 @@ const ProfilePage = () => {
   }
 
   // Destructure data for components
-  const { id, name, date_of_birth, gender, profile_image, hobbies, facebook_profile, instagram_profile, linkedin_profile, education, work_experiences, user_languages, preferences, is_verified, height_cm, blood_group, religion, alcohol, smoking, current_city, current_country, origin_city, origin_country, visa_status, citizenship, father_occupation, mother_occupation, siblings, family_type, marital_status, about, looking_for, email, phone, additional_images, profile_image_privacy, additional_images_privacy } = profileData;
+  const { id, name, date_of_birth, gender, profile_image, facebook_profile, instagram_profile, linkedin_profile, education, work_experiences, preferences, is_verified, height_cm, blood_group, religion, alcohol, smoking, current_city, current_country, origin_city, origin_country, visa_status, citizenship, father_occupation, mother_occupation, siblings, family_type, marital_status, about, looking_for, email, phone, additional_images, profile_image_privacy, additional_images_privacy } = profileData;
 
   // Calculate age from date_of_birth
   const age = date_of_birth ? new Date().getFullYear() - new Date(date_of_birth).getFullYear() : null;
@@ -142,7 +137,6 @@ const ProfilePage = () => {
     lifestyle: {
       alcohol: alcohol,
       smoking: smoking,
-      hobbies: hobbies, // hobbies is already JSONField
     },
   };
 
@@ -166,9 +160,7 @@ const ProfilePage = () => {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
               <ProfileHeader {...headerData} />
             </motion.div>
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
-              <LanguageProficiency languages={user_languages} />
-            </motion.div>
+
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
               <GlassCard className="p-6">
                 <h2 className="section-title dark:text-white">Gallery</h2>

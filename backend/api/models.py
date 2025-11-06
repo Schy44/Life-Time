@@ -92,7 +92,7 @@ class Profile(models.Model):
     phone = models.CharField(max_length=20, blank=True, null=True)
 
     # Extras
-    hobbies = models.JSONField(default=list, blank=True)
+
 
     # Social media
     facebook_profile = models.URLField(max_length=200, blank=True, null=True)
@@ -148,15 +148,6 @@ class WorkExperience(models.Model):
     company = models.CharField(max_length=150, blank=True, null=True)
     currently_working = models.BooleanField(default=False)
   
-class UserLanguage(models.Model):
-    LEVEL = [('A1','A1'),('A2','A2'),('B1','B1'),('B2','B2'),('C1','C1'),('C2','C2'),('native','Native')]
-    profile = models.ForeignKey(Profile, related_name='languages', on_delete=models.CASCADE)
-    language = models.CharField(max_length=50)
-    level = models.CharField(max_length=10, choices=LEVEL, default='native')
-
-    class Meta:
-        unique_together = ('profile', 'language')
-
 # --- Preferences (hard filters + a few extensible softs) ---
 class Preference(models.Model):
     profile = models.OneToOneField(Profile, on_delete=models.CASCADE)

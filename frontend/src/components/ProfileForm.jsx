@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FaPlus, FaTrash } from 'react-icons/fa';
 import Select from 'react-select'; // Import react-select
 import GlassCard from './GlassCard';
-import { getCountries } from '../services/api'; // Import getCountries
+import { getCountries } from '../services/api.js'; // Import getCountries
 
 // Choices from models.py
 const PROFILE_FOR_CHOICES = [
@@ -67,18 +67,7 @@ const LANGUAGE_LEVEL_CHOICES = [
   { value: 'native', label: 'Native' },
 ];
 
-const COUNTRIES = [
-    { name: "Afghanistan", code: "AF" },
-    { name: "Bangladesh", code: "BD" },
-    { name: "Brazil", code: "BR" },
-    { name: "Canada", code: "CA" },
-    { name: "Germany", code: "DE" },
-    { name: "India", code: "IN" },
-    { name: "Japan", code: "JP" },
-    { name: "United Kingdom", code: "GB" },
-    { name: "United States", code: "US" },
-    // This list can be expanded significantly
-];
+
 
 const ProfileForm = ({ initialData, onSubmit }) => {
   const [formData, setFormData] = useState({
@@ -282,8 +271,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
     // Clean and append nested JSON fields
     data.append('education', JSON.stringify(cleanNestedObjects(formData.education)));
     data.append('work_experience', JSON.stringify(cleanNestedObjects(formData.work_experience)));
-    data.append('languages', JSON.stringify(cleanNestedObjects(formData.languages)));
-    data.append('hobbies', JSON.stringify(formData.hobbies || []));
+
 
     // Handle preference separately, filtering out empty values
     if (formData.preference) {
@@ -410,7 +398,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
             <label className="block text-sm font-medium mb-1">Current Country <span className="text-red-500">*</span></label>
             <select name="current_country" value={formData.current_country || ''} onChange={handleChange} className="form-input">
                 <option value="">Select Country</option>
-                {COUNTRIES.map(country => (
+                {countries.map(country => (
                     <option key={country.code} value={country.code}>{country.name}</option>
                 ))}
             </select>
@@ -424,7 +412,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
             <label className="block text-sm font-medium mb-1">Origin Country</label>
             <select name="origin_country" value={formData.origin_country || ''} onChange={handleChange} className="form-input">
                 <option value="">Select Country</option>
-                {COUNTRIES.map(country => (
+                {countries.map(country => (
                     <option key={country.code} value={country.code}>{country.name}</option>
                 ))}
             </select>
@@ -510,30 +498,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
         </div>
       </GlassCard>
 
-      {/* Hobbies */}
-      <GlassCard className="p-6">
-        <h3 className="text-xl font-semibold mb-4">Hobbies</h3>
-        <div className="flex flex-wrap gap-2">
-          {formData.hobbies && formData.hobbies.map((hobby, index) => (
-            <div key={index} className="flex items-center bg-white/50 rounded-full px-3 py-1">
-              <span className="text-sm">{hobby}</span>
-              <button type="button" onClick={() => handleRemoveNested('hobbies', index)} className="ml-2 text-red-500"><FaTrash /></button>
-            </div>
-          ))}
-          <input
-            type="text"
-            placeholder="Add a hobby"
-            onKeyPress={(e) => {
-              if (e.key === 'Enter' && e.target.value.trim() !== '') {
-                e.preventDefault();
-                handleAddNested('hobbies', e.target.value.trim());
-                e.target.value = '';
-              }
-            }}
-            className="form-input flex-grow"
-          />
-        </div>
-      </GlassCard>
+
 
       {/* Social Media */}
       <GlassCard className="p-6">
@@ -608,35 +573,12 @@ const ProfileForm = ({ initialData, onSubmit }) => {
         <button type="button" onClick={() => handleAddNested('work_experience', { title: '', company: '', currently_working: false })} className="btn-add"><FaPlus className="mr-2" />Add Work Experience</button>
       </GlassCard>
 
-      {/* Languages */}
-      <GlassCard className="p-6">
-        <h3 className="text-xl font-semibold mb-4">Languages</h3>
-        {formData.languages && formData.languages.map((lang, index) => (
-          <div key={index} className="border border-white/30 rounded-lg p-4 mb-4 relative">
-            <button type="button" onClick={() => handleRemoveNested('languages', index)} className="absolute top-2 right-2 text-red-500"><FaTrash /></button>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Language</label>
-                <input type="text" value={lang.language || ''} onChange={(e) => handleNestedChange('languages', index, 'language', e.target.value)} className="form-input" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Level</label>
-                <select value={lang.level || ''} onChange={(e) => handleNestedChange('languages', index, 'level', e.target.value)} className="form-input">
-                  <option value="">Select Level</option>
-                  {LANGUAGE_LEVEL_CHOICES.map(choice => (
-                    <option key={choice.value} value={choice.value}>{choice.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-        ))}
-        <button type="button" onClick={() => handleAddNested('languages', { language: '', level: '' })} className="btn-add"><FaPlus className="mr-2" />Add Language</button>
-      </GlassCard>
+
 
       {/* Preferences */}
       <GlassCard className="p-6">
         <h3 className="text-xl font-semibold mb-4">Partner Preferences</h3>
+        <p className="text-gray-600 dark:text-gray-300 mb-4">(Please fill them properly to see compatibility rate with other profiles)</p>
         {formData.preference && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -681,7 +623,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
               <select name="country" value={formData.preference.country || ''} onChange={handlePreferenceChange} className="form-input">
                 <option value="">Select Country</option>
                 {countries.map(country => (
-                  <option key={country} value={country}>{country}</option>
+                  <option key={country.code} value={country.code}>{country.name}</option>
                 ))}
               </select>
             </div>

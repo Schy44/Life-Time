@@ -1,17 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import GlassCard from './GlassCard';
-import { supabase } from '../lib/supabaseClient'; // Import supabase
+import apiClient from '../lib/api';
 
 const InterestsSection = ({ interests, currentUserProfile, onUpdate }) => {
 
   const handleAccept = async (interestId) => {
     try {
-      const { error } = await supabase
-        .from('interests')
-        .update({ status: 'accepted' })
-        .eq('id', interestId);
-      if (error) throw error;
+      await apiClient.post(`/interests/${interestId}/accept/`);
       onUpdate();
     } catch (error) {
       alert(`Failed to accept interest: ${error.message}`);
@@ -20,11 +16,7 @@ const InterestsSection = ({ interests, currentUserProfile, onUpdate }) => {
 
   const handleReject = async (interestId) => {
     try {
-      const { error } = await supabase
-        .from('interests')
-        .update({ status: 'rejected' })
-        .eq('id', interestId);
-      if (error) throw error;
+      await apiClient.post(`/interests/${interestId}/reject/`);
       onUpdate();
     } catch (error) {
       alert(`Failed to reject interest: ${error.message}`);
@@ -34,10 +26,7 @@ const InterestsSection = ({ interests, currentUserProfile, onUpdate }) => {
   const handleSendAgain = async (receiverId) => {
     if (!currentUserProfile) return;
     try {
-      const { error } = await supabase
-        .from('interests')
-        .insert({ sender_id: currentUserProfile.id, receiver_id: receiverId, status: 'sent' });
-      if (error) throw error;
+      await apiClient.post('/interests/', { receiver: receiverId });
       onUpdate();
       alert('Interest re-sent successfully!');
     } catch (error) {
@@ -53,8 +42,8 @@ const InterestsSection = ({ interests, currentUserProfile, onUpdate }) => {
   // For now, I'll assume the 'interests' prop has nested sender/receiver objects with 'id' and 'name'.
   // If not, this part will need further refinement.
 
-  const receivedInterests = interests.filter(i => i.receiver_id === currentUserProfile?.id);
-  const sentInterests = interests.filter(i => i.sender_id === currentUserProfile?.id);
+  const receivedInterests = interests.filter(i => i.receiver?.id === currentUserProfile?.id);
+  const sentInterests = interests.filter(i => i.sender?.id === currentUserProfile?.id);
 
   return (
     <div>
@@ -66,8 +55,8 @@ const InterestsSection = ({ interests, currentUserProfile, onUpdate }) => {
               <GlassCard key={interest.id} className="p-4 flex justify-between items-center">
                 <div>
                   {/* Assuming interest.sender.id and interest.sender.name are available */}
-                  <Link to={`/profiles/${interest.sender_id}`} className="text-xl font-semibold text-purple-600 hover:underline">
-                    {interest.sender_id} {/* Placeholder, ideally display sender's name */}
+                  <Link to={`/profiles/${interest.sender.id}`} className="text-xl font-semibold text-purple-600 hover:underline">
+                    {interest.sender.name}
                   </Link>
                   <p className="text-gray-600 dark:text-gray-300">Status: {interest.status}</p>
                 </div>
@@ -98,8 +87,8 @@ const InterestsSection = ({ interests, currentUserProfile, onUpdate }) => {
               <GlassCard key={interest.id} className="p-4 flex justify-between items-center">
                 <div>
                   {/* Assuming interest.receiver.id and interest.receiver.name are available */}
-                  <Link to={`/profiles/${interest.receiver_id}`} className="text-xl font-semibold text-purple-600 hover:underline">
-                    {interest.receiver_id} {/* Placeholder, ideally display receiver's name */}
+                  <Link to={`/profiles/${interest.receiver.id}`} className="text-xl font-semibold text-purple-600 hover:underline">
+                    {interest.receiver.name}
                   </Link>
                   <p className="text-gray-600 dark:text-gray-300">Status: {interest.status}</p>
                 </div>

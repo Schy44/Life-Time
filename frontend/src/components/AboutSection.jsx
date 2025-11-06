@@ -1,7 +1,8 @@
 import React from 'react';
 import GlassCard from './GlassCard';
 import './Components.css';
-import { ArrowUpRight, Heart, Book, MapPin, Home, Flag, Martini, Cigarette, Brush } from 'lucide-react';
+import { ArrowUpRight, Heart, Book, MapPin, Home, Flag, Martini, Cigarette, Brush, Globe } from 'lucide-react';
+import LanguageProficiency from './LanguageProficiency';
 
 const formatString = (str) => {
   if (typeof str !== 'string') return str;
@@ -17,10 +18,9 @@ const iconMapping = {
   citizenship: <Flag size={20} className="text-purple-400" />,
   alcohol: <Martini size={20} className="text-purple-400" />,
   smoking: <Cigarette size={20} className="text-purple-400" />,
-  hobbies: <Brush size={20} className="text-purple-400" />,
 };
 
-const AboutSection = ({ aboutData }) => {
+const AboutSection = ({ aboutData, userLanguages }) => {
   const { about, basicInfo, lifestyle } = aboutData;
 
   return (
@@ -55,13 +55,14 @@ const AboutSection = ({ aboutData }) => {
                 </div>
                 <div>
                   <p className="font-semibold text-gray-800 dark:text-white">{formatString(key)}</p>
-                  <p className="text-gray-600 dark:text-gray-300">{Array.isArray(value) ? value.join(', ') : formatString(value)}</p>
+                  <p className="text-gray-600 dark:text-gray-300">{Array.isArray(value) ? value.map(item => typeof item === 'object' ? `${item.language} (${item.level})` : item).join(', ') : formatString(value)}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
       </div>
+
     </GlassCard>
   );
 };

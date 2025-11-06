@@ -38,7 +38,6 @@ class LoginView(APIView):
         return Response({'error': 'Invalid Credentials'}, status=status.HTTP_400_BAD_REQUEST)
 
 class UserView(APIView):
-    authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -49,23 +48,19 @@ class UserView(APIView):
         })
 
 
-class ProfileDetailView(APIView):
-    authentication_classes = [TokenAuthentication]
+from rest_framework import generics
+
+class ProfileDetailView(generics.RetrieveAPIView):
+    serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        try:
-            profile = Profile.objects.get(user=request.user)
-            serializer = ProfileSerializer(profile, context={'request': request})
-            return Response(serializer.data)
-        except Profile.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+    def get_object(self):
+        return self.request.user.profile
 
 
 class ProfileViewSet(viewsets.ModelViewSet):
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
-    authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -79,7 +74,6 @@ class ProfileViewSet(viewsets.ModelViewSet):
 class InterestViewSet(viewsets.ModelViewSet):
     queryset = Interest.objects.all()
     serializer_class = InterestSerializer
-    authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Profile, AdditionalImage, Education, WorkExperience, UserLanguage, Preference
+from .models import Profile, AdditionalImage, Education, WorkExperience, Preference
 
 class AdditionalImageInline(admin.TabularInline):
     model = AdditionalImage
@@ -13,10 +13,6 @@ class WorkExperienceInline(admin.TabularInline):
     model = WorkExperience
     extra = 1
 
-class UserLanguageInline(admin.TabularInline):
-    model = UserLanguage
-    extra = 1
-
 class PreferenceInline(admin.StackedInline):
     model = Preference
 
@@ -25,7 +21,7 @@ class ProfileAdmin(admin.ModelAdmin):
     list_display = ('name', 'user', 'gender', 'is_verified', 'created_at')
     list_filter = ('gender', 'is_verified', 'created_at')
     search_fields = ('name', 'user__username', 'current_city', 'current_country')
-    inlines = [EducationInline, WorkExperienceInline, UserLanguageInline, PreferenceInline, AdditionalImageInline]
+    inlines = [EducationInline, WorkExperienceInline, PreferenceInline, AdditionalImageInline]
     fieldsets = (
         (None, {'fields': ('user', 'profile_for', 'name', 'date_of_birth', 'gender', 'profile_image', 'height_cm', 'father_occupation', 'mother_occupation', 'siblings', 'family_type', 'about', 'looking_for', 'email', 'phone')}),
         ('Faith & Lifestyle', {'fields': ('religion', 'alcohol', 'smoking')}),

@@ -117,6 +117,12 @@ const ProfilesListPage = () => {
           >
             Discover Connections
           </motion.h1>
+          <div className="p-3 mt-4 mb-6 bg-purple-800/30 border border-purple-600 rounded-lg flex items-center justify-center shadow-lg">
+              <User size={20} className="mr-3 text-purple-300" />
+              <p className="text-sm font-medium text-white text-center">
+                Complete your profile to find out who’s most compatible with you. <Link to="/profile" className="text-purple-200 underline hover:text-purple-100 transition-colors">Go to your profile</Link>.
+              </p>
+            </div>
 
           {currentUserProfile && currentUserProfile.compatibility_score === null && (
             <div className="p-3 mt-4 mb-6 bg-purple-800/30 border border-purple-600 rounded-lg flex items-center justify-center shadow-lg">

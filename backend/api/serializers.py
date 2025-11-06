@@ -2,7 +2,7 @@ import json
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.db import models
-from .models import Profile, AdditionalImage, Education, WorkExperience, UserLanguage, Preference, Interest
+from .models import Profile, AdditionalImage, Education, WorkExperience, Preference, Interest
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -48,10 +48,7 @@ class WorkExperienceSerializer(serializers.ModelSerializer):
         model = WorkExperience
         fields = ('id', 'title', 'company', 'currently_working')
 
-class UserLanguageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserLanguage
-        fields = ('id', 'language', 'level')
+
 
 class PreferenceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -72,11 +69,13 @@ class InterestSerializer(serializers.ModelSerializer):
         fields = ('id', 'sender', 'receiver', 'status', 'created_at', 'updated_at')
 
 class ProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
     compatibility_score = serializers.SerializerMethodField()
     additional_images = AdditionalImageSerializer(many=True, read_only=True)
     education = EducationSerializer(many=True, required=False)
     work_experience = WorkExperienceSerializer(many=True, required=False)
-    languages = UserLanguageSerializer(many=True, required=False)
+
+
     preference = PreferenceSerializer(required=False)
     uploaded_images = serializers.ListField(
         child=serializers.ImageField(
@@ -97,9 +96,9 @@ class ProfileSerializer(serializers.ModelSerializer):
             'profile_image', 'additional_images', 'height_cm', 'blood_group', 'religion', 'alcohol', 'smoking',
             'current_city', 'current_country', 'origin_city', 'origin_country', 'visa_status', 'citizenship',
             'father_occupation', 'mother_occupation', 'siblings', 'family_type', 'marital_status', 'about', 'looking_for', 'email', 'phone',
-            'hobbies', 'facebook_profile', 'instagram_profile', 'linkedin_profile', 'is_verified',
+            'facebook_profile', 'instagram_profile', 'linkedin_profile', 'is_verified',
             'profile_image_privacy', 'additional_images_privacy', 'is_deleted', 'created_at', 'updated_at',
-            'education', 'work_experience', 'languages', 'preference', 'uploaded_images', 'additional_images_to_keep',
+            'education', 'work_experience', 'preference', 'uploaded_images', 'additional_images_to_keep',
             'compatibility_score'
         )
         read_only_fields = ('user', 'is_verified', 'birth_year',
@@ -202,6 +201,8 @@ class ProfileSerializer(serializers.ModelSerializer):
             if instance.additional_images_privacy == 'matches' and not has_accepted_interest:
                 representation['additional_images'] = []
 
+
+
         return representation
 
     def to_internal_value(self, data):
@@ -216,8 +217,8 @@ class ProfileSerializer(serializers.ModelSerializer):
         profile_image = mutable_data.pop('profile_image', None) # Pop profile_image here
 
         # --- Coerce JSON strings to Python objects ---
-        json_fields = ['education', 'work_experience', 'languages',
-                       'preference', 'hobbies', 'additional_images_to_keep']
+        json_fields = ['education', 'work_experience',
+                       'preference', 'additional_images_to_keep']
         for field in json_fields:
             if field in mutable_data and isinstance(mutable_data[field], str):
                 try:
@@ -238,7 +239,6 @@ class ProfileSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         education_data = validated_data.pop('education', [])
         work_experience_data = validated_data.pop('work_experience', [])
-        languages_data = validated_data.pop('languages', [])
         preference_data = validated_data.pop('preference', None)
         uploaded_images = validated_data.pop('uploaded_images', [])
 
@@ -249,11 +249,6 @@ class ProfileSerializer(serializers.ModelSerializer):
 
         for work_data in work_experience_data:
             WorkExperience.objects.create(profile=profile, **work_data)
-
-        # --- Deduplicate languages ---
-        unique_languages = {lang['language'].lower(): lang for lang in languages_data if lang.get('language')}.values()
-        for lang_data in unique_languages:
-            UserLanguage.objects.create(profile=profile, **lang_data)
 
         if preference_data:
             Preference.objects.create(profile=profile, **preference_data)
@@ -270,11 +265,10 @@ class ProfileSerializer(serializers.ModelSerializer):
         # Pop nested data
         education_data = validated_data.pop('education', None)
         work_experience_data = validated_data.pop('work_experience', None)
-        languages_data = validated_data.pop('languages', None)
         preference_data = validated_data.pop('preference', None)
         additional_images_to_keep = validated_data.pop('additional_images_to_keep', None)
 
-        # --- Update main profile fields ---
+        # --- Update main profile fields (including hobbies and languages) ---
         instance = super().update(instance, validated_data)
 
         # Handle additional images
@@ -317,30 +311,6 @@ class ProfileSerializer(serializers.ModelSerializer):
                     WorkExperience.objects.filter(id=item_id, profile=instance).update(**item)
                 else:
                     WorkExperience.objects.create(profile=instance, **item)
-
-        # --- Handle Languages (Create, Update, Delete) ---
-        if languages_data is not None:
-            # Deduplicate incoming data first
-            unique_languages = {lang['language'].lower(): lang for lang in languages_data if lang.get('language')}.values()
-            
-            existing_langs = {lang.language.lower(): lang for lang in instance.languages.all()}
-            incoming_langs = {item['language'].lower() for item in unique_languages}
-
-            # Delete
-            for lang_name, lang_instance in existing_langs.items():
-                if lang_name not in incoming_langs:
-                    lang_instance.delete()
-            
-            # Create or Update
-            for item in unique_languages:
-                lang_name = item['language'].lower()
-                if lang_name in existing_langs:
-                    # Update existing
-                    lang_instance = existing_langs[lang_name]
-                    lang_instance.level = item.get('level', lang_instance.level)
-                    lang_instance.save()
-                else:
-                    UserLanguage.objects.create(profile=instance, **item)
 
         # --- Handle Preferences ---
         if preference_data is not None:

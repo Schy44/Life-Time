@@ -41,10 +41,23 @@ if RENDER_EXTERNAL_HOSTNAME:
 
 CORS_ALLOWED_ORIGINS = [
     "https://life-time-2jnrxe9xm-s-chys-projects.vercel.app",
-    "https://life-time-kohl.vercel.app", # New Vercel frontend domain
+    "https://life-time-kohl.vercel.app",  # New Vercel frontend domain
     "http://localhost:3000",
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'cache-control',
+]
 CSRF_TRUSTED_ORIGINS = [
     "https://life-time-2jnrxe9xm-s-chys-projects.vercel.app",
     "https://life-time-pxjp.onrender.com",
@@ -160,3 +173,13 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # Tell Django to serve static files using WhiteNoise
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 STATICFILES_DIRS = []
+
+SUPABASE_JWT_SECRET = 'ZSSOtSBi5+eZ0hS8RkF1AcjgfaX+Srnt1v7KWR4g/+FkBLB360vfTr2XUuFFwWMCqOuQjUshOGLAtHReXVVUeA=='
+SUPABASE_AUDIENCE = 'authenticated'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'api.authentication.SupabaseAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+}

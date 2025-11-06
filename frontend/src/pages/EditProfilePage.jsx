@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
+import apiClient from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import ProfileForm from '../components/ProfileForm';
 import AnimatedBackground from '../components/AnimatedBackground';
@@ -23,15 +23,9 @@ const EditProfilePage = () => {
       }
 
       try {
-        const { data, error: fetchError } = await supabase
-          .from('profiles')
-          .select('*, education(*), work_experiences(*), user_languages(*), preferences(*), additional_images(*)')
-          .eq('id', id)
-          .single();
+        const { data } = await apiClient.get(`/profiles/${id}/`);
 
-        if (fetchError) throw fetchError;
-
-        if (data.user_id !== user.id) {
+        if (data.user.username !== user.id) {
           setError('You are not authorized to edit this profile.');
           setProfileData(null);
         } else {
@@ -55,44 +49,11 @@ const EditProfilePage = () => {
     }
 
     try {
-      const { education, work_experience, languages, additional_images, preference, ...profileData } = formData;
-
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update(profileData)
-        .eq('id', id);
-      if (profileError) throw profileError;
-
-      const profileId = id;
-
-      if (education && education.length > 0) {
-        const educationWithProfileId = education.map(item => ({ ...item, profile_id: profileId }));
-        const { error } = await supabase.from('education').upsert(educationWithProfileId);
-        if (error) throw error;
-      }
-
-      if (work_experience && work_experience.length > 0) {
-        const workWithProfileId = work_experience.map(item => ({ ...item, profile_id: profileId }));
-        const { error } = await supabase.from('work_experiences').upsert(workWithProfileId);
-        if (error) throw error;
-      }
-
-      if (languages && languages.length > 0) {
-        const langWithProfileId = languages.map(item => ({ ...item, profile_id: profileId }));
-        const { error } = await supabase.from('user_languages').upsert(langWithProfileId);
-        if (error) throw error;
-      }
-
-      if (additional_images && additional_images.length > 0) {
-        const imagesWithProfileId = additional_images.map(item => ({ ...item, profile_id: profileId, image_url: item.image }));
-        const { error } = await supabase.from('additional_images').upsert(imagesWithProfileId);
-        if (error) throw error;
-      }
-
-      if (preference) {
-        const { error } = await supabase.from('preferences').upsert({ ...preference, profile_id: profileId });
-        if (error) throw error;
-      }
+      await apiClient.put(`/profiles/${id}/`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
 
       alert('Profile updated successfully!');
       navigate('/profile');

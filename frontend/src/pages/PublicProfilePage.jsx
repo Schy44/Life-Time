@@ -25,7 +25,7 @@ const PublicProfilePage = () => {
         // Fetch public profile
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('*, education(*), work_experiences(*), user_languages(*), preferences(*), additional_images(*)')
+          .select('*, education(*), work_experiences(*), preferences(*), additional_images(*)')
           .eq('id', id)
           .single();
         if (profileError) throw profileError;
@@ -45,7 +45,7 @@ const PublicProfilePage = () => {
           const { data: interest, error: interestError } = await supabase
             .from('interests')
             .select('*')
-            .or(`(sender_id.eq.${userProfile.id},receiver_id.eq.${profile.id}),(sender_id.eq.${profile.id},receiver_id.eq.${userProfile.id})`)
+            .or(`and(sender_id.eq.${userProfile.id},receiver_id.eq.${profile.id}),and(sender_id.eq.${profile.id},receiver_id.eq.${userProfile.id})`)
             .single();
           
           if (interestError && interestError.code !== 'PGRST116') { // Ignore no rows found error
@@ -197,7 +197,7 @@ const PublicProfilePage = () => {
   const showPreferences = profileData.id === currentUserProfile?.id || interestStatus?.status === 'accepted';
 
   // Destructure data for components
-  const { name, date_of_birth, profile_image, hobbies, facebook_profile, instagram_profile, linkedin_profile, education, work_experiences, user_languages, preferences, is_verified, height_cm, religion, alcohol, smoking, current_city, origin_city, citizenship, marital_status, about, additional_images, profile_image_privacy, additional_images_privacy } = profileData;
+  const { name, date_of_birth, profile_image, facebook_profile, instagram_profile, linkedin_profile, education, work_experiences, preferences, is_verified, height_cm, religion, alcohol, smoking, current_city, origin_city, citizenship, marital_status, about, additional_images, profile_image_privacy, additional_images_privacy } = profileData;
 
   // Calculate age from date_of_birth
   const age = date_of_birth ? new Date().getFullYear() - new Date(date_of_birth).getFullYear() : null;
@@ -209,7 +209,7 @@ const PublicProfilePage = () => {
     isVerified: is_verified,
     profileImage: profile_image,
     isOnline: true, // Placeholder, as this is not in the model
-    compatibility: 85, // Placeholder, as this is not in the model
+    compatibility: profileData.compatibility_score, // Use actual compatibility score
     profileImagePrivacy: profile_image_privacy, // Pass privacy setting
     hasAcceptedInterest: interestStatus?.status === 'accepted', // Pass accepted interest status
   };
@@ -227,7 +227,6 @@ const PublicProfilePage = () => {
     lifestyle: {
       alcohol: alcohol,
       smoking: smoking,
-      hobbies: hobbies,
     },
   };
 
@@ -250,9 +249,7 @@ const PublicProfilePage = () => {
                 {renderInterestButton()}
               </div>
             </motion.div>
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
-              <LanguageProficiency languages={user_languages} />
-            </motion.div>
+
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
               <GlassCard className="p-6">
                 <h2 className="section-title dark:text-white">Gallery</h2>
