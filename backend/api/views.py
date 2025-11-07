@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import viewsets
 from .models import Profile, Interest
 from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.db.models import Q
 
 class CountryListView(APIView):
@@ -64,6 +65,7 @@ class ProfileViewSet(viewsets.ModelViewSet):
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
 
     def get_queryset(self):
         if self.action == 'list':
