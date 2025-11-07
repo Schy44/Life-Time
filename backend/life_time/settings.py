@@ -27,6 +27,15 @@ SECRET_KEY = 'django-insecure-naq7tg)x(o8xd+^d3f8qr=p^l*%n1t)w4@svcbb+&f1hyq58__
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = 'RENDER' not in os.environ
 
+if not DEBUG:
+    DATABASE_PASSWORD = os.environ.get('DATABASE_PASSWORD')
+    if not DATABASE_PASSWORD:
+        raise ValueError("DATABASE_PASSWORD environment variable not set in production")
+else:
+    DATABASE_PASSWORD = os.environ.get('DATABASE_PASSWORD')
+
+
+
 ALLOWED_HOSTS = [
     "life-time-pxjp.onrender.com",   # backend Render domain
     "life-time-2jnrxe9xm-s-chys-projects.vercel.app",  # frontend Vercel domain
@@ -122,7 +131,7 @@ DATABASES = {
         'USER': 'postgres.airogkqmcjqvvipdwnwh',
         'HOST': 'aws-1-ap-southeast-2.pooler.supabase.com',  # Supabase session pooler host
         'PORT': '5432',
-        'PASSWORD': os.environ.get('DATABASE_PASSWORD'),
+        'PASSWORD': DATABASE_PASSWORD,
     }
 }
 
