@@ -2,7 +2,9 @@ import axios from 'axios';
 import { supabase } from './supabaseClient';
 
 const apiClient = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api', // Your Django backend URL
+  baseURL: process.env.NODE_ENV === 'production' 
+    ? 'https://life-time-pxjp.onrender.com/api' 
+    : 'http://127.0.0.1:8000/api',
 });
 
 apiClient.interceptors.request.use(
