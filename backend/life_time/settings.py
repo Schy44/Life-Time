@@ -87,6 +87,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
+    'storages',
 ]
 
 MIDDLEWARE = [
@@ -196,3 +197,25 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
     ],
 }
+
+# Supabase Storage Configuration for Media Files
+if not DEBUG:
+    SUPABASE_ACCESS_KEY = os.environ.get('SUPABASE_ACCESS_KEY')
+    SUPABASE_SECRET_KEY = os.environ.get('SUPABASE_SECRET_KEY')
+    SUPABASE_BUCKET_NAME = os.environ.get('SUPABASE_BUCKET_NAME')
+    SUPABASE_ENDPOINT_URL = os.environ.get('SUPABASE_ENDPOINT_URL')
+
+    if SUPABASE_BUCKET_NAME:
+        DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+        AWS_ACCESS_KEY_ID = SUPABASE_ACCESS_KEY
+        AWS_SECRET_ACCESS_KEY = SUPABASE_SECRET_KEY
+        AWS_STORAGE_BUCKET_NAME = SUPABASE_BUCKET_NAME
+        AWS_S3_ENDPOINT_URL = SUPABASE_ENDPOINT_URL
+        AWS_S3_FILE_OVERWRITE = False
+        AWS_DEFAULT_ACL = None # It's more secure to use bucket policies
+        MEDIA_URL = f'{SUPABASE_ENDPOINT_URL}/{SUPABASE_BUCKET_NAME}/'
+
+        # Ensure all required Supabase variables are set
+        if not all([SUPABASE_ACCESS_KEY, SUPABASE_SECRET_KEY, SUPABASE_BUCKET_NAME, SUPABASE_ENDPOINT_URL]):
+            raise ValueError("Supabase Storage environment variables are not fully set.")
+
