@@ -203,7 +203,14 @@ if not DEBUG:
     SUPABASE_ACCESS_KEY = os.environ.get('SUPABASE_ACCESS_KEY')
     SUPABASE_SECRET_KEY = os.environ.get('SUPABASE_SECRET_KEY')
     SUPABASE_BUCKET_NAME = os.environ.get('SUPABASE_BUCKET_NAME')
+    SUPABASE_PROJECT_ID = os.environ.get('SUPABASE_PROJECT_ID')
     SUPABASE_ENDPOINT_URL = os.environ.get('SUPABASE_ENDPOINT_URL')
+
+    if SUPABASE_PROJECT_ID and SUPABASE_ENDPOINT_URL:
+        raise ValueError("Please set either SUPABASE_PROJECT_ID or SUPABASE_ENDPOINT_URL, not both.")
+
+    if SUPABASE_PROJECT_ID:
+        SUPABASE_ENDPOINT_URL = f"https://{SUPABASE_PROJECT_ID}.supabase.co/storage/v1"
 
     if SUPABASE_BUCKET_NAME:
         DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'

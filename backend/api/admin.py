@@ -27,7 +27,7 @@ class ProfileAdmin(admin.ModelAdmin):
         ('Faith & Lifestyle', {'fields': ('religion', 'alcohol', 'smoking')}),
         ('Location', {'fields': ('current_city', 'current_country', 'origin_city', 'origin_country')}),
         ('Immigration', {'fields': ('visa_status', 'citizenship')}),
-        ('Optional Details', {'fields': ('marital_status', 'hobbies', 'blood_group')}),
+        ('Optional Details', {'fields': ('marital_status', 'blood_group')}),
         ('Social Media', {'fields': ('facebook_profile', 'instagram_profile', 'linkedin_profile')}),
         ('Privacy Settings', {'fields': ('profile_image_privacy', 'additional_images_privacy')}),
         ('Verification', {'fields': ('is_verified',)}),
