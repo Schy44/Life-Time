@@ -310,5 +310,4 @@ class ProfileSerializer(serializers.ModelSerializer):
         if preference_data is not None:
             Preference.objects.update_or_create(profile=instance, defaults=preference_data)
 
-        instance.save() # Save the instance after all updates
         return instance
