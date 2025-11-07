@@ -60,6 +60,7 @@ CORS_ALLOW_HEADERS = [
 ]
 CSRF_TRUSTED_ORIGINS = [
     "https://life-time-2jnrxe9xm-s-chys-projects.vercel.app",
+    "https://life-time-kohl.vercel.app",
     "https://life-time-pxjp.onrender.com",
 ]
 
