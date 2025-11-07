@@ -216,6 +216,13 @@ if not DEBUG:
         MEDIA_URL = f'{SUPABASE_ENDPOINT_URL}/object/public/{SUPABASE_BUCKET_NAME}/'
 
         # Ensure all required Supabase variables are set
-        if not all([SUPABASE_ACCESS_KEY, SUPABASE_SECRET_KEY, SUPABASE_BUCKET_NAME, SUPABASE_ENDPOINT_URL]):
-            raise ValueError("Supabase Storage environment variables are not fully set.")
+        required_supabase_vars = {
+            'SUPABASE_ACCESS_KEY': SUPABASE_ACCESS_KEY,
+            'SUPABASE_SECRET_KEY': SUPABASE_SECRET_KEY,
+            'SUPABASE_BUCKET_NAME': SUPABASE_BUCKET_NAME,
+            'SUPABASE_ENDPOINT_URL': SUPABASE_ENDPOINT_URL
+        }
+        missing_vars = [key for key, value in required_supabase_vars.items() if not value]
+        if missing_vars:
+            raise ValueError(f"Missing Supabase Storage environment variables: {', '.join(missing_vars)}")
 
