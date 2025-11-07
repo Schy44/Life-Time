@@ -213,7 +213,7 @@ if not DEBUG:
         AWS_S3_ENDPOINT_URL = SUPABASE_ENDPOINT_URL
         AWS_S3_FILE_OVERWRITE = False
         AWS_DEFAULT_ACL = None # It's more secure to use bucket policies
-        MEDIA_URL = f'{SUPABASE_ENDPOINT_URL}/{SUPABASE_BUCKET_NAME}/'
+        MEDIA_URL = f'{SUPABASE_ENDPOINT_URL}/object/public/{SUPABASE_BUCKET_NAME}/'
 
         # Ensure all required Supabase variables are set
         if not all([SUPABASE_ACCESS_KEY, SUPABASE_SECRET_KEY, SUPABASE_BUCKET_NAME, SUPABASE_ENDPOINT_URL]):

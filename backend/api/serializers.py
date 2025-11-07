@@ -74,19 +74,15 @@ class ProfileSerializer(serializers.ModelSerializer):
     additional_images = AdditionalImageSerializer(many=True, read_only=True)
     education = EducationSerializer(many=True, required=False)
     work_experience = WorkExperienceSerializer(many=True, required=False)
-
-
     preference = PreferenceSerializer(required=False)
+
+    # Write-only fields for handling file uploads and nested updates
     uploaded_images = serializers.ListField(
-        child=serializers.ImageField(
-            max_length=1000000, allow_empty_file=False, use_url=False),
-        write_only=True,
-        required=False
+        child=serializers.ImageField(allow_empty_file=False, use_url=False),
+        write_only=True, required=False
     )
     additional_images_to_keep = serializers.ListField(
-        child=serializers.IntegerField(),
-        write_only=True,
-        required=False
+        child=serializers.IntegerField(), write_only=True, required=False
     )
 
     class Meta:
@@ -101,8 +97,104 @@ class ProfileSerializer(serializers.ModelSerializer):
             'education', 'work_experience', 'preference', 'uploaded_images', 'additional_images_to_keep',
             'compatibility_score'
         )
-        read_only_fields = ('user', 'is_verified', 'birth_year',
-                            'additional_images', 'created_at', 'updated_at',)
+        read_only_fields = ('user', 'is_verified', 'birth_year', 'additional_images', 'created_at', 'updated_at')
+
+    def to_internal_value(self, data):
+        # Let the parent class handle initial parsing. This correctly handles files.
+        internal_value = super().to_internal_value(data)
+
+        # The frontend sends some nested data as JSON strings. We need to parse them.
+        json_fields = ['education', 'work_experience', 'preference', 'additional_images_to_keep']
+        for field in json_fields:
+            field_value = data.get(field)
+            if field_value and isinstance(field_value, str):
+                try:
+                    internal_value[field] = json.loads(field_value)
+                except (json.JSONDecodeError, TypeError):
+                    raise serializers.ValidationError({field: f"Invalid JSON format for {field}."})
+        return internal_value
+
+    def create(self, validated_data):
+        education_data = validated_data.pop('education', [])
+        work_experience_data = validated_data.pop('work_experience', [])
+        preference_data = validated_data.pop('preference', None)
+        uploaded_images = validated_data.pop('uploaded_images', [])
+
+        profile = Profile.objects.create(**validated_data)
+
+        for edu_data in education_data:
+            Education.objects.create(profile=profile, **edu_data)
+
+        for work_data in work_experience_data:
+            WorkExperience.objects.create(profile=profile, **work_data)
+
+        if preference_data:
+            Preference.objects.create(profile=profile, **preference_data)
+
+        for image in uploaded_images:
+            AdditionalImage.objects.create(profile=profile, image=image)
+
+        return profile
+
+    def update(self, instance, validated_data):
+        # Pop nested data before calling super().update()
+        uploaded_images = validated_data.pop('uploaded_images', [])
+        additional_images_to_keep = validated_data.pop('additional_images_to_keep', None)
+        education_data = validated_data.pop('education', None)
+        work_experience_data = validated_data.pop('work_experience', None)
+        preference_data = validated_data.pop('preference', None)
+
+        # Update the main Profile instance with its own fields
+        # This call handles the profile_image update correctly and saves the instance.
+        instance = super().update(instance, validated_data)
+
+        # --- Handle Additional Images ---
+        if additional_images_to_keep is not None:
+            # Delete images that are not in the 'to_keep' list
+            instance.additional_images.exclude(id__in=additional_images_to_keep).delete()
+        
+        for image_data in uploaded_images:
+            AdditionalImage.objects.create(profile=instance, image=image_data)
+
+        # --- Handle Education (Create, Update, Delete) ---
+        if education_data is not None:
+            existing_ids = instance.education.values_list('id', flat=True)
+            incoming_ids = [item.get('id') for item in education_data if item.get('id')]
+            
+            for edu_id in existing_ids:
+                if edu_id not in incoming_ids:
+                    instance.education.get(id=edu_id).delete()
+            
+            for item in education_data:
+                item_id = item.get('id')
+                edu_item_data = {k: v for k, v in item.items() if k != 'id'}
+                if item_id:
+                    Education.objects.filter(id=item_id, profile=instance).update(**edu_item_data)
+                else:
+                    Education.objects.create(profile=instance, **edu_item_data)
+
+        # --- Handle Work Experience (Create, Update, Delete) ---
+        if work_experience_data is not None:
+            existing_ids = instance.work_experience.values_list('id', flat=True)
+            incoming_ids = [item.get('id') for item in work_experience_data if item.get('id')]
+
+            for work_id in existing_ids:
+                if work_id not in incoming_ids:
+                    instance.work_experience.get(id=work_id).delete()
+
+            for item in work_experience_data:
+                item_id = item.get('id')
+                work_item_data = {k: v for k, v in item.items() if k != 'id'}
+                if item_id:
+                    WorkExperience.objects.filter(id=item_id, profile=instance).update(**work_item_data)
+                else:
+                    WorkExperience.objects.create(profile=instance, **work_item_data)
+
+        # --- Handle Preferences ---
+        if preference_data is not None:
+            Preference.objects.update_or_create(profile=instance, defaults=preference_data)
+
+        return instance
 
     def get_compatibility_score(self, obj):
         request = self.context.get('request')
@@ -170,7 +262,7 @@ class ProfileSerializer(serializers.ModelSerializer):
                 score += 5
 
         if max_score == 0:
-            return 0 # Return 0 if no preferences are set
+            return 0 # Return None if no preferences are set
 
         return int((score / max_score) * 100)
 
@@ -204,110 +296,3 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 
         return representation
-
-    def to_internal_value(self, data):
-        # Let the parent class handle the initial parsing of multipart data.
-        # This correctly handles file uploads (like profile_image) by default.
-        internal_value = super().to_internal_value(data)
-
-        # The frontend sends some nested data as JSON strings within the form data.
-        # We need to manually parse these specific fields.
-        json_fields = ['education', 'work_experience', 'preference', 'additional_images_to_keep']
-        
-        for field in json_fields:
-            # 'data' is the original request QueryDict
-            field_value = data.get(field)
-            if field_value and isinstance(field_value, str):
-                try:
-                    # Update the 'internal_value' dictionary with the parsed JSON
-                    internal_value[field] = json.loads(field_value)
-                except (json.JSONDecodeError, TypeError):
-                    raise serializers.ValidationError({field: f"Invalid JSON format for {field}."})
-
-        return internal_value
-
-    def create(self, validated_data):
-        education_data = validated_data.pop('education', [])
-        work_experience_data = validated_data.pop('work_experience', [])
-        preference_data = validated_data.pop('preference', None)
-        uploaded_images = validated_data.pop('uploaded_images', [])
-
-        profile = Profile.objects.create(**validated_data)
-
-        for edu_data in education_data:
-            Education.objects.create(profile=profile, **edu_data)
-
-        for work_data in work_experience_data:
-            WorkExperience.objects.create(profile=profile, **work_data)
-
-        if preference_data:
-            Preference.objects.create(profile=profile, **preference_data)
-
-        for image in uploaded_images:
-            AdditionalImage.objects.create(profile=profile, image=image)
-
-        return profile
-
-    def update(self, instance, validated_data):
-        # Pop file fields (profile_image is already handled in to_internal_value)
-        uploaded_images = validated_data.pop('uploaded_images', [])
-
-        # Pop nested data
-        education_data = validated_data.pop('education', None)
-        work_experience_data = validated_data.pop('work_experience', None)
-        preference_data = validated_data.pop('preference', None)
-        additional_images_to_keep = validated_data.pop('additional_images_to_keep', None)
-
-        # --- Update main profile fields (including hobbies and languages) ---
-        instance = super().update(instance, validated_data)
-
-        # Handle additional images
-        if additional_images_to_keep is not None:
-            instance.additional_images.exclude(id__in=additional_images_to_keep).delete()
-
-        for image in uploaded_images:
-            AdditionalImage.objects.create(profile=instance, image=image)
-
-        # --- Handle Education (Create, Update, Delete) ---
-        if education_data is not None:
-            existing_ids = instance.education.values_list('id', flat=True)
-            incoming_ids = [item.get('id') for item in education_data if item.get('id')]
-            
-            # Delete
-            for edu_id in existing_ids:
-                if edu_id not in incoming_ids:
-                    instance.education.get(id=edu_id).delete()
-            
-            # Create or Update
-            for item in education_data:
-                item_id = item.get('id')
-                if item_id:
-                    # Exclude 'id' from item before updating
-                    edu_item_data = {k: v for k, v in item.items() if k != 'id'}
-                    Education.objects.filter(id=item_id, profile=instance).update(**edu_item_data)
-                else:
-                    Education.objects.create(profile=instance, **item)
-
-        # --- Handle Work Experience (Create, Update, Delete) ---
-        if work_experience_data is not None:
-            existing_ids = instance.work_experience.values_list('id', flat=True)
-            incoming_ids = [item.get('id') for item in work_experience_data if item.get('id')]
-
-            for work_id in existing_ids:
-                if work_id not in incoming_ids:
-                    instance.work_experience.get(id=work_id).delete()
-
-            for item in work_experience_data:
-                item_id = item.get('id')
-                if item_id:
-                    # Exclude 'id' from item before updating
-                    work_item_data = {k: v for k, v in item.items() if k != 'id'}
-                    WorkExperience.objects.filter(id=item_id, profile=instance).update(**work_item_data)
-                else:
-                    WorkExperience.objects.create(profile=instance, **item)
-
-        # --- Handle Preferences ---
-        if preference_data is not None:
-            Preference.objects.update_or_create(profile=instance, defaults=preference_data)
-
-        return instance
