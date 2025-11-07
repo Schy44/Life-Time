@@ -204,30 +204,38 @@ if not DEBUG:
     SUPABASE_SECRET_KEY = os.environ.get('SUPABASE_SECRET_KEY')
     SUPABASE_BUCKET_NAME = os.environ.get('SUPABASE_BUCKET_NAME')
     SUPABASE_PROJECT_ID = os.environ.get('SUPABASE_PROJECT_ID')
-    SUPABASE_ENDPOINT_URL = os.environ.get('SUPABASE_ENDPOINT_URL')
-
-    if SUPABASE_PROJECT_ID and SUPABASE_ENDPOINT_URL:
-        raise ValueError("Please set either SUPABASE_PROJECT_ID or SUPABASE_ENDPOINT_URL, not both.")
+    # SUPABASE_ENDPOINT_URL is now derived from SUPABASE_PROJECT_ID if available
 
     if SUPABASE_PROJECT_ID:
         SUPABASE_ENDPOINT_URL = f"https://{SUPABASE_PROJECT_ID}.supabase.co/storage/v1"
+    else:
+        # Fallback to direct SUPABASE_ENDPOINT_URL if project ID is not set
+        SUPABASE_ENDPOINT_URL = os.environ.get('SUPABASE_ENDPOINT_URL')
 
     if SUPABASE_BUCKET_NAME:
         DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
         AWS_ACCESS_KEY_ID = SUPABASE_ACCESS_KEY
         AWS_SECRET_ACCESS_KEY = SUPABASE_SECRET_KEY
         AWS_STORAGE_BUCKET_NAME = SUPABASE_BUCKET_NAME
-        AWS_S3_ENDPOINT_URL = SUPABASE_ENDPOINT_URL
+        AWS_S3_ENDPOINT_URL = SUPABASE_ENDPOINT_URL # This is for boto3 to connect
         AWS_S3_FILE_OVERWRITE = False
         AWS_DEFAULT_ACL = None # It's more secure to use bucket policies
-        MEDIA_URL = f'{SUPABASE_ENDPOINT_URL}/object/public/{SUPABASE_BUCKET_NAME}/'
+
+        # Use AWS_S3_CUSTOM_DOMAIN for MEDIA_URL to ensure correct public URLs
+        if SUPABASE_PROJECT_ID and SUPABASE_BUCKET_NAME:
+            AWS_S3_CUSTOM_DOMAIN = f'{SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/{SUPABASE_BUCKET_NAME}'
+            MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+        else:
+            # Fallback if custom domain cannot be constructed
+            MEDIA_URL = '/media/' # This will likely not work for S3, but prevents crash
 
         # Ensure all required Supabase variables are set
         required_supabase_vars = {
             'SUPABASE_ACCESS_KEY': SUPABASE_ACCESS_KEY,
             'SUPABASE_SECRET_KEY': SUPABASE_SECRET_KEY,
             'SUPABASE_BUCKET_NAME': SUPABASE_BUCKET_NAME,
-            'SUPABASE_ENDPOINT_URL': SUPABASE_ENDPOINT_URL
+            'SUPABASE_PROJECT_ID': SUPABASE_PROJECT_ID, # Now required
+            'SUPABASE_ENDPOINT_URL': SUPABASE_ENDPOINT_URL # Derived or set
         }
         missing_vars = [key for key, value in required_supabase_vars.items() if not value]
         if missing_vars:
