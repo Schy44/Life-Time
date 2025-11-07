@@ -206,34 +206,24 @@ class ProfileSerializer(serializers.ModelSerializer):
         return representation
 
     def to_internal_value(self, data):
-        # Manually create a mutable dictionary from the QueryDict
-        mutable_data = {}
-        for key, value in data.lists():
-            if len(value) == 1:
-                mutable_data[key] = value[0]
-            else:
-                mutable_data[key] = value
+        # Let the parent class handle the initial parsing of multipart data.
+        # This correctly handles file uploads (like profile_image) by default.
+        internal_value = super().to_internal_value(data)
 
-        profile_image = mutable_data.pop('profile_image', None) # Pop profile_image here
-
-        # --- Coerce JSON strings to Python objects ---
-        json_fields = ['education', 'work_experience',
-                       'preference', 'additional_images_to_keep']
+        # The frontend sends some nested data as JSON strings within the form data.
+        # We need to manually parse these specific fields.
+        json_fields = ['education', 'work_experience', 'preference', 'additional_images_to_keep']
+        
         for field in json_fields:
-            if field in mutable_data and isinstance(mutable_data[field], str):
+            # 'data' is the original request QueryDict
+            field_value = data.get(field)
+            if field_value and isinstance(field_value, str):
                 try:
-                    mutable_data[field] = json.loads(mutable_data[field])
+                    # Update the 'internal_value' dictionary with the parsed JSON
+                    internal_value[field] = json.loads(field_value)
                 except (json.JSONDecodeError, TypeError):
-                    raise serializers.ValidationError(
-                        {field: f"Invalid JSON format for {field}."})
+                    raise serializers.ValidationError({field: f"Invalid JSON format for {field}."})
 
-        # --- Handle image clearing ---
-        if profile_image == '': # Check the popped profile_image
-            profile_image = None
-
-        internal_value = super().to_internal_value(mutable_data)
-        if profile_image is not None:
-            internal_value['profile_image'] = profile_image
         return internal_value
 
     def create(self, validated_data):
