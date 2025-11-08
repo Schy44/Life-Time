@@ -53,14 +53,14 @@ class SupabaseStorage(Storage):
                     file_options={"content-type": content_type}
                 )
 
-            # The supabase client's upload/update methods return a dictionary on success,
+            # The supabase client's upload/update methods return a dictionary-like object (UploadResponse) on success,
             # or raise an exception on failure.
-            # We need to check if 'res' is a dictionary indicating success.
-            if isinstance(res, dict) and 'Key' in res: # Check for a key indicating success
+            # We need to check if 'res' is a dictionary-like object indicating success.
+            if isinstance(res, dict) and ('path' in res or 'full_path' in res): # Check for keys indicating success
                 logger.info(f"Successfully uploaded/updated file: {name} to Supabase. Response: {res}")
                 return name # Return the name (path) of the file within the bucket
             else:
-                # If it's not a dict with 'Key', it might be an unexpected response or an error
+                # If it's not a dict with 'path' or 'full_path', it might be an unexpected response or an error
                 # The client should raise an exception for errors, but let's be safe.
                 logger.error(f"Supabase upload/update for {name} returned unexpected response: {res}")
                 raise Exception(f"Supabase upload/update failed: {res}")
