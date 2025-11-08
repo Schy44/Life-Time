@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from datetime import date
+from api.storage import SupabaseStorage
 
 # --- Enums ---
 class Religion(models.TextChoices):
@@ -55,7 +56,7 @@ class Profile(models.Model):
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
 
     # Media
-    profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
+    profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True, storage=SupabaseStorage())
 
     # Physical
     height_cm = models.PositiveSmallIntegerField(blank=True, null=True, help_text="centimeters")
@@ -169,7 +170,7 @@ class Preference(models.Model):
 class AdditionalImage(models.Model):
     profile = models.ForeignKey(
         Profile, related_name='additional_images', on_delete=models.CASCADE)
-    image = models.ImageField(upload_to='additional_images/')
+    image = models.ImageField(upload_to='additional_images/', storage=SupabaseStorage())
 
     def __str__(self):
         return f"Image for {self.profile.name}"

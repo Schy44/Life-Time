@@ -199,144 +199,41 @@ REST_FRAMEWORK = {
 }
 
 # Supabase Storage Configuration for Media Files
-if not DEBUG:
-    SUPABASE_ACCESS_KEY = os.environ.get('SUPABASE_ACCESS_KEY')
-    SUPABASE_SECRET_KEY = os.environ.get('SUPABASE_SECRET_KEY')
-    SUPABASE_BUCKET_NAME = os.environ.get('SUPABASE_BUCKET_NAME')
-    SUPABASE_PROJECT_ID = os.environ.get('SUPABASE_PROJECT_ID')
-    # SUPABASE_ENDPOINT_URL is now derived from SUPABASE_PROJECT_ID if available
+# Removed django-storages configuration as we are switching to the official Supabase Python client.
 
-    if SUPABASE_PROJECT_ID:
-        SUPABASE_ENDPOINT_URL = f"https://{SUPABASE_PROJECT_ID}.supabase.co/storage/v1/s3"
-    else:
-        # Fallback to direct SUPABASE_ENDPOINT_URL if project ID is not set
-        SUPABASE_ENDPOINT_URL = os.environ.get('SUPABASE_ENDPOINT_URL')
-
-    if SUPABASE_BUCKET_NAME:
-        DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-        AWS_ACCESS_KEY_ID = SUPABASE_ACCESS_KEY
-        AWS_SECRET_ACCESS_KEY = SUPABASE_SECRET_KEY
-        AWS_STORAGE_BUCKET_NAME = SUPABASE_BUCKET_NAME
-        AWS_S3_ENDPOINT_URL = SUPABASE_ENDPOINT_URL # This is for boto3 to connect
-        AWS_S3_REGION_NAME = 'ap-southeast-2' # Explicitly set the region
-        AWS_S3_FILE_OVERWRITE = False
-        AWS_DEFAULT_ACL = None # It's more secure to use bucket policies
-
-        # Use AWS_S3_CUSTOM_DOMAIN for MEDIA_URL to ensure correct public URLs
-        if SUPABASE_PROJECT_ID and SUPABASE_BUCKET_NAME:
-            AWS_S3_CUSTOM_DOMAIN = f'{SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/{SUPABASE_BUCKET_NAME}'
-            MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
-        else:
-            # Fallback if custom domain cannot be constructed
-            MEDIA_URL = '/media/' # This will likely not work for S3, but prevents crash
-
-        # Ensure all required Supabase variables are set
-        required_supabase_vars = {
-            'SUPABASE_ACCESS_KEY': SUPABASE_ACCESS_KEY,
-            'SUPABASE_SECRET_KEY': SUPABASE_SECRET_KEY,
-            'SUPABASE_BUCKET_NAME': SUPABASE_BUCKET_NAME,
-            'SUPABASE_PROJECT_ID': SUPABASE_PROJECT_ID, # Now required
-            'SUPABASE_ENDPOINT_URL': SUPABASE_ENDPOINT_URL # Derived or set
-        }
-        missing_vars = [key for key, value in required_supabase_vars.items() if not value]
-    if SUPABASE_BUCKET_NAME:
-        DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-        AWS_ACCESS_KEY_ID = SUPABASE_ACCESS_KEY
-        AWS_SECRET_ACCESS_KEY = SUPABASE_SECRET_KEY
-        AWS_STORAGE_BUCKET_NAME = SUPABASE_BUCKET_NAME
-        AWS_S3_ENDPOINT_URL = SUPABASE_ENDPOINT_URL # This is for boto3 to connect
-        AWS_S3_REGION_NAME = 'ap-southeast-2' # Explicitly set the region
-        # AWS_S3_FILE_OVERWRITE = False # Temporarily commented out for debugging
-        AWS_DEFAULT_ACL = None # It's more secure to use bucket policies
-
-        # Use AWS_S3_CUSTOM_DOMAIN for MEDIA_URL to ensure correct public URLs
-        if SUPABASE_PROJECT_ID and SUPABASE_BUCKET_NAME:
-            AWS_S3_CUSTOM_DOMAIN = f'{SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/{SUPABASE_BUCKET_NAME}'
-            MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
-        else:
-            # Fallback if custom domain cannot be constructed
-            MEDIA_URL = '/media/' # This will likely not work for S3, but prevents crash
-
-        # Ensure all required Supabase variables are set
-        required_supabase_vars = {
-            'SUPABASE_ACCESS_KEY': SUPABASE_ACCESS_KEY,
-            'SUPABASE_SECRET_KEY': SUPABASE_SECRET_KEY,
-            'SUPABASE_BUCKET_NAME': SUPABASE_BUCKET_NAME,
-            'SUPABASE_PROJECT_ID': SUPABASE_PROJECT_ID, # Now required
-            'SUPABASE_ENDPOINT_URL': SUPABASE_ENDPOINT_URL # Derived or set
-        }
-        missing_vars = [key for key, value in required_supabase_vars.items() if not value]
-        if missing_vars:
-            raise ValueError(f"Missing Supabase Storage environment variables: {', '.join(missing_vars)}")
-    else:
-        print("WARNING: SUPABASE_BUCKET_NAME is not set. DEFAULT_FILE_STORAGE will not be S3Boto3Storage.")
-        print(f"Current DEFAULT_FILE_STORAGE: {DEFAULT_FILE_STORAGE}")
-
-# Temporary Logging Configuration for Production Debugging
-# This will output detailed logs to the console (Render logs) when DEBUG is False.
-# REMEMBER TO REMOVE THIS AFTER DEBUGGING!
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose' if not DEBUG else 'simple',
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': 'INFO', # Keep Django's general logs at INFO
-            'propagate': False,
-        },
-        'api': { # Your app's logger
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-        'storages': { # django-storages logger
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-        'boto3': { # AWS SDK logger (used by django-storages)
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-        'botocore': { # AWS SDK logger (used by django-storages)
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': 'WARNING', # Default level for anything not explicitly set
-    }
-}
+# Supabase Storage Configuration for Media Files
+# Using the official Supabase Python client.
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") # Use service_role key for backend operations
+SUPABASE_BUCKET_NAME = os.environ.get("SUPABASE_BUCKET_NAME")
 
 if not DEBUG:
-    # Only apply this logging configuration in production
-    # This ensures that debug logs are sent to the console (Render logs)
-    # when DEBUG is False.
-    # You might want to adjust levels or remove this block after debugging.
-    LOGGING['loggers']['django']['level'] = 'DEBUG'
-    LOGGING['loggers']['api']['level'] = 'DEBUG'
-    LOGGING['loggers']['storages']['level'] = 'DEBUG'
-    LOGGING['loggers']['boto3']['level'] = 'DEBUG'
-    LOGGING['loggers']['botocore']['level'] = 'DEBUG'
+    if not SUPABASE_URL:
+        raise ValueError("SUPABASE_URL environment variable not set in production")
+    if not SUPABASE_KEY:
+        raise ValueError("SUPABASE_SERVICE_ROLE_KEY environment variable not set in production")
+    if not SUPABASE_BUCKET_NAME:
+        raise ValueError("SUPABASE_BUCKET_NAME environment variable not set in production")
+
+# Set the custom storage backend
+DEFAULT_FILE_STORAGE = 'api.storage.SupabaseStorage'
+
+# MEDIA_URL for public access to Supabase-stored files
+if SUPABASE_URL and SUPABASE_BUCKET_NAME:
+    # Construct the public URL base for the bucket
+    # Example: https://<project_id>.supabase.co/storage/v1/object/public/<bucket_name>/
+    # We need to extract project_id from SUPABASE_URL if it's not explicitly set
+    project_id = SUPABASE_URL.split('//')[1].split('.')[0] if SUPABASE_URL else None
+    if project_id:
+        MEDIA_URL = f'https://{project_id}.supabase.co/storage/v1/object/public/{SUPABASE_BUCKET_NAME}/'
+    else:
+        MEDIA_URL = '/media/' # Fallback, though this should be caught by SUPABASE_URL check
+else:
+    MEDIA_URL = '/media/' # Fallback for local development or if variables are missing
+
+# Reverted temporary logging configuration.
+
+
+
 
 
