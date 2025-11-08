@@ -34,26 +34,36 @@ class SupabaseStorage(Storage):
         """
         logger.debug(f"Attempting to save file: {name} to bucket: {self.bucket_name}")
         try:
-            # Supabase client expects bytes or a file-like object
-            # If content is not already bytes, read it
-            if hasattr(content, 'read'):
-                file_bytes = content.read()
+            file_bytes = content.read() if hasattr(content, 'read') else content
+            content_type = content.content_type if hasattr(content, 'content_type') else 'application/octet-stream'
+            
+            # Check if the file already exists
+            if self.exists(name):
+                logger.info(f"File {name} already exists. Attempting to update.")
+                res = self._client.storage.from_(self.bucket_name).update(
+                    path=name,
+                    file=file_bytes,
+                    file_options={"content-type": content_type}
+                )
             else:
-                file_bytes = content
+                logger.info(f"File {name} does not exist. Attempting to upload.")
+                res = self._client.storage.from_(self.bucket_name).upload(
+                    path=name,
+                    file=file_bytes,
+                    file_options={"content-type": content_type}
+                )
 
-            res = self._client.storage.from_(self.bucket_name).upload(
-                path=name,
-                file=file_bytes,
-                file_options={"content-type": content.content_type if hasattr(content, 'content_type') else 'application/octet-stream'}
-            )
-
-            if res.status_code == 200:
-                logger.info(f"Successfully uploaded file: {name} to Supabase.")
+            # The supabase client's upload/update methods return a dictionary on success,
+            # or raise an exception on failure.
+            # We need to check if 'res' is a dictionary indicating success.
+            if isinstance(res, dict) and 'Key' in res: # Check for a key indicating success
+                logger.info(f"Successfully uploaded/updated file: {name} to Supabase. Response: {res}")
                 return name # Return the name (path) of the file within the bucket
             else:
-                error_message = res.json() if res.text else "Unknown error"
-                logger.error(f"Supabase upload failed for {name}. Status: {res.status_code}, Response: {error_message}")
-                raise Exception(f"Supabase upload failed: {error_message}")
+                # If it's not a dict with 'Key', it might be an unexpected response or an error
+                # The client should raise an exception for errors, but let's be safe.
+                logger.error(f"Supabase upload/update for {name} returned unexpected response: {res}")
+                raise Exception(f"Supabase upload/update failed: {res}")
         except Exception as e:
             logger.exception(f"Exception during Supabase file save for {name}: {e}")
             raise
@@ -83,22 +93,22 @@ class SupabaseStorage(Storage):
         """
         logger.debug(f"Checking existence of file: {name} in bucket: {self.bucket_name}")
         try:
-            # Supabase storage list returns a list of objects, check if our object is in it
-            res = self._client.storage.from_(self.bucket_name).list(path=os.path.dirname(name))
-            if res.status_code == 200:
-                for obj in res.json():
-                    if obj.get('name') == os.path.basename(name):
-                        logger.debug(f"File {name} exists in Supabase.")
-                        return True
-                logger.debug(f"File {name} does not exist in Supabase.")
-                return False
-            else:
-                error_message = res.json() if res.text else "Unknown error"
-                logger.error(f"Supabase list operation failed for path {os.path.dirname(name)}. Status: {res.status_code}, Response: {error_message}")
-                # If list fails, assume it doesn't exist or there's an access issue
-                return False
+            parent_path = os.path.dirname(name)
+            file_name = os.path.basename(name)
+            
+            # Supabase storage list returns a list of objects, not a response object
+            objects = self._client.storage.from_(self.bucket_name).list(path=parent_path)
+            
+            # Check if the file_name exists in the list of objects
+            for obj in objects:
+                if obj.get('name') == file_name:
+                    logger.debug(f"File {name} exists in Supabase.")
+                    return True
+            logger.debug(f"File {name} does not exist in Supabase.")
+            return False
         except Exception as e:
             logger.exception(f"Exception during Supabase file existence check for {name}: {e}")
+            # If an exception occurs during list, assume file does not exist or cannot be checked
             return False
 
     def url(self, name):
