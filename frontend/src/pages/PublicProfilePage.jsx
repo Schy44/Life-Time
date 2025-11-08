@@ -3,7 +3,6 @@ import { useParams } from 'react-router-dom';
 import AnimatedBackground from '../components/AnimatedBackground';
 import ProfileHeader from '../components/ProfileHeader';
 import InfoTabs from '../components/InfoTabs';
-import LanguageProficiency from '../components/LanguageProficiency';
 import Socials from '../components/Socials';
 import GlassCard from '../components/GlassCard';
 import { supabase } from '../lib/supabaseClient';
@@ -197,7 +196,7 @@ const PublicProfilePage = () => {
   const showPreferences = profileData.id === currentUserProfile?.id || interestStatus?.status === 'accepted';
 
   // Destructure data for components
-  const { name, date_of_birth, profile_image, facebook_profile, instagram_profile, linkedin_profile, education, work_experiences, preferences, is_verified, height_cm, religion, alcohol, smoking, current_city, origin_city, citizenship, marital_status, about, additional_images, profile_image_privacy, additional_images_privacy } = profileData;
+  const { name, date_of_birth, profile_image, facebook_profile, instagram_profile, linkedin_profile, education, work_experiences, preferences, is_verified, height_cm, religion, alcohol, smoking, current_city, origin_city, citizenship, marital_status, about, additional_images, profile_image_privacy } = profileData;
 
   // Calculate age from date_of_birth
   const age = date_of_birth ? new Date().getFullYear() - new Date(date_of_birth).getFullYear() : null;

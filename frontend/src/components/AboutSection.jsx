@@ -1,8 +1,7 @@
 import React from 'react';
 import GlassCard from './GlassCard';
 import './Components.css';
-import { ArrowUpRight, Heart, Book, MapPin, Home, Flag, Martini, Cigarette, Brush, Globe } from 'lucide-react';
-import LanguageProficiency from './LanguageProficiency';
+import { ArrowUpRight, Heart, Book, MapPin, Home, Flag, Martini, Cigarette } from 'lucide-react';
 
 const formatString = (str) => {
   if (typeof str !== 'string') return str;

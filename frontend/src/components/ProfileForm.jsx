@@ -181,29 +181,6 @@ const ProfileForm = ({ initialData, onSubmit }) => {
     }));
   };
 
-  const handlePreferenceArrayChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      preference: {
-        ...(prev.preference || {}),
-        [name]: value.split(',').map(item => item.trim()).filter(item => item !== ''),
-      },
-    }));
-  };
-
-  const handlePreferenceMultiSelectChange = (e) => {
-    const { name, selectedOptions } = e.target;
-    const value = Array.from(selectedOptions, option => option.value);
-    setFormData(prev => ({
-      ...prev,
-      preference: {
-        ...(prev.preference || {}),
-        [name]: value,
-      },
-    }));
-  };
-
   const handlePreferenceReactSelectChange = (selectedOptions, actionMeta) => {
     const { name } = actionMeta;
     const value = selectedOptions ? selectedOptions.map(option => option.value) : [];

@@ -5,10 +5,9 @@ import { useAuth } from '../context/AuthContext';
 import GlassCard from '../components/GlassCard';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { motion } from 'framer-motion';
-import { Search, MapPin, Calendar, Heart, Filter, XCircle, Zap, User } from 'lucide-react';
+import { Search, MapPin, Filter, XCircle, Zap, User } from 'lucide-react';
 
 const ProfilesListPage = () => {
-  const [profiles, setProfiles] = useState([]);
   const [filteredProfiles, setFilteredProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

@@ -6,53 +6,12 @@ import { motion } from 'framer-motion';
 import AnimatedBackground from '../components/AnimatedBackground';
 import GlassCard from '../components/GlassCard';
 import { useAuth } from '../context/AuthContext';
-import { Users, Zap, Heart, Rocket, LogIn } from 'lucide-react';
+import { Users, Zap, Heart, Rocket } from 'lucide-react';
 import FaqsPage from '../components/FaqsPage';
 import PricingPage from '../components/PricingPage';
 import Footer from '../components/Footer'; // Import the new Footer component
 import { FlipWords } from '../components/FlipWords';
 gsap.registerPlugin(ScrollTrigger);
-
-// --- Reusable Components ---
-const FeatureCard = ({ icon, title, children, index }) => {
-  const cardVariants = {
-    hidden: { opacity: 0, y: 50, scale: 0.9 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: { delay: index * 0.15, duration: 0.6, ease: "easeOut" }
-    },
-    hover: { scale: 1.05, boxShadow: "0 10px 30px rgba(147,51,234,0.3)" },
-    tap: { scale: 0.98 },
-  };
-
-  return (
-    <motion.div
-      variants={cardVariants}
-      initial="hidden"
-      whileInView="visible"
-      whileHover="hover"
-      whileTap="tap"
-      viewport={{ once: true, amount: 0.5 }}
-    >
-      <GlassCard className="p-8 text-center flex flex-col justify-between border border-purple-500/20 hover:border-purple-500 transition-all duration-300">
-        <div className="flex justify-center mb-6">
-          <motion.div
-            initial={{ scale: 0, rotate: 0 }}
-            animate={{ scale: 1, rotate: 360 }}
-            transition={{ delay: index * 0.2 + 0.5, duration: 1, type: "spring", stiffness: 100 }}
-            className="p-4 rounded-full bg-purple-600/20 text-purple-400 shadow-lg"
-          >
-            {icon}
-          </motion.div>
-        </div>
-        <h3 className="text-3xl font-bold mb-4 text-gray-800 dark:text-white">{title}</h3>
-        <p className="text-lg text-gray-600 dark:text-gray-300 flex-grow">{children}</p>
-      </GlassCard>
-    </motion.div>
-  );
-};
 
 const StoryCard = ({ image, quote, author, index }) => {
   const imageRef = useRef(null);
@@ -184,7 +143,7 @@ const RoadmapSection = () => {
 };
 
 const Home = () => {
-  const { token } = useAuth();
+  const { } = useAuth();
   const words = ["Securely.", "Effortlessly."];
   return (
     <>

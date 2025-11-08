@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import ProfileHeader from '../components/ProfileHeader';
 import InfoTabs from '../components/InfoTabs';
-import LanguageProficiency from '../components/LanguageProficiency';
 import Socials from '../components/Socials';
 import FloatingActionButton from '../components/FloatingActionButton';
 import GlassCard from '../components/GlassCard';
@@ -71,6 +70,7 @@ const ProfilePage = () => {
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleUpdateInterests = async () => {
@@ -116,7 +116,7 @@ const ProfilePage = () => {
   }
 
   // Destructure data for components
-  const { id, name, date_of_birth, gender, profile_image, facebook_profile, instagram_profile, linkedin_profile, education, work_experiences, preferences, is_verified, height_cm, blood_group, religion, alcohol, smoking, current_city, current_country, origin_city, origin_country, visa_status, citizenship, father_occupation, mother_occupation, siblings, family_type, marital_status, about, looking_for, email, phone, additional_images, profile_image_privacy, additional_images_privacy } = profileData;
+  const { id, name, date_of_birth, profile_image, facebook_profile, instagram_profile, linkedin_profile, education, work_experiences, preferences, is_verified, height_cm, religion, alcohol, smoking, current_city, current_country, origin_city, origin_country, citizenship, marital_status, about, additional_images, profile_image_privacy } = profileData;
 
   // Calculate age from date_of_birth
   const age = date_of_birth ? new Date().getFullYear() - new Date(date_of_birth).getFullYear() : null;
