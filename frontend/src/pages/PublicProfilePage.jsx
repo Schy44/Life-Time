@@ -22,13 +22,9 @@ const PublicProfilePage = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch public profile
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*, education(*), work_experiences(*), preferences(*), additional_images(*)')
-          .eq('id', id)
-          .single();
-        if (profileError) throw profileError;
+        // Fetch public profile from Django backend
+        const profileResponse = await apiClient.get(`/profiles/${id}/`);
+        const profile = profileResponse.data;
         setProfileData(profile);
 
         if (user) {
