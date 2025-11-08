@@ -60,12 +60,7 @@ const PRIVACY_CHOICES = [
   { value: 'matches', label: 'Matches Only' },
 ];
 
-const LANGUAGE_LEVEL_CHOICES = [
-  { value: 'A1', label: 'A1' }, { value: 'A2', label: 'A2' },
-  { value: 'B1', label: 'B1' }, { value: 'B2', label: 'B2' },
-  { value: 'C1', label: 'C1' }, { value: 'C2', label: 'C2' },
-  { value: 'native', label: 'Native' },
-];
+
 
 
 
@@ -98,6 +93,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
       }
     };
     fetchCountries();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -122,10 +118,11 @@ const ProfileForm = ({ initialData, onSubmit }) => {
   }, [formData.preference?.religion]);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const name = e.target.name;
+    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: value,
     }));
     // Clear error when user starts typing
     if (errors[name]) {
@@ -173,12 +170,13 @@ const ProfileForm = ({ initialData, onSubmit }) => {
   };
 
   const handlePreferenceChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const name = e.target.name;
+    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setFormData(prev => ({
       ...prev,
       preference: {
         ...(prev.preference || {}),
-        [name]: type === 'checkbox' ? checked : value,
+        [name]: value,
       },
     }));
   };
