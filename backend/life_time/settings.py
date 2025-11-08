@@ -207,6 +207,15 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") # Use service_role key for backend operations
 SUPABASE_BUCKET_NAME = os.environ.get("SUPABASE_BUCKET_NAME")
 
+# Provide default values for local development if not set
+if DEBUG:
+    if not SUPABASE_URL:
+        SUPABASE_URL = "http://localhost:8000" # Dummy URL for local development
+    if not SUPABASE_KEY:
+        SUPABASE_KEY = "dummy_key_for_local_dev" # Dummy key for local development
+    if not SUPABASE_BUCKET_NAME:
+        SUPABASE_BUCKET_NAME = "local-bucket" # Dummy bucket name for local development
+
 if not DEBUG:
     if not SUPABASE_URL:
         raise ValueError("SUPABASE_URL environment variable not set in production")
