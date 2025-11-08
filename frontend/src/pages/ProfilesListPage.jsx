@@ -45,7 +45,6 @@ const ProfilesListPage = () => {
 
         if (userProfileError) throw userProfileError;
 
-        setProfiles(profilesData);
         setFilteredProfiles(profilesData); // Initially, show all profiles
         setCurrentUserProfile(userProfileData);
       } catch (err) {

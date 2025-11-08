@@ -116,7 +116,7 @@ const ProfilePage = () => {
   }
 
   // Destructure data for components
-  const { id, name, date_of_birth, profile_image, facebook_profile, instagram_profile, linkedin_profile, education, work_experiences, preferences, is_verified, height_cm, religion, alcohol, smoking, current_city, current_country, origin_city, origin_country, citizenship, marital_status, about, additional_images, profile_image_privacy } = profileData;
+  const { id, name, date_of_birth, profile_image, facebook_profile, instagram_profile, linkedin_profile, education, work_experiences, preferences, is_verified, height_cm, religion, alcohol, smoking, current_city, origin_city, citizenship, marital_status, about, additional_images, profile_image_privacy } = profileData;
 
   // Calculate age from date_of_birth
   const age = date_of_birth ? new Date().getFullYear() - new Date(date_of_birth).getFullYear() : null;

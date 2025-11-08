@@ -143,7 +143,7 @@ const RoadmapSection = () => {
 };
 
 const Home = () => {
-  const { } = useAuth();
+  useAuth();
   const words = ["Securely.", "Effortlessly."];
   return (
     <>
