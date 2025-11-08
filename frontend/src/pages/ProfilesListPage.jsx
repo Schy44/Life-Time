@@ -33,12 +33,7 @@ const ProfilesListPage = () => {
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
           .select('*')
-          .not('user_id', 'eq', user.id)
-          .not('name', 'is', null) // Ensure name is not null
-          .not('date_of_birth', 'is', null) // Ensure date_of_birth is not null
-          .not('gender', 'is', null) // Ensure gender is not null
-          .not('current_city', 'is', null) // Ensure current_city is not null
-          .not('current_country', 'is', null); // Ensure current_country is not null
+          .not('user_id', 'eq', user.id);
 
         if (profilesError) throw profilesError;
 

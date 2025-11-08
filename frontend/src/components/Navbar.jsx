@@ -19,7 +19,6 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto flex justify-between items-center">
         <Link to="/" className="text-2xl font-bold text-gray-800 dark:text-white">Life-Time</Link>
         <div className="flex items-center space-x-4">
-          <Link to="/" className="text-gray-800 dark:text-white hover:text-purple-500 dark:hover:text-purple-300">Home</Link>
           {user ? (
             <>
               <Link to="/profile" className="text-gray-800 dark:text-white hover:text-purple-500 dark:hover:text-purple-300">My Profile</Link>

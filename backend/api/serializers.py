@@ -34,9 +34,16 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class AdditionalImageSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
     class Meta:
         model = AdditionalImage
-        fields = ('id', 'image')
+        fields = ('id', 'image', 'image_url')
+
+    def get_image_url(self, obj):
+        if obj.image:
+            return obj.image.url
+        return None
 
 class EducationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -262,7 +269,7 @@ class ProfileSerializer(serializers.ModelSerializer):
                 score += 5
 
         if max_score == 0:
-            return 0 # Return None if no preferences are set
+            return None # Return None if no preferences are set
 
         return int((score / max_score) * 100)
 
