@@ -207,15 +207,6 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") # Use service_role key for backend operations
 SUPABASE_BUCKET_NAME = os.environ.get("SUPABASE_BUCKET_NAME")
 
-# Provide default values for local development if not set
-if DEBUG:
-    if not SUPABASE_URL:
-        SUPABASE_URL = "http://localhost:8000" # Dummy URL for local development
-    if not SUPABASE_KEY:
-        SUPABASE_KEY = "dummy_key_for_local_dev" # Dummy key for local development
-    if not SUPABASE_BUCKET_NAME:
-        SUPABASE_BUCKET_NAME = "local-bucket" # Dummy bucket name for local development
-
 if not DEBUG:
     if not SUPABASE_URL:
         raise ValueError("SUPABASE_URL environment variable not set in production")
@@ -225,23 +216,20 @@ if not DEBUG:
         raise ValueError("SUPABASE_BUCKET_NAME environment variable not set in production")
 
 # Set the custom storage backend
-if DEBUG:
-    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
-    MEDIA_URL = '/media/' # Ensure MEDIA_URL is local for FileSystemStorage
-else:
-    DEFAULT_FILE_STORAGE = 'api.storage.SupabaseStorage'
-    # MEDIA_URL for public access to Supabase-stored files
-    if SUPABASE_URL and SUPABASE_BUCKET_NAME:
-        # Construct the public URL base for the bucket
-        # Example: https://<project_id>.supabase.co/storage/v1/object/public/<bucket_name>/
-        # We need to extract project_id from SUPABASE_URL if it's not explicitly set
-        project_id = SUPABASE_URL.split('//')[1].split('.')[0] if SUPABASE_URL else None
-        if project_id:
-            MEDIA_URL = f'https://{project_id}.supabase.co/storage/v1/object/public/{SUPABASE_BUCKET_NAME}/'
-        else:
-            MEDIA_URL = '/media/' # Fallback, though this should be caught by SUPABASE_URL check
+DEFAULT_FILE_STORAGE = 'api.storage.SupabaseStorage'
+
+# MEDIA_URL for public access to Supabase-stored files
+if SUPABASE_URL and SUPABASE_BUCKET_NAME:
+    # Construct the public URL base for the bucket
+    # Example: https://<project_id>.supabase.co/storage/v1/object/public/<bucket_name>/
+    # We need to extract project_id from SUPABASE_URL if it's not explicitly set
+    project_id = SUPABASE_URL.split('//')[1].split('.')[0] if SUPABASE_URL else None
+    if project_id:
+        MEDIA_URL = f'https://{project_id}.supabase.co/storage/v1/object/public/{SUPABASE_BUCKET_NAME}/'
     else:
-        MEDIA_URL = '/media/' # Fallback for local development or if variables are missing
+        MEDIA_URL = '/media/' # Fallback, though this should be caught by SUPABASE_URL check
+else:
+    MEDIA_URL = '/media/' # Fallback for local development or if variables are missing
 
 # Reverted temporary logging configuration.
 
