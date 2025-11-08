@@ -6,6 +6,7 @@ import InfoTabs from '../components/InfoTabs';
 import Socials from '../components/Socials';
 import GlassCard from '../components/GlassCard';
 import { supabase } from '../lib/supabaseClient';
+import apiClient from '../lib/api'; // Add this import
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 
@@ -40,17 +41,23 @@ const PublicProfilePage = () => {
           if (userProfileError) throw userProfileError;
           setCurrentUserProfile(userProfile);
 
-          // Fetch interest status between current user and public profile
-          const { data: interest, error: interestError } = await supabase
-            .from('interests')
-            .select('*')
-            .or(`and(sender_id.eq.${userProfile.id},receiver_id.eq.${profile.id}),and(sender_id.eq.${profile.id},receiver_id.eq.${userProfile.id})`)
-            .single();
-          
-          if (interestError && interestError.code !== 'PGRST116') { // Ignore no rows found error
-            throw interestError;
+          // Fetch interest status between current user and public profile from Django backend
+          try {
+            const response = await apiClient.get('/interests/');
+            const allInterests = response.data;
+            
+            // Find the specific interest between the current user and the public profile
+            const foundInterest = allInterests.find(
+              (int) =>
+                (int.sender === userProfile.id && int.receiver === profile.id) ||
+                (int.sender === profile.id && int.receiver === userProfile.id)
+            );
+            setInterestStatus(foundInterest || null); // Set to null if no interest found
+          } catch (interestFetchError) {
+            // If there's an error (e.g., 404 if no interests exist), treat it as no interest
+            console.warn("Failed to fetch interests from Django backend:", interestFetchError);
+            setInterestStatus(null);
           }
-          setInterestStatus(interest);
         }
       } catch (err) {
         setError('Failed to fetch data.');
@@ -66,60 +73,48 @@ const PublicProfilePage = () => {
   const handleSendInterest = async () => {
     if (!currentUserProfile || !profileData) return;
     try {
-      const { data: newInterest, error } = await supabase
-        .from('interests')
-        .insert({ sender_id: currentUserProfile.id, receiver_id: profileData.id, status: 'sent' })
-        .select()
-        .single();
-      if (error) throw error;
-      setInterestStatus(newInterest);
+      const response = await apiClient.post('/interests/', { receiver: profileData.id });
+      setInterestStatus(response.data);
       alert('Interest sent successfully!');
     } catch (error) {
-      alert(`Failed to send interest: ${error.message}`);
+      alert(`Failed to send interest: ${error.response?.data?.error || error.message}`);
     }
   };
 
   const handleAccept = async () => {
     if (!interestStatus) return;
     try {
-      const { data, error } = await supabase
-        .from('interests')
-        .update({ status: 'accepted' })
-        .eq('id', interestStatus.id)
-        .select()
-        .single();
-      if (error) throw error;
-      setInterestStatus(data);
+      const response = await apiClient.post(`/interests/${interestStatus.id}/accept/`);
+      // The backend returns a simple status message, not the updated object.
+      // We need to manually update the status in the frontend state.
+      setInterestStatus(prev => ({ ...prev, status: 'accepted' }));
+      alert('Interest accepted successfully!');
     } catch (error) {
-      alert(`Failed to accept interest: ${error.message}`);
+      alert(`Failed to accept interest: ${error.response?.data?.error || error.message}`);
     }
   };
 
   const handleReject = async () => {
     if (!interestStatus) return;
     try {
-      const { data, error } = await supabase
-        .from('interests')
-        .update({ status: 'rejected' })
-        .eq('id', interestStatus.id)
-        .select()
-        .single();
-      if (error) throw error;
-      setInterestStatus(data);
+      const response = await apiClient.post(`/interests/${interestStatus.id}/reject/`);
+      // The backend returns a simple status message, not the updated object.
+      // We need to manually update the status in the frontend state.
+      setInterestStatus(prev => ({ ...prev, status: 'rejected' }));
+      alert('Interest rejected successfully!');
     } catch (error) {
-      alert(`Failed to reject interest: ${error.message}`);
+      alert(`Failed to reject interest: ${error.response?.data?.error || error.message}`);
     }
   };
 
   const handleCancelInterest = async () => {
     if (!interestStatus) return;
     try {
-      const { error } = await supabase.from('interests').delete().eq('id', interestStatus.id);
-      if (error) throw error;
+      await apiClient.delete(`/interests/${interestStatus.id}/`);
       setInterestStatus(null);
       alert('Interest cancelled successfully!');
     } catch (error) {
-      alert(`Failed to cancel interest: ${error.message}`);
+      alert(`Failed to cancel interest: ${error.response?.data?.error || error.message}`);
     }
   };
 
