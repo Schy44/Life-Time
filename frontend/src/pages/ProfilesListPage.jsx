@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import GlassCard from '../components/GlassCard';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { motion } from 'framer-motion';
 import { Search, MapPin, Filter, XCircle, Zap, User } from 'lucide-react';
+import apiClient from '../lib/api'; // Import apiClient
 
 const ProfilesListPage = () => {
   const [filteredProfiles, setFilteredProfiles] = useState([]);
@@ -28,27 +28,18 @@ const ProfilesListPage = () => {
         return;
       }
       try {
-        // Fetch all profiles except the current user's
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('*')
-          .not('user_id', 'eq', user.id);
+        // Fetch all profiles except the current user's from Django backend
+        const profilesResponse = await apiClient.get('/profiles/');
+        const profilesData = profilesResponse.data;
 
-        if (profilesError) throw profilesError;
-
-        // Fetch current user's profile
-        const { data: userProfileData, error: userProfileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (userProfileError) throw userProfileError;
+        // Fetch current user's profile from Django backend
+        const userProfileResponse = await apiClient.get('/profile/');
+        const userProfileData = userProfileResponse.data;
 
         setFilteredProfiles(profilesData); // Initially, show all profiles
         setCurrentUserProfile(userProfileData);
       } catch (err) {
-        setError('Failed to fetch data from Supabase.');
+        setError('Failed to fetch data from the backend.');
         console.error(err);
       } finally {
         setLoading(false);
