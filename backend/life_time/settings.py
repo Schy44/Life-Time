@@ -242,3 +242,71 @@ if not DEBUG:
         if missing_vars:
             raise ValueError(f"Missing Supabase Storage environment variables: {', '.join(missing_vars)}")
 
+# Temporary Logging Configuration for Production Debugging
+# This will output detailed logs to the console (Render logs) when DEBUG is False.
+# REMEMBER TO REMOVE THIS AFTER DEBUGGING!
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose' if not DEBUG else 'simple',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO', # Keep Django's general logs at INFO
+            'propagate': False,
+        },
+        'api': { # Your app's logger
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'storages': { # django-storages logger
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'boto3': { # AWS SDK logger (used by django-storages)
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'botocore': { # AWS SDK logger (used by django-storages)
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING', # Default level for anything not explicitly set
+    }
+}
+
+if not DEBUG:
+    # Only apply this logging configuration in production
+    # This ensures that debug logs are sent to the console (Render logs)
+    # when DEBUG is False.
+    # You might want to adjust levels or remove this block after debugging.
+    LOGGING['loggers']['django']['level'] = 'DEBUG'
+    LOGGING['loggers']['api']['level'] = 'DEBUG'
+    LOGGING['loggers']['storages']['level'] = 'DEBUG'
+    LOGGING['loggers']['boto3']['level'] = 'DEBUG'
+    LOGGING['loggers']['botocore']['level'] = 'DEBUG'
+
+
