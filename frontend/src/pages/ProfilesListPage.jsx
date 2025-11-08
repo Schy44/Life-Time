@@ -113,15 +113,6 @@ const ProfilesListPage = () => {
               </p>
             </div>
 
-          {currentUserProfile && currentUserProfile.compatibility_score === null && (
-            <div className="p-3 mt-4 mb-6 bg-purple-800/30 border border-purple-600 rounded-lg flex items-center justify-center shadow-lg">
-              <User size={20} className="mr-3 text-purple-300" />
-              <p className="text-sm font-medium text-white text-center">
-                For seeing compatibility with other users, please <Link to="/profile" className="text-purple-200 underline hover:text-purple-100 transition-colors">complete your profile properly</Link>.
-              </p>
-            </div>
-          )}
-
           {/* Filter and Search Section */}
           <GlassCard className="p-6 mb-8">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
