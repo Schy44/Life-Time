@@ -207,7 +207,7 @@ if not DEBUG:
     # SUPABASE_ENDPOINT_URL is now derived from SUPABASE_PROJECT_ID if available
 
     if SUPABASE_PROJECT_ID:
-        SUPABASE_ENDPOINT_URL = f"https://{SUPABASE_PROJECT_ID}.supabase.co/storage/v1"
+        SUPABASE_ENDPOINT_URL = f"https://{SUPABASE_PROJECT_ID}.supabase.co/storage/v1/s3"
     else:
         # Fallback to direct SUPABASE_ENDPOINT_URL if project ID is not set
         SUPABASE_ENDPOINT_URL = os.environ.get('SUPABASE_ENDPOINT_URL')
@@ -218,6 +218,7 @@ if not DEBUG:
         AWS_SECRET_ACCESS_KEY = SUPABASE_SECRET_KEY
         AWS_STORAGE_BUCKET_NAME = SUPABASE_BUCKET_NAME
         AWS_S3_ENDPOINT_URL = SUPABASE_ENDPOINT_URL # This is for boto3 to connect
+        AWS_S3_REGION_NAME = 'ap-southeast-2' # Explicitly set the region
         AWS_S3_FILE_OVERWRITE = False
         AWS_DEFAULT_ACL = None # It's more secure to use bucket policies
 
