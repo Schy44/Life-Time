@@ -13,3 +13,4 @@ whitenoise
 PyJWT
 Pillow
 supabase
+python-dotenv

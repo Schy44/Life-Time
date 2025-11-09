@@ -10,12 +10,16 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
+from dotenv import load_dotenv # Import load_dotenv
 import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file
+load_dotenv(os.path.join(BASE_DIR, '.env')) # Load .env from backend directory
 
 
 # Quick-start development settings - unsuitable for production
@@ -204,14 +208,14 @@ REST_FRAMEWORK = {
 # Supabase Storage Configuration for Media Files
 # Using the official Supabase Python client.
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") # Use service_role key for backend operations
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY") # Use service_role key for backend operations
 SUPABASE_BUCKET_NAME = os.environ.get("SUPABASE_BUCKET_NAME")
 
 if not DEBUG:
     if not SUPABASE_URL:
         raise ValueError("SUPABASE_URL environment variable not set in production")
     if not SUPABASE_KEY:
-        raise ValueError("SUPABASE_SERVICE_ROLE_KEY environment variable not set in production")
+        raise ValueError("SUPABASE_KEY environment variable not set in production")
     if not SUPABASE_BUCKET_NAME:
         raise ValueError("SUPABASE_BUCKET_NAME environment variable not set in production")
 
