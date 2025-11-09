@@ -26,34 +26,14 @@ const PublicProfilePage = () => {
         const profileResponse = await apiClient.get(`/profiles/${id}/`);
         const profile = profileResponse.data;
         setProfileData(profile);
+        if (profile.interest) {
+          setInterestStatus(profile.interest);
+        }
 
         if (user) {
-          // Fetch current user's profile
-          const { data: userProfile, error: userProfileError } = await supabase
-            .from('profiles')
-            .select('id') // Only need the ID for interest checks
-            .eq('user_id', user.id)
-            .single();
-          if (userProfileError) throw userProfileError;
-          setCurrentUserProfile(userProfile);
-
-          // Fetch interest status between current user and public profile from Django backend
-          try {
-            const response = await apiClient.get('/interests/');
-            const allInterests = response.data;
-            
-            // Find the specific interest between the current user and the public profile
-            const foundInterest = allInterests.find(
-              (int) =>
-                (int.sender === userProfile.id && int.receiver === profile.id) ||
-                (int.sender === profile.id && int.receiver === userProfile.id)
-            );
-            setInterestStatus(foundInterest || null); // Set to null if no interest found
-          } catch (interestFetchError) {
-            // If there's an error (e.g., 404 if no interests exist), treat it as no interest
-            console.warn("Failed to fetch interests from Django backend:", interestFetchError);
-            setInterestStatus(null);
-          }
+          // Fetch current user's profile from Django backend
+          const userProfileResponse = await apiClient.get('/profile/');
+          setCurrentUserProfile(userProfileResponse.data);
         }
       } catch (err) {
         setError('Failed to fetch data.');
@@ -131,7 +111,7 @@ const PublicProfilePage = () => {
       );
     }
 
-    if (interestStatus.sender_id === currentUserProfile.id) {
+    if (interestStatus.sender.id === currentUserProfile.id) {
       if (interestStatus.status === 'sent') {
         return (
           <button onClick={handleCancelInterest} className="bg-purple-400 text-white px-6 py-2 rounded-md hover:bg-purple-500">
@@ -147,7 +127,7 @@ const PublicProfilePage = () => {
       }
     }
 
-    if (interestStatus.receiver_id === currentUserProfile.id) {
+    if (interestStatus.receiver.id === currentUserProfile.id) {
       if (interestStatus.status === 'sent') {
         return (
           <div className="flex space-x-2">

@@ -553,7 +553,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
       {/* Preferences */}
       <GlassCard className="p-6">
         <h3 className="text-xl font-semibold mb-4">Partner Preferences</h3>
-        <p className="text-gray-600 dark:text-gray-300 mb-4">(Please fill them properly to see compatibility rate with other profiles)</p>
+        <p className="text-yellow-500 dark:text-yellow-400 font-bold mb-4">(Please fill them properly to see compatibility rate with other profiles)</p>
         {formData.preference && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -615,10 +615,12 @@ const ProfileForm = ({ initialData, onSubmit }) => {
         )}
       </GlassCard>
 
-      {/* Privacy Settings */}
+
+
+      {/* Profile Image */}
       <GlassCard className="p-6">
-        <h3 className="text-xl font-semibold mb-4">Privacy Settings</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <h3 className="text-xl font-semibold mb-4">Profile Image</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium mb-1">Profile Image Privacy</label>
             <select name="profile_image_privacy" value={formData.profile_image_privacy || ''} onChange={handleChange} className="form-input">
@@ -628,6 +630,23 @@ const ProfileForm = ({ initialData, onSubmit }) => {
             </select>
           </div>
           <div>
+            <label className="block text-sm font-medium mb-1">Upload New Image</label>
+            <input type="file" accept="image/*" onChange={handleProfileImageChange} className="form-input" />
+          </div>
+        </div>
+        {formData.profile_image && (
+          <div className="relative w-32 h-32 mx-auto">
+            <img src={formData.profile_image} alt="Current Profile" className="w-32 h-32 object-cover rounded-full" />
+            <button type="button" onClick={() => setFormData(prev => ({ ...prev, profile_image: null }))} className="absolute bottom-0 right-0 bg-red-500 text-white rounded-full p-1 text-xs"><FaTrash /></button>
+          </div>
+        )}
+      </GlassCard>
+
+      {/* Additional Images */}
+      <GlassCard className="p-6">
+        <h3 className="text-xl font-semibold mb-4">Additional Images</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
             <label className="block text-sm font-medium mb-1">Additional Images Privacy</label>
             <select name="additional_images_privacy" value={formData.additional_images_privacy || ''} onChange={handleChange} className="form-input">
               {PRIVACY_CHOICES.map(choice => (
@@ -635,25 +654,12 @@ const ProfileForm = ({ initialData, onSubmit }) => {
               ))}
             </select>
           </div>
-        </div>
-      </GlassCard>
-
-      {/* Profile Image */}
-      <GlassCard className="p-6">
-        <h3 className="text-xl font-semibold mb-4">Profile Image</h3>
-        {formData.profile_image && (
-          <div className="mb-4">
-            <img src={formData.profile_image} alt="Current Profile" className="w-32 h-32 object-cover rounded-full mx-auto" />
-            <button type="button" onClick={() => setFormData(prev => ({ ...prev, profile_image: null }))} className="text-red-500 text-sm mt-2 block mx-auto">Remove Current Image</button>
+          <div>
+            <label className="block text-sm font-medium mb-1">Upload New Images</label>
+            <input type="file" accept="image/*" multiple onChange={handleAdditionalImageChange} className="form-input" />
           </div>
-        )}
-        <input type="file" accept="image/*" onChange={handleProfileImageChange} className="form-input" />
-      </GlassCard>
-
-      {/* Additional Images */}
-      <GlassCard className="p-6">
-        <h3 className="text-xl font-semibold mb-4">Additional Images</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {formData.additional_images && formData.additional_images.map((img) => (
             additionalImagesToKeep.includes(img.id) && (
               <div key={img.id} className="relative">
@@ -663,7 +669,6 @@ const ProfileForm = ({ initialData, onSubmit }) => {
             )
           ))}
         </div>
-        <input type="file" accept="image/*" multiple onChange={handleAdditionalImageChange} className="form-input" />
       </GlassCard>
 
       <button type="submit" className="w-full p-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold text-lg hover:from-purple-700 hover:to-pink-600 transition duration-300">

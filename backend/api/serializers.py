@@ -86,6 +86,7 @@ class InterestSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     compatibility_score = serializers.SerializerMethodField()
+    interest = serializers.SerializerMethodField()
     additional_images = AdditionalImageSerializer(many=True, read_only=True)
     education = EducationSerializer(many=True, required=False)
     work_experience = WorkExperienceSerializer(many=True, required=False)
@@ -110,10 +111,10 @@ class ProfileSerializer(serializers.ModelSerializer):
             'facebook_profile', 'instagram_profile', 'linkedin_profile', 'is_verified',
             'profile_image_privacy', 'additional_images_privacy', 'is_deleted', 'created_at', 'updated_at',
             'education', 'work_experience', 'preference', 'uploaded_images', 'additional_images_to_keep',
-            'compatibility_score'
+            'compatibility_score', 'interest'
         )
         read_only_fields = ('user', 'is_verified', 'birth_year',
-                            'additional_images', 'created_at', 'updated_at')
+                            'additional_images', 'created_at', 'updated_at', 'interest')
 
     def to_internal_value(self, data):
         # Let the parent class handle initial parsing. This correctly handles files.
@@ -353,6 +354,18 @@ class ProfileSerializer(serializers.ModelSerializer):
             return None  # Return None if no preferences are set
 
         return int((score / max_score) * 100)
+
+    def get_interest(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            user_profile = request.user.profile
+            interest = Interest.objects.filter(
+                (models.Q(sender=user_profile, receiver=obj) |
+                 models.Q(sender=obj, receiver=user_profile))
+            ).first()
+            if interest:
+                return InterestSerializer(interest).data
+        return None
 
     def _has_accepted_interest(self, requesting_user_profile, profile_owner):
         if not requesting_user_profile or not profile_owner:

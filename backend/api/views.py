@@ -133,3 +133,10 @@ class InterestViewSet(viewsets.ModelViewSet):
         interest.status = 'rejected'
         interest.save()
         return Response({'status': 'Interest rejected'})
+
+    def destroy(self, request, *args, **kwargs):
+        interest = self.get_object()
+        if interest.sender.user != request.user:
+            return Response({'error': 'You are not authorized to cancel this interest.'}, status=status.HTTP_403_FORBIDDEN)
+        
+        return super().destroy(request, *args, **kwargs)
