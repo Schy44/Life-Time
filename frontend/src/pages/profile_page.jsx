@@ -116,7 +116,7 @@ const ProfilePage = () => {
   }
 
   // Destructure data for components
-  const { id, name, date_of_birth, profile_image, facebook_profile, instagram_profile, linkedin_profile, education, work_experiences, preferences, is_verified, height_cm, religion, alcohol, smoking, current_city, origin_city, citizenship, marital_status, about, additional_images, profile_image_privacy } = profileData;
+  const { id, name, date_of_birth, profile_image, facebook_profile, instagram_profile, linkedin_profile, education, work_experience, preferences, is_verified, height_cm, religion, alcohol, smoking, current_city, origin_city, citizenship, marital_status, about, additional_images, profile_image_privacy } = profileData;
 
   // Calculate age from date_of_birth
   const age = date_of_birth ? new Date().getFullYear() - new Date(date_of_birth).getFullYear() : null;
@@ -193,7 +193,7 @@ const ProfilePage = () => {
               <InfoTabs 
                 aboutData={aboutData} 
                 educationData={education} 
-                careerData={work_experiences} 
+                careerData={work_experience} 
                 preferencesData={preferences ? preferences[0] : {}}
                 interestsData={interests}
                 currentUserProfile={profileData}
