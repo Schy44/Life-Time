@@ -17,7 +17,6 @@ const ProfilesListPage = () => {
   const [interestFilter, setInterestFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('default');
-  const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -32,12 +31,7 @@ const ProfilesListPage = () => {
         const profilesResponse = await apiClient.get('/profiles/');
         const profilesData = profilesResponse.data;
 
-        // Fetch current user's profile from Django backend
-        const userProfileResponse = await apiClient.get('/profile/');
-        const userProfileData = userProfileResponse.data;
-
         setFilteredProfiles(profilesData); // Initially, show all profiles
-        setCurrentUserProfile(userProfileData);
       } catch (err) {
         setError('Failed to fetch data from the backend.');
         console.error(err);

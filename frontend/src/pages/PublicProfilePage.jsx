@@ -5,7 +5,6 @@ import ProfileHeader from '../components/ProfileHeader';
 import InfoTabs from '../components/InfoTabs';
 import Socials from '../components/Socials';
 import GlassCard from '../components/GlassCard';
-import { supabase } from '../lib/supabaseClient';
 import apiClient from '../lib/api'; // Add this import
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
@@ -60,7 +59,7 @@ const PublicProfilePage = () => {
   const handleAccept = async () => {
     if (!interestStatus) return;
     try {
-      const response = await apiClient.post(`/interests/${interestStatus.id}/accept/`);
+      await apiClient.post(`/interests/${interestStatus.id}/accept/`);
       // The backend returns a simple status message, not the updated object.
       // We need to manually update the status in the frontend state.
       setInterestStatus(prev => ({ ...prev, status: 'accepted' }));
@@ -73,7 +72,7 @@ const PublicProfilePage = () => {
   const handleReject = async () => {
     if (!interestStatus) return;
     try {
-      const response = await apiClient.post(`/interests/${interestStatus.id}/reject/`);
+      await apiClient.post(`/interests/${interestStatus.id}/reject/`);
       // The backend returns a simple status message, not the updated object.
       // We need to manually update the status in the frontend state.
       setInterestStatus(prev => ({ ...prev, status: 'rejected' }));
