@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FaPlus, FaTrash } from 'react-icons/fa';
 import Select from 'react-select'; // Import react-select
 import GlassCard from './GlassCard';
-import { getCountries, getProfessions } from '../services/api.js'; // Import getCountries
+import { getCountries } from '../services/api.js'; // Import getCountries
 
 // Choices from models.py
 const PROFILE_FOR_CHOICES = [
