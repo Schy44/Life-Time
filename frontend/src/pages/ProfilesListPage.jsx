@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { getProfiles, getProfile } from '../services/api';
 import GlassCard from '../components/GlassCard';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { motion } from 'framer-motion';
-import { Search, MapPin, Filter, XCircle, Zap, User } from 'lucide-react';
-import apiClient from '../lib/api'; // Import apiClient
+import { Search, MapPin, Calendar, Heart, Filter, XCircle, Zap, User } from 'lucide-react';
 
 const ProfilesListPage = () => {
+  const [profiles, setProfiles] = useState([]);
   const [filteredProfiles, setFilteredProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -17,23 +17,21 @@ const ProfilesListPage = () => {
   const [interestFilter, setInterestFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('default');
-  const { user } = useAuth();
+  const [currentUserProfile, setCurrentUserProfile] = useState(null);
+
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!user) {
-        setError('You must be logged in to view profiles.');
-        setLoading(false);
-        return;
-      }
       try {
-        // Fetch all profiles except the current user's from Django backend
-        const profilesResponse = await apiClient.get('/profiles/');
-        const profilesData = profilesResponse.data;
-
-        setFilteredProfiles(profilesData); // Initially, show all profiles
+        const [profilesData, userProfileData] = await Promise.all([
+          getProfiles(),
+          getProfile() // Fetch current user's profile
+        ]);
+        setProfiles(profilesData);
+        setFilteredProfiles(profilesData);
+        setCurrentUserProfile(userProfileData);
       } catch (err) {
-        setError('Failed to fetch data from the backend.');
+        setError('Failed to fetch data.');
         console.error(err);
       } finally {
         setLoading(false);
@@ -41,10 +39,59 @@ const ProfilesListPage = () => {
     };
 
     fetchData();
-  }, [user]);
+  }, []);
 
-  // TODO: Re-implement filtering and sorting using Supabase queries for better performance.
-  // The client-side filtering logic has been removed for this refactoring.
+  useEffect(() => {
+    let currentProfiles = [...profiles];
+
+    // Apply search term
+    if (searchTerm) {
+      currentProfiles = currentProfiles.filter(
+        (profile) =>
+          profile.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          profile.current_city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          profile.current_country.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (profile.bio && profile.bio.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (profile.interests &&
+            profile.interests.some((interest) =>
+              interest.toLowerCase().includes(searchTerm.toLowerCase())
+            ))
+      );
+    }
+
+    // Apply age filter
+    if (ageFilter) {
+      const [minAge, maxAge] = ageFilter.split('-').map(Number);
+      currentProfiles = currentProfiles.filter(
+        (profile) => profile.age >= minAge && profile.age <= maxAge
+      );
+    }
+
+    // Apply gender filter
+    if (genderFilter) {
+      currentProfiles = currentProfiles.filter(
+        (profile) => profile.gender.toLowerCase() === genderFilter.toLowerCase()
+      );
+    }
+
+    // Apply interest filter
+    if (interestFilter) {
+      currentProfiles = currentProfiles.filter(
+        (profile) =>
+          profile.interests &&
+          profile.interests.some((interest) =>
+            interest.toLowerCase().includes(interestFilter.toLowerCase())
+          )
+      );
+    }
+
+    // Apply sorting
+    if (sortBy === 'compatibility') {
+      currentProfiles.sort((a, b) => (b.compatibility_score || 0) - (a.compatibility_score || 0));
+    }
+
+    setFilteredProfiles(currentProfiles);
+  }, [searchTerm, ageFilter, genderFilter, interestFilter, profiles, sortBy]);
 
   const handleClearFilters = () => {
     setSearchTerm('');
@@ -100,12 +147,15 @@ const ProfilesListPage = () => {
           >
             Discover Connections
           </motion.h1>
-          <div className="p-3 mt-4 mb-6 bg-purple-800/30 border border-purple-600 rounded-lg flex items-center justify-center shadow-lg">
+
+          {currentUserProfile && currentUserProfile.compatibility_score === null && (
+            <div className="p-3 mt-4 mb-6 bg-purple-800/30 border border-purple-600 rounded-lg flex items-center justify-center shadow-lg">
               <User size={20} className="mr-3 text-purple-300" />
               <p className="text-sm font-medium text-white text-center">
-                Complete your profile to find out who’s most compatible with you. <Link to="/profile" className="text-purple-200 underline hover:text-purple-100 transition-colors">Go to your profile</Link>.
+                For seeing compatibility with other users, please <Link to="/profile" className="text-purple-200 underline hover:text-purple-100 transition-colors">complete your profile properly</Link>.
               </p>
             </div>
+          )}
 
           {/* Filter and Search Section */}
           <GlassCard className="p-6 mb-8">
@@ -208,37 +258,37 @@ const ProfilesListPage = () => {
                   <Link to={`/profiles/${profile.id}`} className="group block h-full">
                     <GlassCard className="relative p-6 flex flex-col items-center text-center h-full hover:bg-white/20 transition-colors duration-300">
                       {profile.compatibility_score === null ? (
-                          <div className="absolute top-4 right-4 text-sm text-gray-500 text-center">
-                              Not applicable
-                          </div>
+                        <div className="absolute top-4 right-4 text-sm text-gray-500 text-center">
+                          Not applicable
+                        </div>
                       ) : (
-                          <div className="absolute top-4 right-4">
-                              <div className="relative w-16 h-16">
-                                  <svg className="w-full h-full" viewBox="0 0 36 36">
-                                      <path
-                                          className="text-gray-200"
-                                          d="M18 2.0845
+                        <div className="absolute top-4 right-4">
+                          <div className="relative w-16 h-16">
+                            <svg className="w-full h-full" viewBox="0 0 36 36">
+                              <path
+                                className="text-gray-200"
+                                d="M18 2.0845
                                             a 15.9155 15.9155 0 0 1 0 31.831
                                             a 15.9155 15.9155 0 0 1 0 -31.831"
-                                          fill="none"
-                                          strokeWidth="3"
-                                      />
-                                      <path
-                                          className="text-purple-600"
-                                          strokeDasharray={`${profile.compatibility_score || 0}, 100`}
-                                          d="M18 2.0845
+                                fill="none"
+                                strokeWidth="3"
+                              />
+                              <path
+                                className="text-purple-600"
+                                strokeDasharray={`${profile.compatibility_score || 0}, 100`}
+                                d="M18 2.0845
                                             a 15.9155 15.9155 0 0 1 0 31.831
                                             a 15.9155 15.9155 0 0 1 0 -31.831"
-                                          fill="none"
-                                          strokeWidth="3"
-                                          strokeLinecap="round"
-                                      />
-                                  </svg>
-                                  <div className="absolute inset-0 flex items-center justify-center">
-                                      <span className="text-lg font-bold text-purple-600">{profile.compatibility_score || 0}%</span>
-                                  </div>
-                              </div>
+                                fill="none"
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                              />
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-lg font-bold text-purple-600">{profile.compatibility_score || 0}%</span>
+                            </div>
                           </div>
+                        </div>
                       )}
                       {profile.profile_image ? (
                         <img

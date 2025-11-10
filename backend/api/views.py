@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import viewsets
-from .models import Profile, Interest
+from .models import Profile, Interest, WorkExperience
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db.models import Q
@@ -17,6 +17,12 @@ class CountryListView(APIView):
     def get(self, request):
         countries = Profile.objects.exclude(current_country__isnull=True).exclude(current_country__exact='').values_list('current_country', flat=True).distinct()
         return Response(countries)
+
+
+class ProfessionListView(APIView):
+    def get(self, request):
+        professions = WorkExperience.objects.values_list('title', flat=True).distinct()
+        return Response(professions)
 
 
 class RegisterView(APIView):
@@ -68,9 +74,60 @@ class ProfileViewSet(viewsets.ModelViewSet):
     parser_classes = (MultiPartParser, FormParser)
 
     def get_queryset(self):
+        queryset = Profile.objects.all().prefetch_related('work_experience', 'education')
         if self.action == 'list':
-            return Profile.objects.exclude(user=self.request.user)
-        return Profile.objects.all()
+            queryset = queryset.exclude(user=self.request.user)
+
+            # Helper to calculate birth year range from age range
+            def _get_birth_year_range_from_age(age_range_str):
+                current_year = date.today().year
+                if '-' in age_range_str:
+                    min_age_str, max_age_str = age_range_str.split('-')
+                    min_age = int(min_age_str)
+                    max_age = int(max_age_str)
+                elif '+' in age_range_str:
+                    min_age = int(age_range_str.replace('+', ''))
+                    max_age = 150 # Effectively no upper limit
+                else:
+                    return None, None # Invalid format
+
+                min_birth_year = current_year - max_age
+                max_birth_year = current_year - min_age
+                return min_birth_year, max_birth_year
+
+            # Apply filters
+            search_term = self.request.query_params.get('search', None)
+            age_filter = self.request.query_params.get('age', None)
+            gender_filter = self.request.query_params.get('gender', None)
+            interest_filter = self.request.query_params.get('interest', None) # Assuming this is a text search for now
+
+            if search_term:
+                queryset = queryset.filter(
+                    Q(name__icontains=search_term) |
+                    Q(current_city__icontains=search_term) |
+                    Q(origin_city__icontains=search_term) |
+                    Q(about__icontains=search_term) |
+                    Q(looking_for__icontains=search_term) |
+                    Q(work_experience__title__icontains=search_term)
+                ).distinct()
+
+            if age_filter:
+                min_birth_year, max_birth_year = _get_birth_year_range_from_age(age_filter)
+                if min_birth_year and max_birth_year:
+                    queryset = queryset.filter(birth_year__gte=min_birth_year, birth_year__lte=max_birth_year)
+
+            if gender_filter:
+                queryset = queryset.filter(gender__iexact=gender_filter)
+            
+            if interest_filter:
+                # For now, treat interest_filter as a general text search across relevant fields
+                queryset = queryset.filter(
+                    Q(about__icontains=interest_filter) |
+                    Q(looking_for__icontains=interest_filter) |
+                    Q(work_experience__title__icontains=interest_filter)
+                ).distinct()
+
+        return queryset
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FaPlus, FaTrash } from 'react-icons/fa';
 import Select from 'react-select'; // Import react-select
 import GlassCard from './GlassCard';
-import { getCountries } from '../services/api.js'; // Import getCountries
+import { getCountries, getProfessions } from '../services/api.js'; // Import getCountries
 
 // Choices from models.py
 const PROFILE_FOR_CHOICES = [
@@ -74,6 +74,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
   const [additionalImagesToKeep, setAdditionalImagesToKeep] = useState(initialData.additional_images ? initialData.additional_images.map(img => img.id) : []);
   const [errors, setErrors] = useState({});
   const [countries, setCountries] = useState([]); // Add countries state
+  const [professions, setProfessions] = useState([]); // Add professions state
 
   useEffect(() => {
     setFormData({
@@ -94,6 +95,19 @@ const ProfileForm = ({ initialData, onSubmit }) => {
     };
     fetchCountries();
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const fetchProfessions = async () => {
+      try {
+        const { getProfessions } = await import('../services/api.js');
+        const data = await getProfessions();
+        setProfessions(data.map(p => ({ value: p, label: p })));
+      } catch (error) {
+        console.error('Error fetching professions:', error);
+      }
+    };
+    fetchProfessions();
   }, []);
 
   useEffect(() => {
@@ -591,16 +605,27 @@ const ProfileForm = ({ initialData, onSubmit }) => {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Profession</label>
-              <input type="text" name="profession" value={formData.preference.profession || ''} onChange={handlePreferenceChange} className="form-input" />
+              <Select
+                isMulti
+                name="profession"
+                options={professions}
+                className="basic-multi-select"
+                classNamePrefix="select"
+                value={professions.filter(option => formData.preference.profession?.includes(option.value))}
+                onChange={handlePreferenceReactSelectChange}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Country</label>
-              <select name="country" value={formData.preference.country || ''} onChange={handlePreferenceChange} className="form-input">
-                <option value="">Select Country</option>
-                {countries.map(country => (
-                  <option key={country.code} value={country.code}>{country.name}</option>
-                ))}
-              </select>
+              <Select
+                isMulti
+                name="country"
+                options={countries.map(country => ({ value: country.code, label: country.name }))}
+                className="basic-multi-select"
+                classNamePrefix="select"
+                value={countries.map(country => ({ value: country.code, label: country.name })).filter(option => formData.preference.country?.includes(option.value))}
+                onChange={handlePreferenceReactSelectChange}
+              />
             </div>
 
             <div className="flex items-center">

@@ -10,6 +10,8 @@ const InfoTabs = ({ aboutData, educationData, careerData, preferencesData, inter
   const [availableTabs, setAvailableTabs] = useState([]);
   const [selectedTab, setSelectedTab] = useState('');
 
+  console.log("careerData in InfoTabs:", careerData);
+
   useEffect(() => {
     const initialTabs = ['About', 'Education', 'Career'];
     if (showPreferences) {

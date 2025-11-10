@@ -380,6 +380,9 @@ class ProfileSerializer(serializers.ModelSerializer):
         representation = super().to_representation(instance)
         request = self.context.get('request')
 
+        print(f"DEBUG: ProfileSerializer to_representation - instance.work_experience.all(): {instance.work_experience.all()}")
+        print(f"DEBUG: ProfileSerializer to_representation - representation: {representation}")
+
         if request and request.user.is_authenticated and request.user.profile != instance:
             requesting_user_profile = request.user.profile
             profile_owner = instance

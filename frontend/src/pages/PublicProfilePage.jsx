@@ -5,7 +5,7 @@ import ProfileHeader from '../components/ProfileHeader';
 import InfoTabs from '../components/InfoTabs';
 import Socials from '../components/Socials';
 import GlassCard from '../components/GlassCard';
-import apiClient from '../lib/api'; // Add this import
+import { getProfileById, getProfile, sendInterest, acceptInterest, rejectInterest, cancelInterest } from '../services/api';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 
@@ -22,8 +22,8 @@ const PublicProfilePage = () => {
     const fetchData = async () => {
       try {
         // Fetch public profile from Django backend
-        const profileResponse = await apiClient.get(`/profiles/${id}/`);
-        const profile = profileResponse.data;
+        const profile = await getProfileById(id);
+        console.log("Profile data from API:", profile);
         setProfileData(profile);
         if (profile.interest) {
           setInterestStatus(profile.interest);
@@ -31,8 +31,8 @@ const PublicProfilePage = () => {
 
         if (user) {
           // Fetch current user's profile from Django backend
-          const userProfileResponse = await apiClient.get('/profile/');
-          setCurrentUserProfile(userProfileResponse.data);
+          const userProfile = await getProfile();
+          setCurrentUserProfile(userProfile);
         }
       } catch (err) {
         setError('Failed to fetch data.');
@@ -48,8 +48,8 @@ const PublicProfilePage = () => {
   const handleSendInterest = async () => {
     if (!currentUserProfile || !profileData) return;
     try {
-      const response = await apiClient.post('/interests/', { receiver: profileData.id });
-      setInterestStatus(response.data);
+      const response = await sendInterest(profileData.id);
+      setInterestStatus(response);
       alert('Interest sent successfully!');
     } catch (error) {
       alert(`Failed to send interest: ${error.response?.data?.error || error.message}`);
@@ -59,7 +59,7 @@ const PublicProfilePage = () => {
   const handleAccept = async () => {
     if (!interestStatus) return;
     try {
-      await apiClient.post(`/interests/${interestStatus.id}/accept/`);
+      await acceptInterest(interestStatus.id);
       // The backend returns a simple status message, not the updated object.
       // We need to manually update the status in the frontend state.
       setInterestStatus(prev => ({ ...prev, status: 'accepted' }));
@@ -72,7 +72,7 @@ const PublicProfilePage = () => {
   const handleReject = async () => {
     if (!interestStatus) return;
     try {
-      await apiClient.post(`/interests/${interestStatus.id}/reject/`);
+      await rejectInterest(interestStatus.id);
       // The backend returns a simple status message, not the updated object.
       // We need to manually update the status in the frontend state.
       setInterestStatus(prev => ({ ...prev, status: 'rejected' }));
@@ -85,7 +85,7 @@ const PublicProfilePage = () => {
   const handleCancelInterest = async () => {
     if (!interestStatus) return;
     try {
-      await apiClient.delete(`/interests/${interestStatus.id}/`);
+      await cancelInterest(interestStatus.id);
       setInterestStatus(null);
       alert('Interest cancelled successfully!');
     } catch (error) {
@@ -166,7 +166,7 @@ const PublicProfilePage = () => {
   const showPreferences = profileData.id === currentUserProfile?.id || interestStatus?.status === 'accepted';
 
   // Destructure data for components
-  const { name, date_of_birth, profile_image, facebook_profile, instagram_profile, linkedin_profile, education, work_experiences, preferences, is_verified, height_cm, religion, alcohol, smoking, current_city, origin_city, citizenship, marital_status, about, additional_images, profile_image_privacy } = profileData;
+  const { name, date_of_birth, profile_image, facebook_profile, instagram_profile, linkedin_profile, education, work_experience, preferences, is_verified, height_cm, religion, alcohol, smoking, current_city, origin_city, citizenship, marital_status, about, additional_images, profile_image_privacy } = profileData;
 
   // Calculate age from date_of_birth
   const age = date_of_birth ? new Date().getFullYear() - new Date(date_of_birth).getFullYear() : null;
@@ -240,10 +240,11 @@ const PublicProfilePage = () => {
           {/* Right Column */}
           <div className="lg:col-span-2 space-y-8">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
+              {console.log("work_experience before InfoTabs:", work_experience)}
               <InfoTabs 
                 aboutData={aboutData} 
                 educationData={education} 
-                careerData={work_experiences} 
+                careerData={work_experience} 
                 preferencesData={preferences ? preferences[0] : {}}
                 showPreferences={showPreferences}
               />

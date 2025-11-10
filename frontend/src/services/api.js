@@ -1,20 +1,52 @@
 
-const COUNTRIES = [
-    { name: "Afghanistan", code: "AF" },
-    { name: "Bangladesh", code: "BD" },
-    { name: "Brazil", code: "BR" },
-    { name: "Canada", code: "CA" },
-    { name: "Germany", code: "DE" },
-    { name: "India", code: "IN" },
-    { name: "Japan", code: "JP" },
-    { name: "United Kingdom", code: "GB" },
-    { name: "United States", code: "US" },
-];
+import apiClient from '../lib/api';
 
-export const getCountries = () => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve(COUNTRIES.map(c => ({...c, value: c.code, label: c.name})));
-        }, 500);
-    });
+export const getCountries = async () => {
+    const response = await apiClient.get('/countries/');
+    return response.data.map(c => ({...c, value: c.code, label: c.name}));
+};
+
+export const getProfessions = async () => {
+    const response = await apiClient.get('/professions/');
+    return response.data;
+};
+
+export const getProfiles = async () => {
+    const response = await apiClient.get('/profiles/');
+    return response.data;
+};
+
+export const getProfile = async () => {
+    const response = await apiClient.get('/profile/');
+    return response.data;
+};
+
+export const getProfileById = async (id) => {
+    const response = await apiClient.get(`/profiles/${id}/`);
+    return response.data;
+};
+
+export const getInterests = async () => {
+    const response = await apiClient.get('/interests/');
+    return response.data;
+};
+
+export const sendInterest = async (receiverId) => {
+    const response = await apiClient.post('/interests/', { receiver: receiverId });
+    return response.data;
+};
+
+export const acceptInterest = async (interestId) => {
+    const response = await apiClient.post(`/interests/${interestId}/accept/`);
+    return response.data;
+};
+
+export const rejectInterest = async (interestId) => {
+    const response = await apiClient.post(`/interests/${interestId}/reject/`);
+    return response.data;
+};
+
+export const cancelInterest = async (interestId) => {
+    const response = await apiClient.delete(`/interests/${interestId}/`);
+    return response.data;
 };
