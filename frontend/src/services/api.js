@@ -1,4 +1,3 @@
-
 import apiClient from '../lib/api';
 
 export const getCountries = async () => {
@@ -49,4 +48,25 @@ export const rejectInterest = async (interestId) => {
 export const cancelInterest = async (interestId) => {
     const response = await apiClient.delete(`/interests/${interestId}/`);
     return response.data;
+};
+
+// --- Notification API Functions ---
+export const getNotifications = async () => {
+  const response = await apiClient.get('/notifications/');
+  return response.data;
+};
+
+export const markNotificationAsRead = async (notificationId) => {
+  const response = await apiClient.post('/notifications/mark-read/', { id: notificationId });
+  return response.data;
+};
+
+export const markAllNotificationsAsRead = async () => {
+  const response = await apiClient.post('/notifications/mark-read/', { all: true });
+  return response.data;
+};
+
+export const getUnreadNotificationCount = async () => {
+  const response = await apiClient.get('/notifications/unread-count/');
+  return response.data;
 };

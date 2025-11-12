@@ -1,43 +1,85 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, X, Menu } from 'lucide-react';
+import NotificationsDropdown from './NotificationsDropdown';
+import './Navbar.css';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+    setIsMobileMenuOpen(false);
   };
 
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
+
   return (
-    <nav className="bg-white/10 backdrop-blur-md shadow-lg p-4 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold text-gray-800 dark:text-white">Life-Time</Link>
-        <div className="flex items-center space-x-4">
+    <nav className="navbar">
+      <div className="navbar-container">
+        <Link to="/" className="navbar-logo">Life-Time</Link>
+
+        <div className="hidden md:flex navbar-links">
           {user ? (
             <>
-              <Link to="/profile" className="text-gray-800 dark:text-white hover:text-purple-500 dark:hover:text-purple-300">My Profile</Link>
-              <Link to="/profiles" className="text-gray-800 dark:text-white hover:text-purple-500 dark:hover:text-purple-300">All Profiles</Link>
-              
-              <button onClick={handleLogout} className="border border-purple-600 text-purple-600 px-4 py-2 rounded-md hover:bg-purple-600 hover:text-white transition-colors duration-200">Logout</button>
+              <NavLink to="/profile" className="navbar-link" activeClassName="active">My Profile</NavLink>
+              <NavLink to="/profiles" className="navbar-link" activeClassName="active">All Profiles</NavLink>
             </>
           ) : (
-            <>
-              <Link to="/login" className="text-gray-800 dark:text-white hover:text-purple-500 dark:hover:text-purple-300">Login</Link>
-              <Link to="/register" className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700">Register</Link>
-            </>
+            <NavLink to="/login" className="navbar-link" activeClassName="active">Login</NavLink>
           )}
-          {/* Theme Toggle Button */}
-          <button onClick={toggleTheme} className="p-2 rounded-full text-gray-800 dark:text-white hover:bg-black/10 dark:hover:bg-white/20 transition-colors duration-300">
+        </div>
+
+        <div className="hidden md:flex navbar-actions">
+          {user ? (
+            <>
+              <NotificationsDropdown />
+              <button onClick={handleLogout} className="navbar-button logout-button">Logout</button>
+            </>
+          ) : (
+            <Link to="/register" className="navbar-button register-button">Register</Link>
+          )}
+          <button onClick={toggleTheme} className="theme-toggle">
             {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
           </button>
         </div>
+
+        <div className="hamburger-menu md:hidden">
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="mobile-menu md:hidden">
+          {user ? (
+            <>
+              <NavLink to="/profile" className="navbar-link" onClick={closeMobileMenu}>My Profile</NavLink>
+              <NavLink to="/profiles" className="navbar-link" onClick={closeMobileMenu}>All Profiles</NavLink>
+              <div className="mt-4">
+                <NotificationsDropdown />
+              </div>
+              <button onClick={handleLogout} className="navbar-button logout-button mt-4">Logout</button>
+            </>
+          ) : (
+            <>
+              <NavLink to="/login" className="navbar-link" onClick={closeMobileMenu}>Login</NavLink>
+              <Link to="/register" className="navbar-button register-button mt-4" onClick={closeMobileMenu}>Register</Link>
+            </>
+          )}
+          <button onClick={toggleTheme} className="theme-toggle mt-4">
+            {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+          </button>
+        </div>
+      )}
     </nav>
   );
 };

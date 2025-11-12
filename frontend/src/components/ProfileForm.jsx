@@ -3,6 +3,7 @@ import { FaPlus, FaTrash } from 'react-icons/fa';
 import Select from 'react-select'; // Import react-select
 import GlassCard from './GlassCard';
 import { getCountries } from '../services/api.js'; // Import getCountries
+import { useTheme } from '../context/ThemeContext'; // Import useTheme
 
 // Choices from models.py
 const PROFILE_FOR_CHOICES = [
@@ -65,6 +66,9 @@ const PRIVACY_CHOICES = [
 
 
 const ProfileForm = ({ initialData, onSubmit }) => {
+  const { theme } = useTheme();
+  const isDarkMode = theme === 'dark';
+
   const [formData, setFormData] = useState({
     ...initialData,
     preference: initialData.preference || {},
@@ -297,8 +301,37 @@ const ProfileForm = ({ initialData, onSubmit }) => {
     onSubmit(data);
   };
 
+  const selectStyles = {
+    control: (provided) => ({
+      ...provided,
+      backgroundColor: isDarkMode ? '#374151' : 'white',
+      borderColor: isDarkMode ? '#4b5563' : '#d1d5db',
+    }),
+    singleValue: (provided) => ({
+      ...provided,
+      color: isDarkMode ? 'white' : '#111827',
+    }),
+    menu: (provided) => ({
+      ...provided,
+      backgroundColor: isDarkMode ? '#1f2937' : 'white',
+    }),
+    option: (provided, state) => ({
+      ...provided,
+      backgroundColor: state.isSelected ? (isDarkMode ? '#4f46e5' : '#6366f1') : (state.isFocused ? (isDarkMode ? '#374151' : '#f3f4f6') : 'transparent'),
+      color: isDarkMode ? 'white' : '#111827',
+    }),
+    multiValue: (provided) => ({
+      ...provided,
+      backgroundColor: isDarkMode ? '#4f46e5' : '#e0e7ff',
+    }),
+    multiValueLabel: (provided) => ({
+      ...provided,
+      color: isDarkMode ? 'white' : '#1e3a8a',
+    }),
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 text-gray-700">
+    <form onSubmit={handleSubmit} className={`space-y-6 ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>
       {/* Basic Info */}
       <GlassCard className="p-6">
         <h3 className="text-xl font-semibold mb-4">Basic Information</h3>
@@ -597,6 +630,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
                 isMulti
                 name="marital_statuses"
                 options={MARITAL_STATUS_CHOICES}
+                styles={selectStyles}
                 className="basic-multi-select"
                 classNamePrefix="select"
                 value={MARITAL_STATUS_CHOICES.filter(option => formData.preference.marital_statuses?.includes(option.value))}
@@ -609,6 +643,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
                 isMulti
                 name="profession"
                 options={professions}
+                styles={selectStyles}
                 className="basic-multi-select"
                 classNamePrefix="select"
                 value={professions.filter(option => formData.preference.profession?.includes(option.value))}
@@ -621,6 +656,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
                 isMulti
                 name="country"
                 options={countries.map(country => ({ value: country.code, label: country.name }))}
+                styles={selectStyles}
                 className="basic-multi-select"
                 classNamePrefix="select"
                 value={countries.map(country => ({ value: country.code, label: country.name })).filter(option => formData.preference.country?.includes(option.value))}

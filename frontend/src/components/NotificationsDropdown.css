@@ -1,0 +1,314 @@
+/* replace or add this to NotificationsDropdown.css */
+.dropdown-menu {
+  position: fixed;
+  /* take it out of the parent's stacking context */
+  top: 4.25rem;
+  /* adjust so the dropdown sits below the bell */
+  right: 2rem;
+  /* align with the bell - adjust if needed */
+  width: 24rem;
+  z-index: 2147483647;
+  /* very high z-index */
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e5e7eb;
+  opacity: 0;
+  transform: translateY(-10px);
+  animation: fadeIn 0.3s ease forwards;
+}
+
+
+.notifications-bell {
+  position: relative;
+  padding: 8px;
+  border-radius: 9999px;
+  transition: background-color 0.3s ease;
+}
+
+.notifications-bell:hover {
+  background-color: #374151;
+  /* gray-700 */
+}
+
+.notifications-bell:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #3b82f6;
+  /* ring-blue-500 */
+}
+
+.bell-icon {
+  color: #a78bfa;
+  /* Dark lavender */
+  transition: transform 0.3s ease;
+}
+
+.notifications-bell.open .bell-icon {
+  transform: rotate(15deg);
+}
+
+.unread-count {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  line-height: 1;
+  color: #fef2f2;
+  /* red-50 */
+  background-color: #dc2626;
+  /* red-600 */
+  border-radius: 9999px;
+  transform: translate(50%, -50%);
+}
+
+.dropdown-menu {
+  position: absolute;
+  right: 0;
+  margin-top: 0.5rem;
+  width: 24rem;
+  /* w-96 */
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e5e7eb;
+  /* border-gray-200 */
+  opacity: 0;
+  transform: translateY(-10px);
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.dark .dropdown-menu {
+  background-color: #1f2937;
+  /* dark:bg-gray-800 */
+  border-color: #4b5563;
+  /* dark:border-gray-700 */
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  /* border-gray-200 */
+}
+
+.dark .dropdown-header {
+  border-color: #4b5563;
+  /* dark:border-gray-700 */
+}
+
+.dropdown-title {
+  font-weight: bold;
+  font-size: 1.125rem;
+  /* text-lg */
+  color: #111827;
+  /* text-gray-900 */
+}
+
+.dark .dropdown-title {
+  color: white;
+}
+
+.mark-all-read {
+  font-size: 0.875rem;
+  color: #2563eb;
+  /* text-blue-600 */
+  display: flex;
+  align-items: center;
+  transition: color 0.3s ease;
+}
+
+.dark .mark-all-read {
+  color: #60a5fa;
+  /* dark:text-blue-400 */
+}
+
+.mark-all-read:hover {
+  text-decoration: underline;
+}
+
+.notifications-list {
+  max-height: 24rem;
+  /* max-h-96 */
+  overflow-y: auto;
+}
+
+.notification-item {
+  padding: 1rem;
+  border-bottom: 1px solid #f3f4f6;
+  /* border-gray-100 */
+  transition: background-color 0.3s ease;
+}
+
+.dark .notification-item {
+  border-color: #374151;
+  /* dark:border-gray-700 */
+}
+
+.notification-item.unread {
+  background-color: #eff6ff;
+  /* blue-50 */
+}
+
+.dark .notification-item.unread {
+  background-color: rgba(59, 130, 246, 0.1);
+  /* dark:bg-blue-900/20 */
+}
+
+.notification-item:not(.unread):hover {
+  background-color: #f9fafb;
+  /* hover:bg-gray-50 */
+}
+
+.dark .notification-item:not(.unread):hover {
+  background-color: #374151;
+  /* dark:hover:bg-gray-700 */
+}
+
+.notification-link {
+  display: flex;
+  align-items: flex-start;
+  text-decoration: none;
+}
+
+.notification-avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  margin-right: 0.75rem;
+  background-color: #e5e7eb;
+  /* bg-gray-200 */
+  color: #4b5563;
+  /* text-gray-600 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  flex-shrink: 0;
+  position: relative;
+  /* Add relative positioning */
+}
+
+.notification-type-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  background-color: white;
+  border-radius: 9999px;
+  padding: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+
+.notification-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 9999px;
+}
+
+.notification-content {
+  flex-grow: 1;
+}
+
+.notification-text {
+  font-size: 0.9rem;
+  color: #374151;
+  /* text-gray-700 */
+  line-height: 1.4;
+}
+
+.dark .notification-text {
+  color: #d1d5db;
+  /* dark:text-gray-300 */
+}
+
+.notification-text strong {
+  font-weight: 600;
+  color: #111827;
+  /* text-gray-900 */
+}
+
+.dark .notification-text strong {
+  color: white;
+}
+
+.notification-time {
+  font-size: 0.75rem;
+  color: #6b7280;
+  /* text-gray-500 */
+  margin-top: 0.25rem;
+}
+
+.dark .notification-time {
+  color: #9ca3af;
+  /* dark:text-gray-400 */
+}
+
+.mark-as-read {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #2563eb;
+  /* text-blue-600 */
+  display: flex;
+  align-items: center;
+  transition: color 0.3s ease;
+}
+
+.dark .mark-as-read {
+  color: #60a5fa;
+  /* dark:text-blue-400 */
+}
+
+.mark-as-read:hover {
+  text-decoration: underline;
+}
+
+.no-notifications {
+  padding: 1.5rem;
+  text-align: center;
+  color: #6b7280;
+  /* text-gray-500 */
+}
+
+.dark .no-notifications {
+  color: #9ca3af;
+  /* dark:text-gray-400 */
+}
+
+/* basic portal styling — animation and look come from your existing rules */
+.dropdown-menu-portal {
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e5e7eb;
+  animation: fadeIn 0.3s ease forwards;
+  overflow: hidden;
+  max-height: calc(100vh - 48px);
+}
+
+.notifications-list {
+  max-height: 384px;
+  overflow-y: auto;
+}
+
+/* keep your limits */

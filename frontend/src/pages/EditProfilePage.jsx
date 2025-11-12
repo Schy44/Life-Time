@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext'; // Import useTheme
 import ProfileForm from '../components/ProfileForm';
 import AnimatedBackground from '../components/AnimatedBackground';
 import GlassCard from '../components/GlassCard';
@@ -10,9 +11,12 @@ const EditProfilePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { theme } = useTheme(); // Use the theme hook
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const isDarkMode = theme === 'dark';
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -64,15 +68,15 @@ const EditProfilePage = () => {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen text-white text-xl">Loading profile for editing...</div>;
+    return <div className={`flex justify-center items-center h-screen text-xl ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Loading profile for editing...</div>;
   }
 
   if (error) {
-    return <div className="flex justify-center items-center h-screen text-red-500 text-xl">Error: {error}</div>;
+    return <div className={`flex justify-center items-center h-screen text-xl ${isDarkMode ? 'text-red-300' : 'text-red-500'}`}>Error: {error}</div>;
   }
 
   if (!profileData) {
-    return <div className="flex justify-center items-center h-screen text-gray-500 text-xl">No profile data available for editing.</div>;
+    return <div className={`flex justify-center items-center h-screen text-xl ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>No profile data available for editing.</div>;
   }
 
   return (
@@ -81,7 +85,7 @@ const EditProfilePage = () => {
       <main className="relative min-h-screen p-4 sm:p-6 md:p-8 font-sans">
         <div className="max-w-4xl mx-auto">
           <GlassCard className="p-8">
-            <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Edit Your Profile</h1>
+            <h1 className={`text-3xl font-bold mb-6 text-center ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Edit Your Profile</h1>
             <ProfileForm initialData={profileData} onSubmit={handleSubmit} />
           </GlassCard>
         </div>

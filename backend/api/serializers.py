@@ -2,7 +2,7 @@ import json
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.db import models
-from .models import Profile, AdditionalImage, Education, WorkExperience, Preference, Interest
+from .models import Profile, AdditionalImage, Education, WorkExperience, Preference, Interest, Notification
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -399,3 +399,30 @@ class ProfileSerializer(serializers.ModelSerializer):
                 representation['additional_images'] = []
 
         return representation
+
+class NotificationSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Notification model.
+    Includes actor's name, target's name (if any), and dynamic URLs for frontend navigation.
+    """
+    actor_name = serializers.CharField(source='actor_profile.name', read_only=True)
+    target_name = serializers.CharField(source='target_profile.name', read_only=True, allow_null=True)
+    actor_profile_url = serializers.SerializerMethodField()
+    target_profile_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Notification
+        fields = (
+            'id', 'actor_name', 'target_name', 'verb', 'unread', 'created_at',
+            'actor_profile_url', 'target_profile_url'
+        )
+
+    def get_actor_profile_url(self, obj):
+        if obj.actor_profile:
+            return f"/profiles/{obj.actor_profile.id}"
+        return None
+    
+    def get_target_profile_url(self, obj):
+        if obj.target_profile:
+            return f"/profiles/{obj.target_profile.id}"
+        return None

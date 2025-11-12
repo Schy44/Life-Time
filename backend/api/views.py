@@ -3,15 +3,20 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
-from .serializers import UserSerializer, ProfileSerializer, InterestSerializer
+from .serializers import UserSerializer, ProfileSerializer, InterestSerializer, NotificationSerializer
 from django.contrib.auth.models import User
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import viewsets
-from .models import Profile, Interest, WorkExperience
+from .models import Profile, Interest, WorkExperience, Notification
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from datetime import date, timedelta
+from django.utils import timezone
+from rest_framework import generics
+
 
 class CountryListView(APIView):
     def get(self, request):
@@ -57,14 +62,13 @@ class UserView(APIView):
         })
 
 
-from rest_framework import generics
-
 class ProfileDetailView(generics.RetrieveAPIView):
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
-        return Profile.objects.get(user=self.request.user)
+        # This view is for the user's own profile, so we fetch it via the request.user
+        return get_object_or_404(Profile, user=self.request.user)
 
 
 class ProfileViewSet(viewsets.ModelViewSet):
@@ -72,6 +76,31 @@ class ProfileViewSet(viewsets.ModelViewSet):
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # --- Create Notification for Profile View ---
+        # Ensure users don't get notified for viewing their own profile
+        if request.user.is_authenticated and instance.user != request.user:
+            # Check if the viewer has a profile
+            if hasattr(request.user, 'profile'):
+                # Throttle notifications: only create a new one if a similar one doesn't exist from the last 24 hours.
+                recent_notification_exists = Notification.objects.filter(
+                    recipient=instance.user,
+                    actor_profile=request.user.profile,
+                    verb="viewed your profile",
+                    created_at__gte=timezone.now() - timedelta(hours=24)
+                ).exists()
+
+                if not recent_notification_exists:
+                    Notification.objects.create(
+                        recipient=instance.user, # The owner of the profile being viewed
+                        actor_profile=request.user.profile, # The profile of the viewer
+                        verb="viewed your profile",
+                    )
+        # ------------------------------------------
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
     def get_queryset(self):
         queryset = Profile.objects.all().prefetch_related('work_experience', 'education')
@@ -167,6 +196,16 @@ class InterestViewSet(viewsets.ModelViewSet):
             interest.status = 'sent'
             interest.save()
 
+        # --- Create Notification for Interest Sent ---
+        if created or interest.status == 'sent':
+            Notification.objects.create(
+                recipient=receiver.user,
+                actor_profile=sender,
+                verb="sent you an interest request",
+                target_profile=receiver
+            )
+        # -----------------------------------------
+
         serializer = self.get_serializer(interest)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK, headers=headers)
@@ -197,3 +236,50 @@ class InterestViewSet(viewsets.ModelViewSet):
             return Response({'error': 'You are not authorized to cancel this interest.'}, status=status.HTTP_403_FORBIDDEN)
         
         return super().destroy(request, *args, **kwargs)
+
+
+# --- Notification Views ---
+class NotificationListView(generics.ListAPIView):
+    """
+    List all unread notifications for the current authenticated user.
+    """
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Return only unread notifications for the current user, ordered by most recent
+        return self.request.user.received_notifications.filter(unread=True).order_by('-created_at')
+
+class MarkNotificationAsReadView(APIView):
+    """
+    Mark a specific notification or all notifications for the current user as read.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        notification_id = request.data.get('id')
+        mark_all = request.data.get('all', False)
+
+        if mark_all:
+            # Mark all unread notifications for the current user as read
+            request.user.received_notifications.filter(unread=True).update(unread=False)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        
+        if notification_id:
+            # Mark a specific notification as read
+            notification = get_object_or_404(Notification, id=notification_id, recipient=request.user)
+            notification.unread = False
+            notification.save()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        return Response({"detail": "Provide 'id' or 'all: true' in the request body."}, status=status.HTTP_400_BAD_REQUEST)
+
+class UnreadNotificationCountView(APIView):
+    """
+    Returns the count of unread notifications for the current user.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        count = request.user.received_notifications.filter(unread=True).count()
+        return Response({'unread_count': count}, status=status.HTTP_200_OK)

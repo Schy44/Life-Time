@@ -2,6 +2,8 @@ from django.db import models
 from django.conf import settings
 from datetime import date
 from api.storage import SupabaseStorage
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 # --- Enums ---
 class Religion(models.TextChoices):
@@ -56,7 +58,7 @@ class Profile(models.Model):
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
 
     # Media
-    profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True, storage=SupabaseStorage())
+    profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
 
     # Physical
     height_cm = models.PositiveSmallIntegerField(blank=True, null=True, help_text="centimeters")
@@ -170,7 +172,7 @@ class Preference(models.Model):
 class AdditionalImage(models.Model):
     profile = models.ForeignKey(
         Profile, related_name='additional_images', on_delete=models.CASCADE)
-    image = models.ImageField(upload_to='additional_images/', storage=SupabaseStorage())
+    image = models.ImageField(upload_to='additional_images/')
 
     def __str__(self):
         return f"Image for {self.profile.name}"
@@ -195,3 +197,83 @@ class Interest(models.Model):
 
     def __str__(self):
         return f"{self.sender.name} -> {self.receiver.name} ({self.status})"
+
+class Notification(models.Model):
+    """
+    Stores notifications for users.
+    - recipient: The user who receives the notification.
+    - actor_profile: The profile of the user who initiated the action.
+    - verb: A description of the action (e.g., "viewed your profile").
+    - target_profile: Optional, the profile that was the object of the action (e.g., if User A liked User B's profile, User B is the recipient, User A is the actor, and User B's profile is the target).
+    - unread: Boolean flag indicating if the notification has been read.
+    - created_at: Timestamp of when the notification was created.
+    """
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='received_notifications',
+        help_text="The user who should receive this notification."
+    )
+    actor_profile = models.ForeignKey(
+        Profile,
+        on_delete=models.CASCADE,
+        related_name='initiated_notifications',
+        help_text="The profile of the user who performed the action."
+    )
+    verb = models.CharField(
+        max_length=255,
+        help_text="A short phrase describing the action (e.g., 'viewed your profile')."
+    )
+    target_profile = models.ForeignKey(
+        Profile,
+        on_delete=models.CASCADE,
+        related_name='notifications_about_this_profile',
+        null=True,
+        blank=True,
+        help_text="Optional: The profile that was the object of the action."
+    )
+    
+    unread = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ('-created_at',)
+        indexes = [
+            models.Index(fields=['recipient', 'unread']),
+        ]
+        verbose_name = "Notification"
+        verbose_name_plural = "Notifications"
+
+    def __str__(self):
+        if self.target_profile:
+            return f"{self.actor_profile.name} {self.verb} {self.target_profile.name} for {self.recipient.username}"
+        return f"{self.actor_profile.name} {self.verb} for {self.recipient.username}"
+
+    def mark_as_read(self):
+        """Marks the notification as read."""
+        if self.unread:
+            self.unread = False
+            self.save(update_fields=['unread'])
+
+    def get_absolute_url(self):
+        """Returns the URL to the actor's profile, or target's if more relevant."""
+        if self.target_profile:
+            return f"/profiles/{self.target_profile.id}"
+        return f"/profiles/{self.actor_profile.id}"
+
+
+@receiver(post_save, sender=Interest)
+def create_interest_notification(sender, instance, created, **kwargs):
+    """
+    Signal receiver to create a notification when an Interest status changes to 'accepted'.
+    """
+    # Only trigger if an existing Interest object is updated and its status becomes 'accepted'
+    if not created and instance.status == 'accepted':
+        # Ensure both requester and receiver have profiles
+        if hasattr(instance.sender, 'user') and hasattr(instance.receiver, 'user'):
+            Notification.objects.create(
+                recipient=instance.sender.user,  # The user who sent the request
+                actor_profile=instance.receiver, # The profile of the user who accepted it
+                verb="accepted your interest request",
+                target_profile=instance.sender # The profile that was accepted
+            )
