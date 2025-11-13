@@ -51,7 +51,7 @@ const NotificationsDropdown = () => {
         getNotifications(),
         getUnreadNotificationCount()
       ]);
-      setNotifications(notifs);
+      setNotifications(Array.isArray(notifs) ? notifs : []);
       setUnreadCount(count.unread_count);
     } catch (error) {
       console.error("Failed to fetch notification data:", error);

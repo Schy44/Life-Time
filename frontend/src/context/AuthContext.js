@@ -10,19 +10,33 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error("Error getting session:", error);
+          // Optionally, handle the error more gracefully, e.g., redirect to login
+        }
+        setSession(session);
+        setUser(session?.user ?? null);
+      } catch (err) {
+        console.error("Unexpected error in getSession:", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     getSession();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+        try {
+          setSession(session);
+          setUser(session?.user ?? null);
+        } catch (err) {
+          console.error("Unexpected error in onAuthStateChange:", err);
+        } finally {
+          setLoading(false);
+        }
       }
     );
 

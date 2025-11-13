@@ -13,16 +13,21 @@ const InfoTabs = ({ aboutData, educationData, careerData, preferencesData, inter
   console.log("careerData in InfoTabs:", careerData);
 
   useEffect(() => {
-    const initialTabs = ['About', 'Education', 'Career'];
+    const newTabs = ['About', 'Education', 'Career'];
     if (showPreferences) {
-      initialTabs.push('Preferences');
+      newTabs.push('Preferences');
     }
-    // Only add Interests tab if it's the current user's profile
-    if (currentUserProfile && interestsData) { // Assuming interestsData is only passed for current user's profile
-        initialTabs.push('Interests');
+    if (currentUserProfile && interestsData) {
+      newTabs.push('Interests');
     }
-    setAvailableTabs(initialTabs);
-    setSelectedTab(initialTabs[0] || 'About'); // Set default selected tab
+    setAvailableTabs(newTabs);
+
+    setSelectedTab(prevSelectedTab => {
+      if (!prevSelectedTab || !newTabs.includes(prevSelectedTab)) {
+        return newTabs[0] || 'About';
+      }
+      return prevSelectedTab;
+    });
   }, [showPreferences, currentUserProfile, interestsData]);
 
 
