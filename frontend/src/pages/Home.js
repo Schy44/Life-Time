@@ -183,7 +183,7 @@ const Home = () => {
               className="lg:text-left text-center lg:pr-8"
             >
               <h1
-                className="hero-title text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-tight mb-4 text-gray-800 dark:text-white"
+                className="hero-title text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-tight mb-4 text-gray-800 dark:text-white"
               >
                 Find Your Perfect Match <br />
                 <FlipWords words={words} />
