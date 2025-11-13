@@ -23,55 +23,55 @@ function App() {
     <Router>
       <ThemeProvider>
         <AuthProvider>
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route
-            path="/profile"
-            element={
-              <PrivateRoute>
-                <ProfilePage />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/profile/edit/:id"
-            element={
-              <PrivateRoute>
-                <EditProfilePage />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/profile/create"
-            element={
-              <PrivateRoute>
-                <CreateProfilePage />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/profiles"
-            element={
-              <PrivateRoute>
-                <ProfilesListPage />
-              </PrivateRoute>
-            }
-          />
+          <Navbar />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route
+              path="/profile"
+              element={
+                <PrivateRoute>
+                  <ProfilePage />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/profile/edit/:id"
+              element={
+                <PrivateRoute>
+                  <EditProfilePage />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/profile/create"
+              element={
+                <PrivateRoute>
+                  <CreateProfilePage />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/profiles"
+              element={
+                <PrivateRoute>
+                  <ProfilesListPage />
+                </PrivateRoute>
+              }
+            />
 
-          <Route
-            path="/profiles/:id"
-            element={
-              <PrivateRoute>
-                <PublicProfilePage />
-              </PrivateRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </AuthProvider>
+            <Route
+              path="/profiles/:id"
+              element={
+                <PrivateRoute>
+                  <PublicProfilePage />
+                </PrivateRoute>
+              }
+            />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </AuthProvider>
       </ThemeProvider>
     </Router>
   );
