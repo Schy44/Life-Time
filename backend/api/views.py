@@ -250,7 +250,7 @@ class CountryListView(APIView):
             {'code': 'UG', 'name': 'Uganda'},
             {'code': 'UA', 'name': 'Ukraine'},
             {'code': 'AE', 'name': 'United Arab Emirates'},
-            {'code': 'UK', 'name': 'United Kingdom'},
+            {'code': 'GB', 'name': 'United Kingdom'},
             {'code': 'US', 'name': 'United States'},
             {'code': 'UM', 'name': 'United States Minor Outlying Islands'},
             {'code': 'UY', 'name': 'Uruguay'},

@@ -4,24 +4,13 @@ import { getProfiles, getProfile } from '../services/api';
 import GlassCard from '../components/GlassCard';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { motion } from 'framer-motion';
-import { Search, MapPin, Calendar, Heart, Filter, XCircle, Zap, User } from 'lucide-react';
-
-const calculateAge = (dateOfBirth) => {
-  if (!dateOfBirth) return null;
-  const today = new Date();
-  const birthDate = new Date(dateOfBirth);
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const m = today.getMonth() - birthDate.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  return age;
-};
+import { Search, MapPin, Filter, XCircle, Zap, User } from 'lucide-react';
+import { useDebounce } from '../lib/utils'; // Import useDebounce
 
 const ProfilesListPage = () => {
   const [profiles, setProfiles] = useState([]);
-  const [filteredProfiles, setFilteredProfiles] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // For initial full page load
+  const [isFetchingProfiles, setIsFetchingProfiles] = useState(false); // For subsequent fetches (filters, pagination)
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [ageFilter, setAgeFilter] = useState('');
@@ -31,88 +20,60 @@ const ProfilesListPage = () => {
   const [sortBy, setSortBy] = useState('default');
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
 
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10); // Matches backend PAGE_SIZE
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalProfiles, setTotalProfiles] = useState(0);
+
+  // Debounce search term
+  const debouncedSearchTerm = useDebounce(searchTerm, 500); // 500ms debounce delay
+
 
   useEffect(() => {
     const fetchData = async () => {
+      // Only show full page loader on initial mount
+      if (page === 1 && !searchTerm && !ageFilter && !genderFilter && !interestFilter && sortBy === 'default') {
+        setLoading(true);
+      } else {
+        setIsFetchingProfiles(true); // Show subtle loader for subsequent fetches
+      }
+      setError(null);
       try {
-        const [profilesData, userProfileData] = await Promise.all([
-          getProfiles(),
+        const filters = {
+          search: debouncedSearchTerm, // Use debounced search term
+          age: ageFilter,
+          gender: genderFilter,
+          interest: interestFilter,
+          sort_by: sortBy, // Pass sort_by to backend
+        };
+        const [profilesResponse, userProfileData] = await Promise.all([
+          getProfiles(page, pageSize, filters),
           getProfile() // Fetch current user's profile
         ]);
-        setProfiles(profilesData.results || []);
-        setFilteredProfiles(profilesData.results || []);
+
+        setProfiles(profilesResponse.results);
+        setTotalProfiles(profilesResponse.count);
+        setTotalPages(Math.ceil(profilesResponse.count / pageSize));
         setCurrentUserProfile(userProfileData);
       } catch (err) {
         setError('Failed to fetch data.');
         console.error(err);
       } finally {
-        setLoading(false);
+        setLoading(false); // Always set loading to false after fetch
+        setIsFetchingProfiles(false); // Always set isFetchingProfiles to false after fetch
       }
     };
 
     fetchData();
-  }, []);
-
-  useEffect(() => {
-    let currentProfiles = [...profiles];
-
-    // Apply search term
-    if (searchTerm) {
-      currentProfiles = currentProfiles.filter(
-        (profile) =>
-          (profile.name && profile.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (profile.current_city && profile.current_city.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (profile.current_country && profile.current_country.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (profile.bio && profile.bio.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (profile.interests &&
-            profile.interests.some((interest) =>
-              interest && interest.toLowerCase().includes(searchTerm.toLowerCase())
-            ))
-      );
-    }
-
-    // Apply age filter
-    if (ageFilter) {
-      const [minAge, maxAge] = ageFilter.split('-').map(Number);
-      currentProfiles = currentProfiles.filter(
-        (profile) => {
-          const age = calculateAge(profile.date_of_birth);
-          return typeof age === 'number' && age >= minAge && age <= maxAge;
-        }
-      );
-    }
-
-    // Apply gender filter
-    if (genderFilter) {
-      currentProfiles = currentProfiles.filter(
-        (profile) => profile.gender && profile.gender.toLowerCase() === genderFilter.toLowerCase()
-      );
-    }
-
-    // Apply interest filter
-    if (interestFilter) {
-      currentProfiles = currentProfiles.filter(
-        (profile) =>
-          profile.interests &&
-          profile.interests.some((interest) =>
-            interest && interest.toLowerCase().includes(interestFilter.toLowerCase())
-          )
-      );
-    }
-
-    // Apply sorting
-    if (sortBy === 'compatibility') {
-      currentProfiles.sort((a, b) => (b.compatibility_score || 0) - (a.compatibility_score || 0));
-    }
-
-    setFilteredProfiles(currentProfiles);
-  }, [searchTerm, ageFilter, genderFilter, interestFilter, profiles, sortBy]);
+  }, [page, pageSize, debouncedSearchTerm, ageFilter, genderFilter, interestFilter, sortBy]); // Depend on debounced search term
 
   const handleClearFilters = () => {
     setSearchTerm('');
     setAgeFilter('');
     setGenderFilter('');
     setInterestFilter('');
+    setPage(1); // Reset page to 1 when filters are cleared
   };
 
   const containerVariants = {
@@ -183,13 +144,24 @@ const ProfilesListPage = () => {
                   className="w-full pl-10 pr-4 py-2 rounded-full bg-white/20 dark:bg-gray-700/50 border border-purple-500/30 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800 dark:text-white placeholder-gray-400"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  disabled={isFetchingProfiles} // Disable input while fetching
                 />
+                {isFetchingProfiles && (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-purple-400"
+                  >
+                    <Zap size={20} />
+                  </motion.div>
+                )}
               </div>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="flex items-center px-6 py-2 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 transition-colors"
+                className="flex items-center px-6 py-2 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => setShowFilters(!showFilters)}
+                disabled={isFetchingProfiles} // Disable button while fetching
               >
                 <Filter size={20} className="mr-2" />
                 {showFilters ? 'Hide Filters' : 'Show Filters'}
@@ -197,8 +169,12 @@ const ProfilesListPage = () => {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors"
-                onClick={() => setSortBy(sortBy === 'compatibility' ? 'default' : 'compatibility')}
+                className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => {
+                  setSortBy(prevSortBy => (prevSortBy === 'compatibility' ? 'default' : 'compatibility'));
+                  setPage(1); // Reset page to 1 when sorting changes
+                }}
+                disabled={isFetchingProfiles} // Disable button while fetching
               >
                 <Zap size={20} className="mr-2" />
                 {sortBy === 'compatibility' ? 'Default Order' : 'Sort by Compatibility'}
@@ -215,9 +191,10 @@ const ProfilesListPage = () => {
               >
                 {/* Age Filter */}
                 <select
-                  className="w-full px-4 py-2 rounded-full bg-white/20 dark:bg-gray-700/50 border border-purple-500/30 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800 dark:text-white"
+                  className="w-full px-4 py-2 rounded-full bg-white/20 dark:bg-gray-700/50 border border-purple-500/30 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                   value={ageFilter}
                   onChange={(e) => setAgeFilter(e.target.value)}
+                  disabled={isFetchingProfiles} // Disable select while fetching
                 >
                   <option value="">All Ages</option>
                   <option value="18-25">18-25</option>
@@ -228,9 +205,10 @@ const ProfilesListPage = () => {
 
                 {/* Gender Filter */}
                 <select
-                  className="w-full px-4 py-2 rounded-full bg-white/20 dark:bg-gray-700/50 border border-purple-500/30 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800 dark:text-white"
+                  className="w-full px-4 py-2 rounded-full bg-white/20 dark:bg-gray-700/50 border border-purple-500/30 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                   value={genderFilter}
                   onChange={(e) => setGenderFilter(e.target.value)}
+                  disabled={isFetchingProfiles} // Disable select while fetching
                 >
                   <option value="">All Genders</option>
                   <option value="male">Male</option>
@@ -242,16 +220,18 @@ const ProfilesListPage = () => {
                 <input
                   type="text"
                   placeholder="Filter by Interest (e.g., hiking)"
-                  className="w-full px-4 py-2 rounded-full bg-white/20 dark:bg-gray-700/50 border border-purple-500/30 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800 dark:text-white placeholder-gray-400"
+                  className="w-full px-4 py-2 rounded-full bg-white/20 dark:bg-gray-700/50 border border-purple-500/30 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800 dark:text-white placeholder-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
                   value={interestFilter}
                   onChange={(e) => setInterestFilter(e.target.value)}
+                  disabled={isFetchingProfiles} // Disable input while fetching
                 />
 
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="flex items-center justify-center px-6 py-2 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-colors md:col-span-3"
+                  className="flex items-center justify-center px-6 py-2 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-colors md:col-span-3 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={handleClearFilters}
+                  disabled={isFetchingProfiles} // Disable button while fetching
                 >
                   <XCircle size={20} className="mr-2" />
                   Clear Filters
@@ -267,8 +247,8 @@ const ProfilesListPage = () => {
             animate="visible"
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
           >
-            {filteredProfiles.length > 0 ? (
-              filteredProfiles.map((profile) => (
+            {profiles.length > 0 ? (
+              profiles.map((profile) => (
                 <motion.div key={profile.id} variants={itemVariants}>
                   <Link to={`/profiles/${profile.id}`} className="group block h-full">
                     <GlassCard className="relative p-6 flex flex-col items-center text-center h-full hover:bg-white/20 transition-colors duration-300">
@@ -357,6 +337,33 @@ const ProfilesListPage = () => {
               </motion.div>
             )}
           </motion.div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center space-x-4 mt-8">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                disabled={page === 1}
+                className="px-4 py-2 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </motion.button>
+              <span className="text-gray-800 dark:text-white">
+                Page {page} of {totalPages}
+              </span>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={page === totalPages}
+                className="px-4 py-2 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </motion.button>
+            </div>
+          )}
         </div>
       </main>
     </>
