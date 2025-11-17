@@ -3,29 +3,6 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.db import models
 from .models import Profile, AdditionalImage, Education, WorkExperience, Preference, Interest, Notification
-import requests
-from django.core.files.base import ContentFile
-import os
-
-class URLResolvingImageField(serializers.ImageField):
-    def to_internal_value(self, data):
-        # If the data is a string, it's likely a URL.
-        if isinstance(data, str) and data.startswith(('http://', 'https://')):
-            try:
-                response = requests.get(data, stream=True)
-                response.raise_for_status()  # Raise an exception for bad status codes
-
-                # Get the filename from the URL
-                file_name = os.path.basename(data.split("?")[0])
-                
-                # Create a Django ContentFile
-                return ContentFile(response.content, name=file_name)
-            except requests.exceptions.RequestException as e:
-                raise serializers.ValidationError(f"Failed to download image from URL: {e}")
-        
-        # If it's not a URL, fall back to the default behavior (handles file uploads)
-        return super().to_internal_value(data)
-
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -114,12 +91,10 @@ class ProfileSerializer(serializers.ModelSerializer):
     education = EducationSerializer(many=True, required=False)
     work_experience = WorkExperienceSerializer(many=True, required=False)
     preference = PreferenceSerializer(required=False)
-    profile_image = URLResolvingImageField(required=False, allow_null=True)
-
 
     # Write-only fields for handling file uploads and nested updates
     uploaded_images = serializers.ListField(
-        child=URLResolvingImageField(allow_empty_file=False, use_url=False),
+        child=serializers.ImageField(allow_empty_file=False, use_url=False),
         write_only=True, required=False
     )
     additional_images_to_keep = serializers.ListField(
@@ -250,7 +225,13 @@ class ProfileSerializer(serializers.ModelSerializer):
         if additional_images_to_keep is not None:
             # Normalize to list of ints (defensive)
             ids_to_keep = self._coerce_to_int_list(additional_images_to_keep)
+            # DEBUG: uncomment if you need to inspect
+            # print(f"DEBUG: additional_images_to_keep normalized: {ids_to_keep} (original: {additional_images_to_keep})")
 
+            # Delete images that are not in the 'to_keep' list
+            # If ids_to_keep is empty list -> exclude(id__in=[]) matches all rows (Django treats it as empty set, so nothing gets excluded),
+            # but since we want to delete those NOT in the keep list, passing [] means delete all additional images.
+            # That's consistent with a client explicitly sending an empty list to mean "keep none".
             instance.additional_images.exclude(id__in=ids_to_keep).delete()
 
         for image_data in uploaded_images:
@@ -399,10 +380,8 @@ class ProfileSerializer(serializers.ModelSerializer):
         representation = super().to_representation(instance)
         request = self.context.get('request')
 
-        print(
-            f"DEBUG: ProfileSerializer to_representation - instance.work_experience.all(): {instance.work_experience.all()}")
-        print(
-            f"DEBUG: ProfileSerializer to_representation - representation: {representation}")
+        print(f"DEBUG: ProfileSerializer to_representation - instance.work_experience.all(): {instance.work_experience.all()}")
+        print(f"DEBUG: ProfileSerializer to_representation - representation: {representation}")
 
         if request and request.user.is_authenticated and request.user.profile != instance:
             requesting_user_profile = request.user.profile
@@ -421,16 +400,13 @@ class ProfileSerializer(serializers.ModelSerializer):
 
         return representation
 
-
 class NotificationSerializer(serializers.ModelSerializer):
     """
     Serializer for the Notification model.
     Includes actor's name, target's name (if any), and dynamic URLs for frontend navigation.
     """
-    actor_name = serializers.CharField(
-        source='actor_profile.name', read_only=True)
-    target_name = serializers.CharField(
-        source='target_profile.name', read_only=True, allow_null=True)
+    actor_name = serializers.CharField(source='actor_profile.name', read_only=True)
+    target_name = serializers.CharField(source='target_profile.name', read_only=True, allow_null=True)
     actor_profile_url = serializers.SerializerMethodField()
     target_profile_url = serializers.SerializerMethodField()
 
@@ -445,7 +421,7 @@ class NotificationSerializer(serializers.ModelSerializer):
         if obj.actor_profile:
             return f"/profiles/{obj.actor_profile.id}"
         return None
-
+    
     def get_target_profile_url(self, obj):
         if obj.target_profile:
             return f"/profiles/{obj.target_profile.id}"
