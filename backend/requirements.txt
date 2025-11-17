@@ -14,3 +14,4 @@ PyJWT
 Pillow
 supabase
 python-dotenv
+requests
