@@ -10,13 +10,8 @@ export const getProfessions = async () => {
     return response.data;
 };
 
-export const getProfiles = async (page = 1, pageSize = 10, filters = {}) => {
-    const params = {
-        page,
-        page_size: pageSize,
-        ...filters,
-    };
-    const response = await apiClient.get('/profiles/', { params });
+export const getProfiles = async () => {
+    const response = await apiClient.get('/profiles/');
     return response.data;
 };
 
@@ -73,15 +68,5 @@ export const markAllNotificationsAsRead = async () => {
 
 export const getUnreadNotificationCount = async () => {
   const response = await apiClient.get('/notifications/unread-count/');
-  return response.data;
-};
-
-export const createProfile = async (profileData) => {
-  const response = await apiClient.post('/profile/', profileData);
-  return response.data;
-};
-
-export const updateProfile = async (profileId, profileData) => {
-  const response = await apiClient.patch(`/profile/edit/${profileId}/`, profileData);
   return response.data;
 };

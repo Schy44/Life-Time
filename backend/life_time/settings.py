@@ -200,8 +200,6 @@ REST_FRAMEWORK = {
         'api.authentication.SupabaseAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
 }
 
 # Supabase Storage Configuration for Media Files

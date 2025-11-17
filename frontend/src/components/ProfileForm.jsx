@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { FaPlus, FaTrash } from 'react-icons/fa';
-import Select from 'react-select';
-import CreatableSelect from 'react-select/creatable'; // Import CreatableSelect
+import Select from 'react-select'; // Import react-select
 import GlassCard from './GlassCard';
-import { getCountries } from '../services/api.js';
-import { useTheme } from '../context/ThemeContext';
+import { getCountries } from '../services/api.js'; // Import getCountries
+import { useTheme } from '../context/ThemeContext'; // Import useTheme
 
+// Choices from models.py
 const PROFILE_FOR_CHOICES = [
   { value: 'self', label: 'Myself' },
   { value: 'son', label: 'My Son' },
@@ -61,6 +61,10 @@ const PRIVACY_CHOICES = [
   { value: 'matches', label: 'Matches Only' },
 ];
 
+
+
+
+
 const ProfileForm = ({ initialData, onSubmit }) => {
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
@@ -73,8 +77,8 @@ const ProfileForm = ({ initialData, onSubmit }) => {
   const [additionalImageFiles, setAdditionalImageFiles] = useState([]);
   const [additionalImagesToKeep, setAdditionalImagesToKeep] = useState(initialData.additional_images ? initialData.additional_images.map(img => img.id) : []);
   const [errors, setErrors] = useState({});
-  const [countries, setCountries] = useState([]);
-  const [professions, setProfessions] = useState([]);
+  const [countries, setCountries] = useState([]); // Add countries state
+  const [professions, setProfessions] = useState([]); // Add professions state
 
   useEffect(() => {
     setFormData({
@@ -94,6 +98,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
       }
     };
     fetchCountries();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -109,6 +114,27 @@ const ProfileForm = ({ initialData, onSubmit }) => {
     fetchProfessions();
   }, []);
 
+  useEffect(() => {
+    if (formData.religion && !RELIGION_CHOICES.some(choice => choice.value === formData.religion)) {
+      setFormData(prev => ({
+        ...prev,
+        religion: '', // Or a default value
+      }));
+    }
+  }, [formData.religion]);
+
+  useEffect(() => {
+    if (formData.preference?.religion && !RELIGION_CHOICES.some(choice => choice.value === formData.preference.religion)) {
+      setFormData(prev => ({
+        ...prev,
+        preference: {
+          ...prev.preference,
+          religion: '', // Or a default value
+        },
+      }));
+    }
+  }, [formData.preference?.religion]);
+
   const handleChange = (e) => {
     const name = e.target.name;
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -116,17 +142,10 @@ const ProfileForm = ({ initialData, onSubmit }) => {
       ...prev,
       [name]: value,
     }));
+    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }));
     }
-  };
-
-  const handleCreatableChange = (newValue, actionMeta) => {
-    const { name } = actionMeta;
-    setFormData(prev => ({
-      ...prev,
-      [name]: newValue ? newValue.value : '',
-    }));
   };
 
   const handleNestedChange = (section, index, field, value) => {
@@ -230,6 +249,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
 
     const data = new FormData();
 
+    // Append all simple fields
     for (const key in formData) {
       if (formData[key] !== null && typeof formData[key] !== 'object' &&
           !['id', 'user', 'is_verified', 'birth_year', 'created_at', 'updated_at', 'profile_image'].includes(key)) {
@@ -241,9 +261,12 @@ const ProfileForm = ({ initialData, onSubmit }) => {
       }
     }
 
+    // Clean and append nested JSON fields
     data.append('education', JSON.stringify(cleanNestedObjects(formData.education)));
     data.append('work_experience', JSON.stringify(cleanNestedObjects(formData.work_experience)));
 
+
+    // Handle preference separately, filtering out empty values
     if (formData.preference) {
       const cleanedPreference = {};
       for (const key in formData.preference) {
@@ -256,16 +279,19 @@ const ProfileForm = ({ initialData, onSubmit }) => {
       data.append('preference', JSON.stringify({}));
     }
 
+    // Handle profile image
     if (profileImageFile) {
       data.append('profile_image', profileImageFile);
     } else if (formData.profile_image === null) {
       data.append('profile_image', '');
     }
 
+    // Handle additional images
     additionalImageFiles.forEach(file => {
       data.append('uploaded_images', file);
     });
     
+    // Only send additional_images_to_keep on update
     if (initialData && initialData.id) {
         additionalImagesToKeep.forEach(id => {
             data.append('additional_images_to_keep', id);
@@ -289,7 +315,6 @@ const ProfileForm = ({ initialData, onSubmit }) => {
       ...provided,
       backgroundColor: isDarkMode ? '#1f2937' : 'white',
     }),
-    menuPortal: (provided) => ({ ...provided, zIndex: 9999 }),
     option: (provided, state) => ({
       ...provided,
       backgroundColor: state.isSelected ? (isDarkMode ? '#4f46e5' : '#6366f1') : (state.isFocused ? (isDarkMode ? '#374151' : '#f3f4f6') : 'transparent'),
@@ -307,6 +332,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
 
   return (
     <form onSubmit={handleSubmit} className={`space-y-6 ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>
+      {/* Basic Info */}
       <GlassCard className="p-6">
         <h3 className="text-xl font-semibold mb-4">Basic Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -381,6 +407,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
         </div>
       </GlassCard>
 
+      {/* Location */}
       <GlassCard className="p-6">
         <h3 className="text-xl font-semibold mb-4">Location</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -391,15 +418,12 @@ const ProfileForm = ({ initialData, onSubmit }) => {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Current Country <span className="text-red-500">*</span></label>
-            <CreatableSelect
-              isClearable
-              name="current_country"
-              options={countries}
-              styles={selectStyles}
-              menuPortalTarget={document.body}
-              value={formData.current_country ? { value: formData.current_country, label: formData.current_country } : null}
-              onChange={(newValue) => handleCreatableChange(newValue, { name: 'current_country' })}
-            />
+            <select name="current_country" value={formData.current_country || ''} onChange={handleChange} className="form-input">
+                <option value="">Select Country</option>
+                {countries.map(country => (
+                    <option key={country.code} value={country.code}>{country.name}</option>
+                ))}
+            </select>
             {errors.current_country && <p className="text-red-500 text-xs mt-1">{errors.current_country}</p>}
           </div>
           <div>
@@ -408,19 +432,17 @@ const ProfileForm = ({ initialData, onSubmit }) => {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Origin Country</label>
-            <CreatableSelect
-              isClearable
-              name="origin_country"
-              options={countries}
-              styles={selectStyles}
-              menuPortalTarget={document.body}
-              value={formData.origin_country ? { value: formData.origin_country, label: formData.origin_country } : null}
-              onChange={(newValue) => handleCreatableChange(newValue, { name: 'origin_country' })}
-            />
+            <select name="origin_country" value={formData.origin_country || ''} onChange={handleChange} className="form-input">
+                <option value="">Select Country</option>
+                {countries.map(country => (
+                    <option key={country.code} value={country.code}>{country.name}</option>
+                ))}
+            </select>
           </div>
         </div>
       </GlassCard>
 
+      {/* Immigration */}
       <GlassCard className="p-6">
         <h3 className="text-xl font-semibold mb-4">Immigration</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -430,19 +452,12 @@ const ProfileForm = ({ initialData, onSubmit }) => {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Citizenship</label>
-            <CreatableSelect
-              isClearable
-              name="citizenship"
-              options={countries}
-              styles={selectStyles}
-              menuPortalTarget={document.body}
-              value={formData.citizenship ? { value: formData.citizenship, label: formData.citizenship } : null}
-              onChange={(newValue) => handleCreatableChange(newValue, { name: 'citizenship' })}
-            />
+            <input type="text" name="citizenship" value={formData.citizenship || ''} onChange={handleChange} className="form-input" />
           </div>
         </div>
       </GlassCard>
 
+      {/* Family */}
       <GlassCard className="p-6">
         <h3 className="text-xl font-semibold mb-4">Family Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -480,6 +495,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
         </div>
       </GlassCard>
 
+      {/* About & Contact */}
       <GlassCard className="p-6">
         <h3 className="text-xl font-semibold mb-4">About & Contact</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -504,6 +520,9 @@ const ProfileForm = ({ initialData, onSubmit }) => {
         </div>
       </GlassCard>
 
+
+
+      {/* Social Media */}
       <GlassCard className="p-6">
         <h3 className="text-xl font-semibold mb-4">Social Media</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -522,6 +541,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
         </div>
       </GlassCard>
 
+      {/* Education */}
       <GlassCard className="p-6">
         <h3 className="text-xl font-semibold mb-4">Education</h3>
         {formData.education && formData.education.map((edu, index) => (
@@ -550,6 +570,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
         <button type="button" onClick={() => handleAddNested('education', { degree: '', school: '', field_of_study: '', graduation_year: '' })} className="btn-add"><FaPlus className="mr-2" />Add Education</button>
       </GlassCard>
 
+      {/* Work Experience */}
       <GlassCard className="p-6">
         <h3 className="text-xl font-semibold mb-4">Work Experience</h3>
         {formData.work_experience && formData.work_experience.map((work, index) => (
@@ -574,6 +595,9 @@ const ProfileForm = ({ initialData, onSubmit }) => {
         <button type="button" onClick={() => handleAddNested('work_experience', { title: '', company: '', currently_working: false })} className="btn-add"><FaPlus className="mr-2" />Add Work Experience</button>
       </GlassCard>
 
+
+
+      {/* Preferences */}
       <GlassCard className="p-6">
         <h3 className="text-xl font-semibold mb-4">Partner Preferences</h3>
         <p className="text-yellow-500 dark:text-yellow-400 font-bold mb-4">(Please fill them properly to see compatibility rate with other profiles)</p>
@@ -607,7 +631,6 @@ const ProfileForm = ({ initialData, onSubmit }) => {
                 name="marital_statuses"
                 options={MARITAL_STATUS_CHOICES}
                 styles={selectStyles}
-                menuPortalTarget={document.body}
                 className="basic-multi-select"
                 classNamePrefix="select"
                 value={MARITAL_STATUS_CHOICES.filter(option => formData.preference.marital_statuses?.includes(option.value))}
@@ -621,7 +644,6 @@ const ProfileForm = ({ initialData, onSubmit }) => {
                 name="profession"
                 options={professions}
                 styles={selectStyles}
-                menuPortalTarget={document.body}
                 className="basic-multi-select"
                 classNamePrefix="select"
                 value={professions.filter(option => formData.preference.profession?.includes(option.value))}
@@ -630,16 +652,15 @@ const ProfileForm = ({ initialData, onSubmit }) => {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Country</label>
-              <CreatableSelect
+              <Select
                 isMulti
                 name="country"
-                options={countries}
+                options={countries.map(country => ({ value: country.code, label: country.name }))}
                 styles={selectStyles}
-                menuPortalTarget={document.body}
                 className="basic-multi-select"
                 classNamePrefix="select"
-                value={formData.preference.country?.map(c => ({ value: c, label: c }))}
-                onChange={(newValue) => handlePreferenceReactSelectChange(newValue, { name: 'country' })}
+                value={countries.map(country => ({ value: country.code, label: country.name })).filter(option => formData.preference.country?.includes(option.value))}
+                onChange={handlePreferenceReactSelectChange}
               />
             </div>
 
@@ -655,6 +676,9 @@ const ProfileForm = ({ initialData, onSubmit }) => {
         )}
       </GlassCard>
 
+
+
+      {/* Profile Image */}
       <GlassCard className="p-6">
         <h3 className="text-xl font-semibold mb-4">Profile Image</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -679,6 +703,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
         )}
       </GlassCard>
 
+      {/* Additional Images */}
       <GlassCard className="p-6">
         <h3 className="text-xl font-semibold mb-4">Additional Images</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

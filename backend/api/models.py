@@ -161,7 +161,7 @@ class Preference(models.Model):
     min_height_cm = models.PositiveSmallIntegerField(blank=True, null=True)
     religion = models.CharField(max_length=20, choices=Religion.choices, blank=True, null=True)
     marital_statuses = models.JSONField(default=list, blank=True, null=True)    # e.g., ['never_married']
-    country = models.JSONField(default=list, blank=True, null=True)
+    country = models.CharField(max_length=2, blank=True, null=True)
     profession = models.CharField(max_length=100, blank=True, null=True)
     require_non_alcoholic = models.BooleanField(default=False)
     require_non_smoker = models.BooleanField(default=False)

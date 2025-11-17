@@ -163,7 +163,7 @@ const PublicProfilePage = () => {
   }
 
   // Determine if preferences should be shown
-  const showPreferences = profileData.id === currentUserProfile?.id;
+  const showPreferences = profileData.id === currentUserProfile?.id || interestStatus?.status === 'accepted';
 
   // Destructure data for components
   const { name, date_of_birth, profile_image, facebook_profile, instagram_profile, linkedin_profile, education, work_experience, preferences, is_verified, height_cm, religion, alcohol, smoking, current_city, origin_city, citizenship, marital_status, about, additional_images, profile_image_privacy } = profileData;

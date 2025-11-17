@@ -18,37 +18,6 @@ const ProfilePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const normalizeInterests = (rawInterests) => {
-    console.log('normalizeInterests - rawInterests:', rawInterests);
-    const normalized = new Map(); // Key: 'senderId-receiverId' or 'receiverId-senderId'
-
-    rawInterests.forEach(interest => {
-      const senderId = interest.sender.id;
-      const receiverId = interest.receiver.id;
-      const key = senderId < receiverId ? `${senderId}-${receiverId}` : `${receiverId}-${senderId}`;
-
-      if (!normalized.has(key)) {
-        normalized.set(key, interest);
-      } else {
-        // If a duplicate exists, keep the one with higher precedence status
-        const existingInterest = normalized.get(key);
-        const statusPrecedence = { 'rejected': 0, 'sent': 1, 'accepted': 2 };
-
-        if (statusPrecedence[interest.status] > statusPrecedence[existingInterest.status]) {
-          normalized.set(key, interest);
-        } else if (statusPrecedence[interest.status] === statusPrecedence[existingInterest.status]) {
-          // If statuses are the same, keep the most recently updated one
-          if (new Date(interest.updated_at) > new Date(existingInterest.updated_at)) {
-            normalized.set(key, interest);
-          }
-        }
-      }
-    });
-    const result = Array.from(normalized.values());
-    console.log('normalizeInterests - normalized result:', result);
-    return result;
-  };
-
   const fetchAllData = async () => {
     if (!user) {
       setError('You must be logged in to view this page.');
@@ -70,7 +39,7 @@ const ProfilePage = () => {
             'Cache-Control': 'no-cache',
           },
         });
-        setInterests(normalizeInterests(interestsData || []));
+        setInterests(interestsData || []);
       }
 
     } catch (err) {
@@ -101,7 +70,7 @@ const ProfilePage = () => {
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleUpdateInterests = async () => {
@@ -112,7 +81,7 @@ const ProfilePage = () => {
           'Cache-Control': 'no-cache',
         },
       });
-      setInterests(normalizeInterests(interestsData || []));
+      setInterests(interestsData || []);
     } catch (error) {
       console.error('Failed to refetch interests', error);
     }
@@ -134,7 +103,7 @@ const ProfilePage = () => {
           <GlassCard className="p-8">
             <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-4">Welcome!</h1>
             <p className="text-gray-600 dark:text-gray-300 mb-6">You haven't created a profile yet. Let's get started!</p>
-            <button
+            <button 
               onClick={() => navigate('/profile/create')}
               className="w-full p-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold text-lg hover:from-purple-700 hover:to-pink-600 transition duration-300"
             >
@@ -205,8 +174,8 @@ const ProfilePage = () => {
                 <h2 className="section-title dark:text-white">Gallery</h2>
                 <div className="grid grid-cols-2 gap-2">
                   {additional_images && additional_images.map((img, index) => (
-                    <motion.img
-                      key={index}
+                    <motion.img 
+                      key={index} 
                       src={img.image_url} // Assuming image_url is a field in additional_images object
                       alt={`gallery-${index}`}
                       className="rounded-lg object-cover w-full h-24 cursor-pointer"
@@ -221,10 +190,10 @@ const ProfilePage = () => {
           {/* Right Column */}
           <div className="lg:col-span-2 space-y-8">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
-              <InfoTabs
-                aboutData={aboutData}
-                educationData={education}
-                careerData={work_experience}
+              <InfoTabs 
+                aboutData={aboutData} 
+                educationData={education} 
+                careerData={work_experience} 
                 preferencesData={preferences ? preferences[0] : {}}
                 interestsData={interests}
                 currentUserProfile={profileData}
