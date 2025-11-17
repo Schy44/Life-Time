@@ -224,8 +224,18 @@ if not DEBUG:
 # Set the custom storage backend
 DEFAULT_FILE_STORAGE = 'api.storage.SupabaseStorage'
 
-# Since the custom storage backend returns the full URL, MEDIA_URL should be empty.
-MEDIA_URL = ''
+# MEDIA_URL for public access to Supabase-stored files
+if SUPABASE_URL and SUPABASE_BUCKET_NAME:
+    # Construct the public URL base for the bucket
+    # Example: https://<project_id>.supabase.co/storage/v1/object/public/<bucket_name>/
+    # We need to extract project_id from SUPABASE_URL if it's not explicitly set
+    project_id = SUPABASE_URL.split('//')[1].split('.')[0] if SUPABASE_URL else None
+    if project_id:
+        MEDIA_URL = f'https://{project_id}.supabase.co/storage/v1/object/public/{SUPABASE_BUCKET_NAME}/'
+    else:
+        MEDIA_URL = '/media/' # Fallback, though this should be caught by SUPABASE_URL check
+else:
+    MEDIA_URL = '/media/' # Fallback for local development or if variables are missing
 
 # Reverted temporary logging configuration.
 
