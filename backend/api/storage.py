@@ -32,6 +32,7 @@ class SupabaseStorage(Storage):
         `name` is the full path within the bucket, e.g., "profile_images/my_photo.jpg"
         `content` is a Django File object.
         """
+        name = name.replace('\\', '/')
         logger.debug(f"Attempting to save file: {name} to bucket: {self.bucket_name}")
         try:
             file_bytes = content.read() if hasattr(content, 'read') else content
