@@ -37,21 +37,13 @@ class SupabaseStorage(Storage):
             file_bytes = content.read() if hasattr(content, 'read') else content
             content_type = content.content_type if hasattr(content, 'content_type') else 'application/octet-stream'
             
-            # Check if the file already exists
-            if self.exists(name):
-                logger.info(f"File {name} already exists. Attempting to update.")
-                res = self._client.storage.from_(self.bucket_name).update(
-                    path=name,
-                    file=file_bytes,
-                    file_options={"content-type": content_type}
-                )
-            else:
-                logger.info(f"File {name} does not exist. Attempting to upload.")
-                res = self._client.storage.from_(self.bucket_name).upload(
-                    path=name,
-                    file=file_bytes,
-                    file_options={"content-type": content_type}
-                )
+            # Use upsert=True to handle both creation and updates.
+            logger.info(f"Uploading/updating file: {name} with upsert.")
+            res = self._client.storage.from_(self.bucket_name).upload(
+                path=name,
+                file=file_bytes,
+                file_options={"content-type": content_type, "cache-control": "3600", "upsert": "true"}
+            )
 
             # The supabase client's upload/update methods return an UploadResponse object on success,
             # or raise an exception on failure.
