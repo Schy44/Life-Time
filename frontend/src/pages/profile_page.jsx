@@ -18,6 +18,22 @@ const ProfilePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  const addCacheBust = (url, token) => (url ? `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(token)}` : url);
+
+  const normalizeProfile = (profile) => {
+    if (!profile) return profile;
+    const token = profile.updated_at || Date.now();
+    return {
+      ...profile,
+      profile_image: addCacheBust(profile.profile_image, token),
+      additional_images: (profile.additional_images || []).map(img => ({
+        ...img,
+        // try common field names, fall back to img.image_url
+        image_url: addCacheBust(img.image_url || img.url || img.path, token),
+      })),
+    };
+  };
+
   const fetchAllData = async () => {
     if (!user) {
       setError('You must be logged in to view this page.');
@@ -26,17 +42,26 @@ const ProfilePage = () => {
     }
 
     try {
+      // add a small "t" param to bypass intermediary caches and set no-cache header
       const { data: profile } = await apiClient.get('/profile/', {
         headers: {
           'Cache-Control': 'no-cache',
         },
+        params: {
+          t: Date.now(),
+        },
       });
-      setProfileData(profile);
 
-      if (profile) {
-        const { data: interestsData } = await apiClient.get(`/interests/?profile_id=${profile.id}`, {
+      const normalized = normalizeProfile(profile);
+      setProfileData(normalized);
+
+      if (normalized) {
+        const { data: interestsData } = await apiClient.get(`/interests/?profile_id=${normalized.id}`, {
           headers: {
             'Cache-Control': 'no-cache',
+          },
+          params: {
+            t: Date.now(),
           },
         });
         setInterests(interestsData || []);
@@ -70,7 +95,7 @@ const ProfilePage = () => {
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleUpdateInterests = async () => {
@@ -80,6 +105,7 @@ const ProfilePage = () => {
         headers: {
           'Cache-Control': 'no-cache',
         },
+        params: { t: Date.now() },
       });
       setInterests(interestsData || []);
     } catch (error) {
@@ -103,7 +129,7 @@ const ProfilePage = () => {
           <GlassCard className="p-8">
             <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-4">Welcome!</h1>
             <p className="text-gray-600 dark:text-gray-300 mb-6">You haven't created a profile yet. Let's get started!</p>
-            <button 
+            <button
               onClick={() => navigate('/profile/create')}
               className="w-full p-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold text-lg hover:from-purple-700 hover:to-pink-600 transition duration-300"
             >
@@ -116,7 +142,7 @@ const ProfilePage = () => {
   }
 
   // Destructure data for components
-  const { id, name, date_of_birth, profile_image, facebook_profile, instagram_profile, linkedin_profile, education, work_experience, preferences, is_verified, height_cm, religion, alcohol, smoking, current_city, origin_city, citizenship, marital_status, about, additional_images, profile_image_privacy } = profileData;
+  const { id, name, date_of_birth, profile_image, facebook_profile, instagram_profile, linkedin_profile, education, work_experience, preference, is_verified, height_cm, religion, alcohol, smoking, current_city, origin_city, citizenship, marital_status, about, additional_images, profile_image_privacy } = profileData;
 
   // Calculate age from date_of_birth
   const age = date_of_birth ? new Date().getFullYear() - new Date(date_of_birth).getFullYear() : null;
@@ -174,9 +200,9 @@ const ProfilePage = () => {
                 <h2 className="section-title dark:text-white">Gallery</h2>
                 <div className="grid grid-cols-2 gap-2">
                   {additional_images && additional_images.map((img, index) => (
-                    <motion.img 
-                      key={index} 
-                      src={img.image_url} // Assuming image_url is a field in additional_images object
+                    <motion.img
+                      key={index}
+                      src={img.image_url} // Using normalized image_url (with cache-bust)
                       alt={`gallery-${index}`}
                       className="rounded-lg object-cover w-full h-24 cursor-pointer"
                       whileHover={{ scale: 1.05 }}
@@ -190,11 +216,11 @@ const ProfilePage = () => {
           {/* Right Column */}
           <div className="lg:col-span-2 space-y-8">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
-              <InfoTabs 
-                aboutData={aboutData} 
-                educationData={education} 
-                careerData={work_experience} 
-                preferencesData={preferences ? preferences[0] : {}}
+              <InfoTabs
+                aboutData={aboutData}
+                educationData={education}
+                careerData={work_experience}
+                preferencesData={preference || {}}
                 interestsData={interests}
                 currentUserProfile={profileData}
                 onUpdateInterests={handleUpdateInterests}
