@@ -1,262 +1,441 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import AnimatedBackground from '../components/AnimatedBackground';
-import ProfileHeader from '../components/ProfileHeader';
-import InfoTabs from '../components/InfoTabs';
 import Socials from '../components/Socials';
-import GlassCard from '../components/GlassCard';
-import { getProfileById, getProfile, sendInterest, acceptInterest, rejectInterest, cancelInterest } from '../services/api';
-import { motion } from 'framer-motion';
+import {
+  getProfileById,
+  getProfile,
+  sendInterest,
+  acceptInterest,
+  rejectInterest,
+  cancelInterest,
+} from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { FaCheckCircle, FaMapMarkerAlt, FaGraduationCap, FaBriefcase, FaHeart, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 
-const PublicProfilePage = () => {
-  const [profileData, setProfileData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const { id } = useParams();
-  const { user } = useAuth();
-  const [currentUserProfile, setCurrentUserProfile] = useState(null);
-  const [interestStatus, setInterestStatus] = useState(null);
+const InfoRow = ({ label, value }) => (
+  <div className="flex justify-start items-center gap-2 py-1 border-b last:border-b-0">
+    <div className="text-sm text-gray-700 w-32">{label}</div>
+    <div className="text-sm font-medium text-gray-900">{value || '—'}</div>
+  </div>
+);
+
+const SectionCard = ({ title, icon, children }) => (
+  <section className="bg-white rounded-xl shadow-sm border p-4">
+    <div className="flex items-center space-x-3 mb-3">
+      {icon}
+      <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
+    </div>
+
+    <div>{children}</div>
+  </section>
+);
+
+const Skeleton = ({ className = '' }) => (
+  <div className={`animate-pulse bg-gray-200 rounded ${className}`} />
+);
+
+// --- Image viewer modal ---
+function ImageViewer({ images, startIndex, onClose }) {
+  const [index, setIndex] = useState(startIndex || 0);
+  const viewerRef = useRef(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const handleKey = e => {
+      if (e.key === 'Escape') return onClose();
+      if (e.key === 'ArrowRight') setIndex(i => Math.min(i + 1, images.length - 1));
+      if (e.key === 'ArrowLeft') setIndex(i => Math.max(i - 1, 0));
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [images.length, onClose]);
+
+  useEffect(() => {
+    // trap focus if needed (basic)
+    viewerRef.current?.focus();
+  }, []);
+
+  if (!images || !images.length) return null;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      onClick={onClose}
+    >
+      <div className="relative max-w-5xl w-full h-full flex items-center justify-center" onClick={e => e.stopPropagation()} ref={viewerRef} tabIndex={-1}>
+        <button aria-label="Close" onClick={onClose} className="absolute top-4 right-4 text-white bg-black/40 p-2 rounded-full">
+          <FaTimes />
+        </button>
+
+        {images.length > 1 && (
+          <button aria-label="Previous" onClick={() => setIndex(i => Math.max(i - 1, 0))} className="absolute left-4 text-white bg-black/40 p-3 rounded-full">
+            <FaChevronLeft />
+          </button>
+        )}
+
+        <div className="max-h-full max-w-full flex items-center justify-center">
+          <img src={images[index]} alt={`Large ${index + 1}`} className="max-h-[90vh] max-w-full object-contain rounded-md shadow-lg" />
+        </div>
+
+        {images.length > 1 && (
+          <button aria-label="Next" onClick={() => setIndex(i => Math.min(i + 1, images.length - 1))} className="absolute right-4 text-white bg-black/40 p-3 rounded-full">
+            <FaChevronRight />
+          </button>
+        )}
+
+        <div className="absolute bottom-6 text-white text-sm">{index + 1} / {images.length}</div>
+      </div>
+    </div>
+  );
+}
+
+// --- Main component ---
+export default function PublicProfilePage() {
+  const { id } = useParams();
+  const { user } = useAuth();
+
+  // Explicit no-blur style override: applied inline to elements that previously could be blurred
+  const noBlurStyle = {
+    WebkitFilter: 'none',
+    filter: 'none',
+    WebkitBackdropFilter: 'none',
+    backdropFilter: 'none',
+  };
+
+  // data states
+  const [profileData, setProfileData] = useState(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState(null);
+  const [interestStatus, setInterestStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // UI states
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [viewerOpen, setViewerOpen] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetch = async () => {
       try {
-        // Fetch public profile from Django backend
-        const profile = await getProfileById(id);
-        console.log("Profile data from API:", profile);
-        setProfileData(profile);
-        if (profile.interest) {
-          setInterestStatus(profile.interest);
-        }
+        const prof = await getProfileById(id);
+        if (!mounted) return;
+        setProfileData(prof);
+        if (prof?.interest) setInterestStatus(prof.interest);
 
         if (user) {
-          // Fetch current user's profile from Django backend
-          const userProfile = await getProfile();
-          setCurrentUserProfile(userProfile);
+          const u = await getProfile();
+          if (!mounted) return;
+          setCurrentUserProfile(u);
         }
       } catch (err) {
-        setError('Failed to fetch data.');
         console.error(err);
+        if (!mounted) return;
+        setError('Unable to load profile.');
       } finally {
+        if (!mounted) return;
         setLoading(false);
       }
     };
-
-    fetchData();
+    fetch();
+    return () => { mounted = false; };
   }, [id, user]);
 
-  const handleSendInterest = async () => {
-    if (!currentUserProfile || !profileData) return;
-    try {
-      const response = await sendInterest(profileData.id);
-      setInterestStatus(response);
-      alert('Interest sent successfully!');
-    } catch (error) {
-      alert(`Failed to send interest: ${error.response?.data?.error || error.message}`);
-    }
-  };
+  // interest handlers (same as before)
+  const safeAlert = msg => alert(msg);
+  const handleSendInterest = async () => { if (!profileData || !currentUserProfile) return; try { const res = await sendInterest(profileData.id); setInterestStatus(res); safeAlert('Interest sent'); } catch (err) { console.error(err); safeAlert('Failed to send interest'); } };
+  const handleAccept = async () => { try { await acceptInterest(interestStatus.id); setInterestStatus(prev => ({ ...prev, status: 'accepted' })); safeAlert('Interest accepted'); } catch (err) { console.error(err); safeAlert('Failed to accept'); } };
+  const handleReject = async () => { try { await rejectInterest(interestStatus.id); setInterestStatus(prev => ({ ...prev, status: 'rejected' })); safeAlert('Interest rejected'); } catch (err) { console.error(err); safeAlert('Failed to reject'); } };
+  const handleCancelInterest = async () => { try { await cancelInterest(interestStatus.id); setInterestStatus(null); safeAlert('Interest cancelled'); } catch (err) { console.error(err); safeAlert('Failed to cancel'); } };
 
-  const handleAccept = async () => {
-    if (!interestStatus) return;
-    try {
-      await acceptInterest(interestStatus.id);
-      // The backend returns a simple status message, not the updated object.
-      // We need to manually update the status in the frontend state.
-      setInterestStatus(prev => ({ ...prev, status: 'accepted' }));
-      alert('Interest accepted successfully!');
-    } catch (error) {
-      alert(`Failed to accept interest: ${error.response?.data?.error || error.message}`);
+  const renderInterestControls = () => {
+    if (!user || !currentUserProfile || !profileData) return null;
+    if (currentUserProfile.id === profileData.id) return null;
+    if (!interestStatus) return <button onClick={handleSendInterest} className="px-4 py-2 rounded-md bg-indigo-600 text-white font-medium focus:outline-none focus:ring-2 focus:ring-indigo-300">Send Interest</button>;
+    const isSender = interestStatus.sender?.id === currentUserProfile.id;
+    const isReceiver = interestStatus.receiver?.id === currentUserProfile.id;
+    if (isSender) {
+      if (interestStatus.status === 'sent') return <button onClick={handleCancelInterest} className="px-4 py-2 rounded-md bg-gray-200">Cancel</button>;
+      if (interestStatus.status === 'accepted') return <button className="px-4 py-2 rounded-md bg-green-600 text-white">Accepted</button>;
+      if (interestStatus.status === 'rejected') return <button onClick={handleSendInterest} className="px-4 py-2 rounded-md bg-indigo-600 text-white">Send Again</button>;
     }
-  };
-
-  const handleReject = async () => {
-    if (!interestStatus) return;
-    try {
-      await rejectInterest(interestStatus.id);
-      // The backend returns a simple status message, not the updated object.
-      // We need to manually update the status in the frontend state.
-      setInterestStatus(prev => ({ ...prev, status: 'rejected' }));
-      alert('Interest rejected successfully!');
-    } catch (error) {
-      alert(`Failed to reject interest: ${error.response?.data?.error || error.message}`);
+    if (isReceiver) {
+      if (interestStatus.status === 'sent') return (<div className="flex gap-2"><button onClick={handleAccept} className="px-3 py-2 rounded-md bg-green-600 text-white">Accept</button><button onClick={handleReject} className="px-3 py-2 rounded-md bg-gray-200">Reject</button></div>);
+      if (interestStatus.status === 'accepted') return <button className="px-4 py-2 rounded-md bg-green-600 text-white">Accepted</button>;
+      if (interestStatus.status === 'rejected') return <button onClick={handleSendInterest} className="px-4 py-2 rounded-md bg-indigo-600 text-white">Send Interest</button>;
     }
-  };
-
-  const handleCancelInterest = async () => {
-    if (!interestStatus) return;
-    try {
-      await cancelInterest(interestStatus.id);
-      setInterestStatus(null);
-      alert('Interest cancelled successfully!');
-    } catch (error) {
-      alert(`Failed to cancel interest: ${error.response?.data?.error || error.message}`);
-    }
-  };
-
-  const renderInterestButton = () => {
-    if (!user || !currentUserProfile || !profileData) {
-      return null; // Not logged in or profiles not loaded
-    }
-
-    if (currentUserProfile.id === profileData.id) {
-      return null; // Cannot send interest to self
-    }
-
-    if (!interestStatus) {
-      return (
-        <button onClick={handleSendInterest} className="bg-purple-600 text-white px-6 py-2 rounded-md hover:bg-purple-700">
-          Send Interest
-        </button>
-      );
-    }
-
-    if (interestStatus.sender.id === currentUserProfile.id) {
-      if (interestStatus.status === 'sent') {
-        return (
-          <button onClick={handleCancelInterest} className="bg-purple-400 text-white px-6 py-2 rounded-md hover:bg-purple-500">
-            Cancel Interest
-          </button>
-        );
-      }
-      if (interestStatus.status === 'accepted') {
-        return <button className="bg-purple-500 text-white px-6 py-2 rounded-md cursor-not-allowed">Interest Accepted</button>;
-      }
-      if (interestStatus.status === 'rejected') {
-        return <button className="bg-gray-700 text-white px-6 py-2 rounded-md cursor-not-allowed">Interest Rejected</button>;
-      }
-    }
-
-    if (interestStatus.receiver.id === currentUserProfile.id) {
-      if (interestStatus.status === 'sent') {
-        return (
-          <div className="flex space-x-2">
-            <button onClick={handleAccept} className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700">Accept</button>
-            <button onClick={handleReject} className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700">Reject</button>
-          </div>
-        );
-      }
-      if (interestStatus.status === 'accepted') {
-        return <button className="bg-purple-500 text-white px-6 py-2 rounded-md cursor-not-allowed">Interest Accepted</button>;
-      }
-      if (interestStatus.status === 'rejected') {
-        return (
-          <button onClick={handleSendInterest} className="bg-purple-600 text-white px-6 py-2 rounded-md hover:bg-purple-700">
-            Send Interest
-          </button>
-        );
-      }
-    }
-
     return null;
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen text-white text-xl">Loading profile...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-full max-w-4xl p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Skeleton className="h-72 md:col-span-1" />
+            <div className="md:col-span-2 space-y-4">
+              <Skeleton className="h-6 w-1/4" />
+              <Skeleton className="h-10" />
+              <Skeleton className="h-40" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  if (error) {
-    return <div className="flex justify-center items-center h-screen text-red-500 text-xl">Error: {error}</div>;
-  }
+  if (error) return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>;
+  if (!profileData) return <div className="min-h-screen flex items-center justify-center">Profile not found</div>;
 
-  if (!profileData) {
-    return <div className="flex justify-center items-center h-screen text-white text-xl">Profile not found.</div>;
-  }
+  // --- destructure with safe defaults ---
+  const {
+    name = 'Unnamed',
+    date_of_birth,
+    profile_image,
+    additional_images = [],
+    is_verified,
+    compatibility_score,
+    about = '',
+    height_cm,
+    religion,
+    alcohol,
+    smoking,
+    education = [],
+    work_experience = [],
+    preferences = [],
+    facebook_profile,
+    instagram_profile,
+    linkedin_profile,
+    profile_image_privacy,
+    current_city,
+    origin_city,
+    citizenship,
+    current_country,
+    origin_country,
+    blood_group,
+    visa_status,
+    father_occupation,
+    mother_occupation,
+    siblings,
+    family_type,
+    marital_status,
+    created_at,
+    updated_at,
+  } = profileData;
 
-  // Determine if preferences should be shown
-  const showPreferences = profileData.id === currentUserProfile?.id || interestStatus?.status === 'accepted';
+  const age = date_of_birth ? new Date().getFullYear() - new Date(date_of_birth).getFullYear() : '—';
+  const images = [profile_image, ...additional_images.map(a => a.image_url)].filter(Boolean);
 
-  // Destructure data for components
-  const { name, date_of_birth, profile_image, facebook_profile, instagram_profile, linkedin_profile, education, work_experience, preferences, is_verified, height_cm, religion, alcohol, smoking, current_city, origin_city, citizenship, marital_status, about, additional_images, profile_image_privacy } = profileData;
-
-  // Calculate age from date_of_birth
-  const age = date_of_birth ? new Date().getFullYear() - new Date(date_of_birth).getFullYear() : null;
-
-  // Reconstruct data for components that expect a specific format
-  const headerData = {
-    name: name,
-    age: age,
-    isVerified: is_verified,
-    profileImage: profile_image,
-    isOnline: true, // Placeholder, as this is not in the model
-    compatibility: profileData.compatibility_score, // Use actual compatibility score
-    profileImagePrivacy: profile_image_privacy, // Pass privacy setting
-    hasAcceptedInterest: interestStatus?.status === 'accepted', // Pass accepted interest status
-  };
-
-  const aboutData = {
-    about: about,
-    basicInfo: {
-      height: height_cm ? `${height_cm}cm` : 'N/A',
-      marital_status: marital_status,
-      religion: religion,
-      city: current_city,
-      origin: origin_city,
-      citizenship: citizenship,
-    },
-    lifestyle: {
-      alcohol: alcohol,
-      smoking: smoking,
-    },
-  };
-
-  const socialData = [
-    { icon: 'FaFacebook', url: facebook_profile },
-    { icon: 'FaInstagram', url: instagram_profile },
-    { icon: 'FaLinkedin', url: linkedin_profile },
-  ].filter(s => s.url);
+  const formattedUpdated = updated_at ? new Date(updated_at).toLocaleDateString() : '—';
+  const formattedCreated = created_at ? new Date(created_at).toLocaleDateString() : '—';
 
   return (
     <>
       <AnimatedBackground />
-      <main className="relative min-h-screen p-4 sm:p-6 md:p-8 font-sans">
-        <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column */}
-          <div className="lg:col-span-1 space-y-8">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-              <ProfileHeader {...headerData} />
-              <div className="mt-4 text-center">
-                {renderInterestButton()}
-              </div>
-            </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-              <GlassCard className="p-6">
-                <h2 className="section-title dark:text-white">Gallery</h2>
-                <div className="grid grid-cols-2 gap-2">
-                  {additional_images && additional_images.map((img, index) => (
-                    <motion.img
-                      key={index}
-                      src={img.image_url}
-                      alt={`gallery-${index}`}
-                      className="rounded-lg object-cover w-full h-24 cursor-pointer"
-                      whileHover={{ scale: 1.05 }}
-                    />
-                  ))}
+      <main className="min-h-screen p-0 bg-gray-50">
+        <div className="w-full flex justify-center">
+          <div className="w-full max-w-screen-xl px-6">
+            <div className="bg-white rounded-2xl shadow-md overflow-hidden" style={{ transformStyle: 'preserve-3d', ...noBlurStyle }}>
+              <div className="p-6">
+                {/* header */}
+                <div className="flex flex-col md:flex-row items-start justify-between gap-4 md:gap-0 mb-6">
+                  <div>
+                    <h1 className="text-2xl font-semibold text-gray-900">{name}</h1>
+                    <div className="text-sm text-gray-700 mt-1">{age} • {current_city || '—'}</div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {compatibility_score != null && (
+                      <div className="text-sm font-semibold bg-gray-50 border px-3 py-1 rounded-full">{Math.round(compatibility_score * 100)}%</div>
+                    )}
+
+                    {is_verified && (
+                      <div className="flex items-center gap-2 bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">
+                        <FaCheckCircle /> Verified
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </GlassCard>
-            </motion.div>
-          </div>
 
-          {/* Right Column */}
-          <div className="lg:col-span-2 space-y-8">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
-              {console.log("work_experience before InfoTabs:", work_experience)}
-              <InfoTabs 
-                aboutData={aboutData} 
-                educationData={education} 
-                careerData={work_experience} 
-                preferencesData={preferences ? preferences[0] : {}}
-                showPreferences={showPreferences}
-              />
-            </motion.div>
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }}>
-              <Socials socials={socialData} />
-            </motion.div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* left: image + gallery */}
+                  <div className="lg:col-span-1 space-y-4">
+                    <div className="relative rounded-lg overflow-hidden bg-gray-100 border">
+                      {/* Image count badge */}
+                      {images.length > 0 && (
+                        <div className="absolute top-3 right-3 bg-white/90 px-3 py-1 rounded-full text-xs font-semibold text-gray-800 z-10 shadow">{images.length} Photos</div>
+                      )}
+
+                      <img
+                        role="button"
+                        onClick={() => setViewerOpen(true)}
+                        key={activeImageIndex}
+                        src={images[activeImageIndex] || '/placeholder-profile.png'}
+                        alt={`Profile image ${activeImageIndex + 1}`}
+                        className="w-full h-72 object-cover rounded-xl"
+                        loading="lazy"
+                        style={noBlurStyle}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2">
+                      {images.length ? (
+                        images.map((src, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setActiveImageIndex(idx)}
+                            aria-label={`Thumbnail ${idx + 1}`}
+                            className={`h-20 rounded-md overflow-hidden border ${idx === activeImageIndex ? 'ring-2 ring-indigo-400' : 'border-gray-200'} focus:outline-none`}
+                            style={noBlurStyle}
+                          >
+                            <img src={src} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" style={noBlurStyle} />
+                          </button>
+                        ))
+                      ) : (
+                        <div className="col-span-4 text-center text-gray-500">No photos</div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <FaMapMarkerAlt />
+                          <span className="text-sm">{current_city || '—'}</span>
+                        </div>
+
+                        <div className="text-sm text-gray-700">Age: <strong className="ml-1">{age}</strong></div>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Socials socials={[
+                            facebook_profile && { icon: 'FaFacebook', url: facebook_profile },
+                            instagram_profile && { icon: 'FaInstagram', url: instagram_profile },
+                            linkedin_profile && { icon: 'FaLinkedin', url: linkedin_profile },
+                          ].filter(Boolean)} />
+                        </div>
+
+                        <div>{renderInterestControls()}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* right: details */}
+                  <div className="lg:col-span-2 space-y-4">
+                    <SectionCard title="About" icon={<div className="text-indigo-600">•</div>}>
+                      <p className="text-sm text-gray-800 leading-relaxed">{about || 'No description provided.'}</p>
+
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <InfoRow label="Full name" value={name} />
+                        <InfoRow label="Relationship" value={marital_status || '—'} />
+                        <InfoRow label="Religion" value={religion || '—'} />
+                        <InfoRow label="Height" value={height_cm ? `${height_cm} cm` : '—'} />
+
+                      </div>
+                    </SectionCard>
+
+                    {/* NEW: Basics */}
+                    <SectionCard title="Basics" icon={<div className="text-indigo-600">•</div>}>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <InfoRow label="Blood group" value={blood_group || '—'} />
+                      </div>
+                    </SectionCard>
+
+                    {/* NEW: Location & Residency */}
+                    <SectionCard title="Location & Residency" icon={<FaMapMarkerAlt className="text-gray-700" />}>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <InfoRow label="Current city" value={current_city || '—'} />
+                        <InfoRow label="Current country" value={current_country || '—'} />
+                        <InfoRow label="Origin city" value={origin_city || '—'} />
+                        <InfoRow label="Origin country" value={origin_country || '—'} />
+                        <InfoRow label="Visa status" value={visa_status || '—'} />
+                      </div>
+                    </SectionCard>
+
+                    {/* NEW: Family */}
+                    <SectionCard title="Family" icon={<div className="text-indigo-600">•</div>}>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <InfoRow label="Father's occupation" value={father_occupation || '—'} />
+                        <InfoRow label="Mother's occupation" value={mother_occupation || '—'} />
+                        <InfoRow label="Siblings" value={siblings || '—'} />
+                        <InfoRow label="Family type" value={family_type || '—'} />
+                      </div>
+                    </SectionCard>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <SectionCard title="Lifestyle" icon={<div className="text-indigo-600">•</div>}>
+                        <InfoRow label="Alcohol" value={alcohol || '—'} />
+                        <InfoRow label="Smoking" value={smoking || '—'} />
+                      </SectionCard>
+
+                      <SectionCard title="Preferences" icon={<FaHeart className="text-red-500" />}>
+                        {preferences && preferences[0] ? (
+                          <div className="flex flex-wrap gap-2">
+                            {Object.entries(preferences[0]).slice(0, 12).map(([k, v]) => (
+                              <span key={k} className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-800">{k.replace(/_/g, ' ')}: {String(v)}</span>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-700">Not provided</div>
+                        )}
+                      </SectionCard>
+                    </div>
+
+                    <SectionCard title="Education" icon={<FaGraduationCap className="text-gray-700" />}>
+                      {education.length ? (
+                        <div className="space-y-3">
+                          {education.map((e, i) => (
+                            <div key={i} className="p-3 border rounded-md bg-gray-50">
+                              <div className="text-sm font-semibold text-gray-900">{e.institution || e.degree || 'Education'}</div>
+                              <div className="text-xs text-gray-700">{e.field_of_study || ''}</div>
+                              <div className="text-xs text-gray-600 mt-1">{e.year_from ? `${e.year_from} - ${e.year_to || 'Present'}` : ''}</div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-700">No education listed.</div>
+                      )}
+                    </SectionCard>
+
+                    <SectionCard title="Work" icon={<FaBriefcase className="text-gray-700" />}>
+                      {work_experience.length ? (
+                        <div className="space-y-3">
+                          {work_experience.map((w, i) => (
+                            <div key={i} className="p-3 border rounded-md bg-gray-50">
+                              <div className="text-sm font-semibold text-gray-900">{w.title || w.company || 'Work'}</div>
+                              <div className="text-xs text-gray-700">{w.company ? `${w.company} — ${w.location || ''}` : w.location}</div>
+                              <div className="text-xs text-gray-600 mt-1">{w.start_date ? `${w.start_date} - ${w.end_date || 'Present'}` : ''}</div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-700">No work experience listed.</div>
+                      )}
+                    </SectionCard>
+
+                    <div className="text-xs text-gray-600 text-right space-y-1">
+                      <div>Member since: <strong>{formattedCreated}</strong></div>
+                      <div>Last updated: <strong>{formattedUpdated}</strong></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Image viewer modal */}
+        <AnimatePresence>
+          {viewerOpen && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <ImageViewer images={images} startIndex={activeImageIndex} onClose={() => setViewerOpen(false)} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </>
   );
-};
-
-export default PublicProfilePage;
+}

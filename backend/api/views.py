@@ -20,7 +20,61 @@ from rest_framework import generics
 
 class CountryListView(APIView):
     def get(self, request):
-        countries = Profile.objects.exclude(current_country__isnull=True).exclude(current_country__exact='').values_list('current_country', flat=True).distinct()
+        # Static list of countries with codes and names. This provides a consistent list
+        # regardless of user-generated profile data.
+        countries = [
+            {"name": "United States", "code": "US"},
+            {"name": "Canada", "code": "CA"},
+            {"name": "United Kingdom", "code": "GB"},
+            {"name": "Australia", "code": "AU"},
+            {"name": "Germany", "code": "DE"},
+            {"name": "France", "code": "FR"},
+            {"name": "Spain", "code": "ES"},
+            {"name": "Italy", "code": "IT"},
+            {"name": "Japan", "code": "JP"},
+            {"name": "China", "code": "CN"},
+            {"name": "India", "code": "IN"},
+            {"name": "Brazil", "code": "BR"},
+            {"name": "Mexico", "code": "MX"},
+            {"name": "South Africa", "code": "ZA"},
+            {"name": "Nigeria", "code": "NG"},
+            {"name": "Egypt", "code": "EG"},
+            {"name": "Argentina", "code": "AR"},
+            {"name": "Sweden", "code": "SE"},
+            {"name": "Norway", "code": "NO"},
+            {"name": "Denmark", "code": "DK"},
+            {"name": "Finland", "code": "FI"},
+            {"name": "Netherlands", "code": "NL"},
+            {"name": "Belgium", "code": "BE"},
+            {"name": "Switzerland", "code": "CH"},
+            {"name": "Austria", "code": "AT"},
+            {"name": "Portugal", "code": "PT"},
+            {"name": "Greece", "code": "GR"},
+            {"name": "Ireland", "code": "IE"},
+            {"name": "New Zealand", "code": "NZ"},
+            {"name": "Singapore", "code": "SG"},
+            {"name": "Malaysia", "code": "MY"},
+            {"name": "Indonesia", "code": "ID"},
+            {"name": "Thailand", "code": "TH"},
+            {"name": "Vietnam", "code": "VN"},
+            {"name": "Philippines", "code": "PH"},
+            {"name": "South Korea", "code": "KR"},
+            {"name": "Russia", "code": "RU"},
+            {"name": "Saudi Arabia", "code": "SA"},
+            {"name": "United Arab Emirates", "code": "AE"},
+            {"name": "Turkey", "code": "TR"},
+            {"name": "Ukraine", "code": "UA"},
+            {"name": "Poland", "code": "PL"},
+            {"name": "Czech Republic", "code": "CZ"},
+            {"name": "Hungary", "code": "HU"},
+            {"name": "Romania", "code": "RO"},
+            {"name": "Chile", "code": "CL"},
+            {"name": "Colombia", "code": "CO"},
+            {"name": "Peru", "code": "PE"},
+            {"name": "Pakistan", "code": "PK"},
+            {"name": "Bangladesh", "code": "BD"},
+            {"name": "Sri Lanka", "code": "LK"},
+        ]
         return Response(countries)
 
 
