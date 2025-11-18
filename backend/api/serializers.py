@@ -122,7 +122,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
         # The frontend sends some nested data as JSON strings. We need to parse them.
         json_fields = ['education', 'work_experience',
-                       'preference', 'additional_images_to_keep']
+                       'preference']
         for field in json_fields:
             field_value = data.get(field)
             if field_value and isinstance(field_value, str):
