@@ -53,11 +53,7 @@ const EditProfilePage = () => {
     }
 
     try {
-      const response = await apiClient.put(`/profiles/${id}/`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await apiClient.put(`/profiles/${id}/`, formData);
       
       // Update the state with the new data from the server
       setProfileData(response.data);
