@@ -53,11 +53,14 @@ const EditProfilePage = () => {
     }
 
     try {
-      await apiClient.put(`/profiles/${id}/`, formData, {
+      const response = await apiClient.put(`/profiles/${id}/`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
+      
+      // Update the state with the new data from the server
+      setProfileData(response.data);
 
       alert('Profile updated successfully!');
       // 🔑 CRITICAL FIX: Navigate back and pass state to trigger re-fetch on ProfilePage
