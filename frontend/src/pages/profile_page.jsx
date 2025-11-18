@@ -83,20 +83,18 @@ const ProfilePage = () => {
   };
 
   useEffect(() => {
-    // 1. Check if we need to refresh due to navigation state (i.e., coming back from edit)
-    const shouldRefresh = location.state && location.state.profileUpdated;
-
-    if (user && (shouldRefresh || !profileData)) {
+    // Check for fresh data from navigation state first
+    if (location.state && location.state.updatedProfile) {
+      const normalized = normalizeProfile(location.state.updatedProfile);
+      setProfileData(normalized);
+      // Clean up the state to prevent re-using stale data on refresh
+      navigate(location.pathname, { replace: true, state: {} });
+    } else if (user && !profileData) {
+      // Fallback to fetching if no navigation state or no data yet
       fetchAllData();
-
-      // 2. Clean up the navigation state to prevent infinite loops on history changes
-      if (shouldRefresh) {
-        // Replace the current history entry without the state, so a browser refresh won't trigger another fetch
-        navigate(location.pathname, { replace: true, state: {} });
-      }
     }
 
-    // 3. Keep the window focus handler for background tab updates
+    // Keep the window focus handler for background tab updates
     const handleFocus = () => {
       if (user) {
         fetchAllData();
@@ -108,7 +106,6 @@ const ProfilePage = () => {
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
-    // ADDED location.state to the dependency array
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, location.state]);
 

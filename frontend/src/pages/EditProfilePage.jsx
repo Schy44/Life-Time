@@ -53,37 +53,17 @@ const EditProfilePage = () => {
     }
 
     try {
-      // If `formData` is already a FormData instance, use it; otherwise we build one.
-      const fd = formData instanceof FormData ? formData : new FormData();
-
-      // Example: if you have fields in an object formState, append them:
-      // fd.append('name', formState.name || '');
-      // ... append other text fields as needed ...
-
-      // Append profile image file (if present)
-      if (profileImageFile) {
-        fd.append('profile_image', profileImageFile);
-      } else if (shouldRemoveProfileImage) {
-        // optional: if you have a remove flag
-        fd.append('remove_profile_image', '1');
-      }
-
-      // Append additional images (multiple files) — each file with the same key
-      if (additionalImageFiles && additionalImageFiles.length) {
-        additionalImageFiles.forEach(file => fd.append('uploaded_images', file));
-      }
-
-      // Send the list of existing additional image IDs to keep
-      // Option A: send as JSON string
-      fd.append('additional_images_to_keep', JSON.stringify(additionalImagesToKeep || []));
-      // Option B (alternative): append multiple keys:
-      // additionalImagesToKeep.forEach(id => fd.append('additional_images_to_keep', id));
-
-      // IMPORTANT: Do NOT set Content-Type — axios will set the proper boundary for multipart
-      const response = await apiClient.put(`/profiles/${id}/`, fd);
+      const response = await apiClient.put(`/profiles/${id}/`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      // Update the state with the new data from the server
       setProfileData(response.data);
+
       alert('Profile updated successfully!');
-      navigate('/profile', { state: { profileUpdated: true } });
+      navigate('/profile', { state: { updatedProfile: response.data } });
     } catch (err) {
       console.error('Error updating profile:', err);
       alert('Failed to update profile. Please try again.');
