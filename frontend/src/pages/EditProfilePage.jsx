@@ -60,7 +60,8 @@ const EditProfilePage = () => {
       });
 
       alert('Profile updated successfully!');
-      navigate('/profile');
+      // 🔑 CRITICAL FIX: Navigate back and pass state to trigger re-fetch on ProfilePage
+      navigate('/profile', { state: { profileUpdated: true } });
     } catch (err) {
       console.error('Error updating profile:', err);
       alert('Failed to update profile. Please try again.');

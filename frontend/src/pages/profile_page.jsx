@@ -8,7 +8,7 @@ import GlassCard from '../components/GlassCard';
 import apiClient from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom'; // <-- ADDED useLocation
 
 const ProfilePage = () => {
   const [profileData, setProfileData] = useState(null);
@@ -16,19 +16,21 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation(); // <-- INITIALIZE useLocation
   const { user } = useAuth();
 
   const addCacheBust = (url, token) => (url ? `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(token)}` : url);
 
   const normalizeProfile = (profile) => {
     if (!profile) return profile;
+    // The 'updated_at' field from the backend will change after a successful profile update
     const token = profile.updated_at || Date.now();
     return {
       ...profile,
+      // Use the 'updated_at' timestamp as the cache bust token for the main profile image
       profile_image: addCacheBust(profile.profile_image, token),
       additional_images: (profile.additional_images || []).map(img => ({
         ...img,
-        // try common field names, fall back to img.image_url
         image_url: addCacheBust(img.image_url || img.url || img.path, token),
       })),
     };
@@ -42,7 +44,8 @@ const ProfilePage = () => {
     }
 
     try {
-      // add a small "t" param to bypass intermediary caches and set no-cache header
+      setLoading(true); // Set loading to true before fetch (important for manual refresh)
+      // Add a small "t" param to bypass intermediary caches and set no-cache header
       const { data: profile } = await apiClient.get('/profile/', {
         headers: {
           'Cache-Control': 'no-cache',
@@ -80,10 +83,20 @@ const ProfilePage = () => {
   };
 
   useEffect(() => {
-    if (user) {
+    // 1. Check if we need to refresh due to navigation state (i.e., coming back from edit)
+    const shouldRefresh = location.state && location.state.profileUpdated;
+
+    if (user && (shouldRefresh || !profileData)) {
       fetchAllData();
+
+      // 2. Clean up the navigation state to prevent infinite loops on history changes
+      if (shouldRefresh) {
+        // Replace the current history entry without the state, so a browser refresh won't trigger another fetch
+        navigate(location.pathname, { replace: true, state: {} });
+      }
     }
 
+    // 3. Keep the window focus handler for background tab updates
     const handleFocus = () => {
       if (user) {
         fetchAllData();
@@ -95,8 +108,9 @@ const ProfilePage = () => {
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
+    // ADDED location.state to the dependency array
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, location.state]);
 
   const handleUpdateInterests = async () => {
     if (!profileData) return;
@@ -152,7 +166,7 @@ const ProfilePage = () => {
     name: name,
     age: age,
     isVerified: is_verified,
-    profileImage: profile_image,
+    profileImage: profile_image, // This now includes the cache-bust parameter
     isOnline: true, // Placeholder, as this is not in the model
     profileImagePrivacy: profile_image_privacy, // Pass privacy setting
     hasAcceptedInterest: true, // Always true for own profile,
