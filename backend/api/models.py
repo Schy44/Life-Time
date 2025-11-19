@@ -1,7 +1,6 @@
 from django.db import models
 from django.conf import settings
 from datetime import date
-from api.storage import SupabaseStorage
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -24,6 +23,9 @@ class Smoking(models.TextChoices):
 class SleepCycle(models.TextChoices):
     EARLY_BIRD = 'early_bird', 'Early Bird'
     NIGHT_OWL = 'night_owl', 'Night Owl'
+
+# Import storage backend
+from api.storage import SupabaseStorage
 
 # --- Core ---
 class Profile(models.Model):
@@ -57,8 +59,13 @@ class Profile(models.Model):
     birth_year = models.PositiveSmallIntegerField(blank=True, null=True, db_index=True)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
 
-    # Media
-    profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
+    # Media - EXPLICITLY use SupabaseStorage
+    profile_image = models.ImageField(
+        upload_to='profile_images/', 
+        blank=True, 
+        null=True,
+        storage=SupabaseStorage()  # <-- Force use of SupabaseStorage
+    )
 
     # Physical
     height_cm = models.PositiveSmallIntegerField(blank=True, null=True, help_text="centimeters")
@@ -172,7 +179,10 @@ class Preference(models.Model):
 class AdditionalImage(models.Model):
     profile = models.ForeignKey(
         Profile, related_name='additional_images', on_delete=models.CASCADE)
-    image = models.ImageField(upload_to='additional_images/')
+    image = models.ImageField(
+        upload_to='additional_images/',
+        storage=SupabaseStorage()  # <-- Force use of SupabaseStorage
+    )
 
     def __str__(self):
         return f"Image for {self.profile.name}"
