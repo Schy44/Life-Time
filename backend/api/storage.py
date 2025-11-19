@@ -32,19 +32,36 @@ class SupabaseStorage(Storage):
         `name` is the full path within the bucket, e.g., "profile_images/my_photo.jpg"
         `content` is a Django File object.
         """
-        name = name.replace('\\', '/')
-        print(f"DEBUG: SupabaseStorage._save called for {name} in bucket {self.bucket_name}") # DEBUG PRINT
-        logger.debug(f"Attempting to save file: {name} to bucket: {self.bucket_name}")
+        print(f"=== STORAGE _save CALLED ===") # DEBUG PRINT AT THE VERY START
+        print(f"DEBUG: File name: {name}") # DEBUG PRINT
+        print(f"DEBUG: Content type: {type(content)}") # DEBUG PRINT
+        print(f"DEBUG: Bucket: {self.bucket_name}") # DEBUG PRINT
+        
         try:
-            content.seek(0) # Ensure we are at the start of the file
+            name = name.replace('\\', '/')
+            print(f"DEBUG: Normalized name: {name}") # DEBUG PRINT
+            
+            # Seek to start and read file
+            if hasattr(content, 'seek'):
+                content.seek(0)
+                print(f"DEBUG: Seeked to start of file") # DEBUG PRINT
+            
             file_bytes = content.read() if hasattr(content, 'read') else content
-            print(f"DEBUG: Read {len(file_bytes)} bytes for {name}") # DEBUG PRINT
+            print(f"DEBUG: Read {len(file_bytes)} bytes from content") # DEBUG PRINT
+            
+            if len(file_bytes) == 0:
+                print(f"ERROR: File content is empty!") # DEBUG PRINT
+                raise ValueError(f"Cannot upload empty file: {name}")
             
             content_type = content.content_type if hasattr(content, 'content_type') else 'application/octet-stream'
+            print(f"DEBUG: Content-Type: {content_type}") # DEBUG PRINT
             
             # Check if the file already exists
-            if self.exists(name):
-                print(f"DEBUG: File {name} exists. Updating.") # DEBUG PRINT
+            exists = self.exists(name)
+            print(f"DEBUG: File exists check: {exists}") # DEBUG PRINT
+            
+            if exists:
+                print(f"DEBUG: Updating existing file: {name}") # DEBUG PRINT
                 logger.info(f"File {name} already exists. Attempting to update.")
                 res = self._client.storage.from_(self.bucket_name).update(
                     path=name,
@@ -52,7 +69,7 @@ class SupabaseStorage(Storage):
                     file_options={"content-type": content_type}
                 )
             else:
-                print(f"DEBUG: File {name} does not exist. Uploading.") # DEBUG PRINT
+                print(f"DEBUG: Uploading new file: {name}") # DEBUG PRINT
                 logger.info(f"File {name} does not exist. Attempting to upload.")
                 res = self._client.storage.from_(self.bucket_name).upload(
                     path=name,
@@ -60,21 +77,25 @@ class SupabaseStorage(Storage):
                     file_options={"content-type": content_type}
                 )
 
-            print(f"DEBUG: Supabase upload response type: {type(res)}") # DEBUG PRINT
-            # The supabase client's upload/update methods return an UploadResponse object on success,
-            # or raise an exception on failure.
-            # We need to check if 'res' is a valid UploadResponse object indicating success.
-            if hasattr(res, 'path') and hasattr(res, 'full_path'): # Check for attributes indicating success
-                print(f"DEBUG: Upload successful. Path: {res.path}") # DEBUG PRINT
+            print(f"DEBUG: Supabase response type: {type(res)}") # DEBUG PRINT
+            print(f"DEBUG: Supabase response: {res}") # DEBUG PRINT
+            
+            # Check for success
+            if hasattr(res, 'path') and hasattr(res, 'full_path'):
+                print(f"DEBUG: Upload SUCCESS! Path: {res.path}") # DEBUG PRINT
                 logger.info(f"Successfully uploaded/updated file: {name} to Supabase. Response: {res}")
-                return name # Return the name (path) of the file within the bucket
+                return name
             else:
-                # If it's not a valid UploadResponse, it might be an unexpected response or an error
-                print(f"DEBUG: Unexpected response: {res}") # DEBUG PRINT
+                print(f"ERROR: Unexpected response format: {res}") # DEBUG PRINT
                 logger.error(f"Supabase upload/update for {name} returned unexpected response: {res}")
                 raise Exception(f"Supabase upload/update failed: {res}")
+                
         except Exception as e:
-            print(f"DEBUG: Exception in _save: {e}") # DEBUG PRINT
+            print(f"=== EXCEPTION IN _save ===") # DEBUG PRINT
+            print(f"ERROR: Exception type: {type(e).__name__}") # DEBUG PRINT
+            print(f"ERROR: Exception message: {str(e)}") # DEBUG PRINT
+            import traceback
+            print(f"ERROR: Traceback:\n{traceback.format_exc()}") # DEBUG PRINT
             logger.exception(f"Exception during Supabase file save for {name}: {e}")
             raise
 

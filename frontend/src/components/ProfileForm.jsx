@@ -98,7 +98,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
       }
     };
     fetchCountries();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -235,24 +235,28 @@ const ProfileForm = ({ initialData, onSubmit }) => {
     if (!formData.current_country) newErrors.current_country = 'Current country is required.';
     if (!formData.about) newErrors.about = 'About section is required.';
     if (!formData.email) newErrors.email = 'Email is required.';
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    console.log('=== ProfileForm handleSubmit called ===');
+
     if (!validateForm()) {
+      console.error('Form validation failed:', errors);
       alert('Please fill out all required fields.');
       return;
     }
 
+    console.log('Form validation passed');
     const data = new FormData();
 
     // Append all simple fields
     for (const key in formData) {
       if (formData[key] !== null && typeof formData[key] !== 'object' &&
-          !['id', 'user', 'is_verified', 'birth_year', 'created_at', 'updated_at', 'profile_image'].includes(key)) {
+        !['id', 'user', 'is_verified', 'birth_year', 'created_at', 'updated_at', 'profile_image'].includes(key)) {
         if (formData[key] !== null && formData[key] !== '') {
           data.append(key, formData[key]);
         } else if (typeof formData[key] === 'boolean') {
@@ -280,24 +284,30 @@ const ProfileForm = ({ initialData, onSubmit }) => {
     }
 
     // Handle profile image
+    console.log('profileImageFile:', profileImageFile);
     if (profileImageFile) {
+      console.log('Appending profile_image:', profileImageFile.name, profileImageFile.size, 'bytes');
       data.append('profile_image', profileImageFile);
     } else if (formData.profile_image === null) {
+      console.log('Setting profile_image to empty');
       data.append('profile_image', '');
+    } else {
+      console.log('No profile_image change');
     }
 
     // Handle additional images
     additionalImageFiles.forEach(file => {
       data.append('uploaded_images', file);
     });
-    
+
     // Only send additional_images_to_keep on update
     if (initialData && initialData.id) {
-        additionalImagesToKeep.forEach(id => {
-            data.append('additional_images_to_keep', id);
-        });
+      additionalImagesToKeep.forEach(id => {
+        data.append('additional_images_to_keep', id);
+      });
     }
 
+    console.log('FormData prepared, calling onSubmit');
     onSubmit(data);
   };
 
@@ -419,10 +429,10 @@ const ProfileForm = ({ initialData, onSubmit }) => {
           <div>
             <label className="block text-sm font-medium mb-1">Current Country <span className="text-red-500">*</span></label>
             <select name="current_country" value={formData.current_country || ''} onChange={handleChange} className="form-input">
-                <option value="">Select Country</option>
-                {countries.map(country => (
-                    <option key={country.code} value={country.code}>{country.name}</option>
-                ))}
+              <option value="">Select Country</option>
+              {countries.map(country => (
+                <option key={country.code} value={country.code}>{country.name}</option>
+              ))}
             </select>
             {errors.current_country && <p className="text-red-500 text-xs mt-1">{errors.current_country}</p>}
           </div>
@@ -433,10 +443,10 @@ const ProfileForm = ({ initialData, onSubmit }) => {
           <div>
             <label className="block text-sm font-medium mb-1">Origin Country</label>
             <select name="origin_country" value={formData.origin_country || ''} onChange={handleChange} className="form-input">
-                <option value="">Select Country</option>
-                {countries.map(country => (
-                    <option key={country.code} value={country.code}>{country.name}</option>
-                ))}
+              <option value="">Select Country</option>
+              {countries.map(country => (
+                <option key={country.code} value={country.code}>{country.name}</option>
+              ))}
             </select>
           </div>
         </div>

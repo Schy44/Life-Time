@@ -47,13 +47,21 @@ const EditProfilePage = () => {
   }, [id, user]);
 
   const handleSubmit = async (formData) => {
+    console.log('=== EditProfilePage handleSubmit called ===');
+    console.log('FormData entries:');
+    for (let pair of formData.entries()) {
+      console.log(pair[0], ':', pair[1]);
+    }
+
     if (!user) {
       alert('You must be logged in to update a profile.');
       return;
     }
 
     try {
+      console.log('Sending PUT request to:', `/profiles/${id}/`);
       const response = await apiClient.put(`/profiles/${id}/`, formData);
+      console.log('Response received:', response);
 
       // Update the state with the new data from the server
       setProfileData(response.data);
@@ -62,6 +70,7 @@ const EditProfilePage = () => {
       navigate('/profile', { state: { updatedProfile: response.data } });
     } catch (err) {
       console.error('Error updating profile:', err);
+      console.error('Error response:', err.response);
       alert('Failed to update profile. Please try again.');
     }
   };
