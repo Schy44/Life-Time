@@ -264,7 +264,7 @@ const ProfilesListPage = () => {
   return (
     <>
       <AnimatedBackground />
-      <main className="relative min-h-screen p-4 sm:p-6 md:p-8 font-sans">
+      <main className="relative min-h-screen p-4 sm:p-6 md:p-8 font-sans bg-gray-50 dark:bg-gray-900">
         <div className="max-w-7xl mx-auto">
           {/* Page Header */}
           <motion.div
@@ -277,17 +277,17 @@ const ProfilesListPage = () => {
             </h1>
 
             {/* View Toggle */}
-            <div className="flex bg-white/20 backdrop-blur-md rounded-lg p-1 border border-white/30">
+            <div className="flex bg-white/20 dark:bg-gray-800/20 backdrop-blur-md rounded-lg p-1 border border-white/30 dark:border-gray-700/30">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-white/10'}`}
+                className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-white/10 dark:hover:bg-gray-700/30'}`}
                 title="Grid View"
               >
                 <Grid size={20} />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-white/10'}`}
+                className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-white/10 dark:hover:bg-gray-700/30'}`}
                 title="List View"
               >
                 <List size={20} />
@@ -457,7 +457,7 @@ const ProfilesListPage = () => {
               sortedProfiles.map((profile) => (
                 <motion.div key={profile.id} variants={itemVariants}>
                   <Link to={`/profiles/${profile.id}`} className="group block h-full">
-                    <div className={`relative bg-white dark:bg-gray-800 rounded-2xl overflow-hidden h-full transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 border border-transparent ${viewMode === 'list' ? 'flex flex-row items-stretch' : 'flex flex-col'}`}>
+                    <div className={`relative bg-white dark:bg-gray-800 rounded-2xl overflow-hidden h-full transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 border border-transparent dark:border-gray-700 ${viewMode === 'list' ? 'flex flex-row items-stretch' : 'flex flex-col'}`}>
 
                       {/* Badges */}
                       <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
@@ -477,7 +477,7 @@ const ProfilesListPage = () => {
                       <button
                         onClick={(e) => handleSendInterest(e, profile.id)}
                         disabled={sendingInterest[profile.id]}
-                        className={`absolute top-3 right-3 z-20 w-9 h-9 rounded-full shadow-md transition-all transform hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center ${sendingInterest[profile.id] ? 'bg-gray-100' : 'bg-white hover:bg-pink-50 text-gray-400 hover:text-pink-500'
+                        className={`absolute top-3 right-3 z-20 w-9 h-9 rounded-full shadow-md transition-all transform hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center ${sendingInterest[profile.id] ? 'bg-gray-100 dark:bg-gray-700' : 'bg-white dark:bg-gray-700 hover:bg-pink-50 dark:hover:bg-gray-600 text-gray-400 hover:text-pink-500 dark:hover:text-pink-400'
                           }`}
                         title="Send Interest"
                       >
@@ -493,7 +493,7 @@ const ProfilesListPage = () => {
                         {/* Compatibility Score Badge on Image */}
                         {profile.compatibility_score !== null && (
                           <div className="absolute top-3 right-14 z-10">
-                            <div className="bg-white/95 backdrop-blur-sm rounded-full px-2.5 py-1 shadow-lg border border-transparent">
+                            <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-full px-2.5 py-1 shadow-lg border border-transparent">
                               <span className="text-xs font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
                                 {profile.compatibility_score}% Match
                               </span>
@@ -582,7 +582,7 @@ const ProfilesListPage = () => {
               <button
                 onClick={handleLoadMore}
                 disabled={loadingMore}
-                className="px-8 py-3 bg-white text-purple-600 font-bold rounded-full shadow-lg hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center gap-2"
+                className="px-8 py-3 bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 font-bold rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
               >
                 {loadingMore ? <LoadingSpinner size="small" /> : 'Load More Profiles'}
               </button>

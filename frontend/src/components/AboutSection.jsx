@@ -33,17 +33,17 @@ const AboutSection = ({ aboutData, onEdit }) => {
           {onEdit && (
             <button
               onClick={onEdit}
-              className="float-right text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+              className="float-right text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium"
             >
               Edit
             </button>
           )}
-          {about && <p className="text-gray-700 leading-relaxed">{about}</p>}
+          {about && <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{about}</p>}
 
           {looking_for && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
               <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Looking For</h4>
-              <p className="text-gray-700 leading-relaxed">{looking_for}</p>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{looking_for}</p>
             </div>
           )}
         </SectionCard>

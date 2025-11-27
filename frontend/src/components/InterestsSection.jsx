@@ -337,7 +337,7 @@ const InterestsSection = ({ interests = [], currentUserProfile, onUpdate = () =>
                       <Avatar user={otherUser} size={56} />
 
                       <div className="min-w-0 ml-3">
-                        <Link to={`/profiles/${otherUser?.id}`} className="block text-lg font-semibold text-gray-900 dark:text-gray-100 truncate hover:text-purple-600">
+                        <Link to={`/profiles/${otherUser?.id}`} className="block text-lg font-semibold text-gray-900 dark:text-white truncate hover:text-purple-600 dark:hover:text-purple-400">
                           {otherUser?.name || 'Unknown'}
                         </Link>
                         <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
@@ -366,7 +366,7 @@ const InterestsSection = ({ interests = [], currentUserProfile, onUpdate = () =>
                             <button
                               onClick={() => handleReject(interest.id)}
                               disabled={isProcessing}
-                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border text-sm hover:bg-gray-50 transition"
+                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white dark:bg-gray-700 border dark:border-gray-600 text-sm hover:bg-gray-50 dark:hover:bg-gray-600 transition text-gray-700 dark:text-gray-200"
                               aria-label="Decline interest"
                             >
                               <X size={14} /> Decline
@@ -382,7 +382,7 @@ const InterestsSection = ({ interests = [], currentUserProfile, onUpdate = () =>
                               }
                             }}
                             disabled={isProcessing}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border text-sm hover:bg-gray-50 transition"
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white dark:bg-gray-700 border dark:border-gray-600 text-sm hover:bg-gray-50 dark:hover:bg-gray-600 transition text-gray-700 dark:text-gray-200"
                             aria-label="Remove connection"
                           >
                             Remove
@@ -427,7 +427,7 @@ const InterestsSection = ({ interests = [], currentUserProfile, onUpdate = () =>
         <div className="text-center mt-4">
           <button
             onClick={() => setPage(p => p + 1)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white border rounded-full shadow hover:shadow-md"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-full shadow hover:shadow-md text-gray-700 dark:text-gray-200"
           >
             Load more
           </button>

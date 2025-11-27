@@ -20,7 +20,7 @@ const Socials = ({ socials }) => {
               href={social.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-2xl text-gray-500 dark:text-gray-300 hover:text-purple-600 transition-colors"
+              className="text-2xl text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
               whileHover={{ scale: 1.2, rotate: 5 }}
               whileTap={{ scale: 0.9 }}
             >

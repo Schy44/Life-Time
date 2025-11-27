@@ -270,17 +270,17 @@ const ProfilePage = () => {
   return (
     <>
       <AnimatedBackground />
-      <main className="min-h-screen p-0 bg-gray-50">
+      <main className="min-h-screen p-0 bg-gray-50 dark:bg-gray-900">
         <div className="w-full flex justify-center">
           <div className="w-full max-w-screen-xl px-6 py-8">
-            <div className="bg-white rounded-2xl shadow-md overflow-hidden p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md overflow-hidden p-6">
               {/* Action Buttons - Always visible */}
               <div className="flex justify-end gap-3 mb-6">
                 {!editSection ? (
                   <>
                     <button
                       onClick={() => setShowPreview(true)}
-                      className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition duration-200"
+                      className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition duration-200"
                     >
                       <FaEye /> Preview Public Profile
                     </button>
@@ -312,8 +312,8 @@ const ProfilePage = () => {
                     </motion.div>
 
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-                      <div className="bg-white rounded-xl shadow-sm border p-4">
-                        <h2 className="text-sm font-semibold text-gray-800 mb-4">Photo Gallery</h2>
+                      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 p-4">
+                        <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-4">Photo Gallery</h2>
                         <PhotoGallery images={additional_images || []} />
                       </div>
                     </motion.div>
@@ -321,8 +321,8 @@ const ProfilePage = () => {
                     {/* Faith Tags - Display under photo gallery */}
                     {profileData.faith_tags && profileData.faith_tags.length > 0 && (
                       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.25 }}>
-                        <div className="bg-white rounded-xl shadow-sm border p-4">
-                          <h2 className="text-sm font-semibold text-gray-800 mb-3">My Faith</h2>
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 p-4">
+                          <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-3">My Faith</h2>
                           <FaithTagsSection selectedTags={profileData.faith_tags} isEditing={false} />
                         </div>
                       </motion.div>
@@ -357,7 +357,7 @@ const ProfilePage = () => {
                   transition={{ duration: 0.5 }}
                   className="max-w-4xl mx-auto"
                 >
-                  <h1 className="text-3xl font-bold text-gray-800 mb-6">
+                  <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">
                     {editSection === 'about' && 'Edit About'}
                     {editSection === 'education' && 'Edit Education'}
                     {editSection === 'career' && 'Edit Career'}

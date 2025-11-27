@@ -173,6 +173,7 @@ export default function PublicProfilePage() {
     is_verified,
     compatibility_score,
     about = '',
+    looking_for = '',
     height_cm,
     religion,
     alcohol,
@@ -211,21 +212,28 @@ export default function PublicProfilePage() {
     <>
       <AnimatedBackground />
 
-      <main className="min-h-screen p-0 bg-gray-50">
+      <main className="min-h-screen p-0 bg-gray-50 dark:bg-gray-900">
         <div className="w-full flex justify-center">
           <div className="w-full max-w-screen-xl px-6">
-            <div className="bg-white rounded-2xl shadow-md overflow-hidden" style={{ transformStyle: 'preserve-3d', ...noBlurStyle }}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md overflow-hidden" style={{ transformStyle: 'preserve-3d', ...noBlurStyle }}>
               <div className="p-6">
                 {/* header */}
                 <div className="flex flex-col md:flex-row items-start justify-between gap-4 md:gap-0 mb-6">
                   <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">{name}</h1>
-                    <div className="text-sm text-gray-700 mt-1">{age} • {current_city || '—'}</div>
+                    <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{name}</h1>
+                    <div className="flex items-center gap-2 text-gray-700 dark:text-gray-200 mt-1 font-medium text-base">
+                      <span>{age}</span>
+                      <span>•</span>
+                      <div className="flex items-center gap-1">
+                        <FaMapMarkerAlt className="text-gray-500 dark:text-gray-400" size={14} />
+                        <span>{current_city || '—'}</span>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-3">
                     {compatibility_score != null && (
-                      <div className="text-sm font-semibold bg-gray-50 border px-3 py-1 rounded-full">{Math.round(compatibility_score)}%</div>
+                      <div className="text-sm font-semibold bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 px-3 py-1 rounded-full dark:text-gray-200">{Math.round(compatibility_score)}%</div>
                     )}
 
                     {is_verified && (
@@ -239,10 +247,10 @@ export default function PublicProfilePage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* left: image + gallery */}
                   <div className="lg:col-span-1 space-y-4">
-                    <div className="relative rounded-lg overflow-hidden bg-gray-100 border">
+                    <div className="relative rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 border dark:border-gray-600">
                       {/* Image count badge */}
                       {images.length > 0 && (
-                        <div className="absolute top-3 right-3 bg-white/90 px-3 py-1 rounded-full text-xs font-semibold text-gray-800 z-10 shadow">{images.length} Photos</div>
+                        <div className="absolute top-3 right-3 bg-white/90 dark:bg-gray-800/90 px-3 py-1 rounded-full text-xs font-semibold text-gray-800 dark:text-white z-10 shadow">{images.length} Photos</div>
                       )}
 
                       <img
@@ -264,7 +272,7 @@ export default function PublicProfilePage() {
                             key={idx}
                             onClick={() => setActiveImageIndex(idx)}
                             aria-label={`Thumbnail ${idx + 1}`}
-                            className={`h-20 rounded-md overflow-hidden border ${idx === activeImageIndex ? 'ring-2 ring-indigo-400' : 'border-gray-200'} focus:outline-none`}
+                            className={`h-20 rounded-md overflow-hidden border ${idx === activeImageIndex ? 'ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-600'} focus:outline-none`}
                             style={noBlurStyle}
                           >
                             <img src={src} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" style={noBlurStyle} />
@@ -276,14 +284,7 @@ export default function PublicProfilePage() {
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-gray-700">
-                          <FaMapMarkerAlt />
-                          <span className="text-sm">{current_city || '—'}</span>
-                        </div>
 
-                        <div className="text-sm text-gray-700">Age: <strong className="ml-1">{age}</strong></div>
-                      </div>
 
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -299,9 +300,19 @@ export default function PublicProfilePage() {
 
                       {/* Faith Tags - Display under photo section */}
                       {faith_tags && faith_tags.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                          <h3 className="text-xs font-semibold text-gray-700 mb-2">My Faith</h3>
+                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">My Faith</h3>
                           <FaithTagsSection selectedTags={faith_tags} isEditing={false} />
+                        </div>
+                      )}
+
+                      {/* Partner Expectations - Display under Faith Tags */}
+                      {looking_for && (
+                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Partner Expectations</h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                            {looking_for}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -310,15 +321,11 @@ export default function PublicProfilePage() {
                   {/* right: details */}
                   <div className="lg:col-span-2 space-y-4">
                     <SectionCard title="About" icon={<div className="text-indigo-600">•</div>}>
-                      <p className="text-sm text-gray-800 leading-relaxed">{about || 'No description provided.'}</p>
-
-                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <InfoRow label="Full name" value={name} />
-                        <InfoRow label="Relationship" value={marital_status || '—'} />
-                        <InfoRow label="Religion" value={religion || '—'} />
-                        <InfoRow label="Height" value={height_cm ? `${height_cm} cm` : '—'} />
-
-                      </div>
+                      <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{about || 'No description provided.'}</p>
+                      <InfoRow label="Full name" value={name} />
+                      <InfoRow label="Relationship" value={marital_status || '—'} />
+                      <InfoRow label="Religion" value={religion || '—'} />
+                      <InfoRow label="Height" value={height_cm ? `${height_cm} cm` : '—'} />
                     </SectionCard>
 
                     {/* NEW: Basics */}
@@ -359,11 +366,11 @@ export default function PublicProfilePage() {
                         {preferences && preferences[0] ? (
                           <div className="flex flex-wrap gap-2">
                             {Object.entries(preferences[0]).slice(0, 12).map(([k, v]) => (
-                              <span key={k} className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-800">{k.replace(/_/g, ' ')}: {String(v)}</span>
+                              <span key={k} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-sm text-gray-800 dark:text-gray-200">{k.replace(/_/g, ' ')}: {String(v)}</span>
                             ))}
                           </div>
                         ) : (
-                          <div className="text-sm text-gray-700">Not provided</div>
+                          <div className="text-sm text-gray-700 dark:text-gray-400">Not provided</div>
                         )}
                       </SectionCard>
                     </div>
@@ -372,15 +379,15 @@ export default function PublicProfilePage() {
                       {education.length ? (
                         <div className="space-y-3">
                           {education.map((e, i) => (
-                            <div key={i} className="p-3 border rounded-md bg-gray-50">
-                              <div className="text-sm font-semibold text-gray-900">{e.institution || e.degree || 'Education'}</div>
-                              <div className="text-xs text-gray-700">{e.field_of_study || ''}</div>
-                              <div className="text-xs text-gray-600 mt-1">{e.year_from ? `${e.year_from} - ${e.year_to || 'Present'}` : ''}</div>
+                            <div key={i} className="p-3 border dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700/50">
+                              <div className="text-sm font-semibold text-gray-900 dark:text-white">{e.institution || e.degree || 'Education'}</div>
+                              <div className="text-xs text-gray-700 dark:text-gray-300">{e.field_of_study || ''}</div>
+                              <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">{e.year_from ? `${e.year_from} - ${e.year_to || 'Present'}` : ''}</div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="text-sm text-gray-700">No education listed.</div>
+                        <div className="text-sm text-gray-700 dark:text-gray-400">No education listed.</div>
                       )}
                     </SectionCard>
 
@@ -388,19 +395,19 @@ export default function PublicProfilePage() {
                       {work_experience.length ? (
                         <div className="space-y-3">
                           {work_experience.map((w, i) => (
-                            <div key={i} className="p-3 border rounded-md bg-gray-50">
-                              <div className="text-sm font-semibold text-gray-900">{w.title || w.company || 'Work'}</div>
-                              <div className="text-xs text-gray-700">{w.company ? `${w.company} — ${w.location || ''}` : w.location}</div>
-                              <div className="text-xs text-gray-600 mt-1">{w.start_date ? `${w.start_date} - ${w.end_date || 'Present'}` : ''}</div>
+                            <div key={i} className="p-3 border dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700/50">
+                              <div className="text-sm font-semibold text-gray-900 dark:text-white">{w.title || w.company || 'Work'}</div>
+                              <div className="text-xs text-gray-700 dark:text-gray-300">{w.company ? `${w.company} — ${w.location || ''}` : w.location}</div>
+                              <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">{w.start_date ? `${w.start_date} - ${w.end_date || 'Present'}` : ''}</div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="text-sm text-gray-700">No work experience listed.</div>
+                        <div className="text-sm text-gray-700 dark:text-gray-400">No work experience listed.</div>
                       )}
                     </SectionCard>
 
-                    <div className="text-xs text-gray-600 text-right space-y-1">
+                    <div className="text-xs text-gray-600 dark:text-gray-400 text-right space-y-1">
                       <div>Member since: <strong>{formattedCreated}</strong></div>
                       <div>Last updated: <strong>{formattedUpdated}</strong></div>
                     </div>
@@ -409,17 +416,18 @@ export default function PublicProfilePage() {
               </div>
             </div>
           </div>
-        </div>
+        </div >
 
         {/* Image viewer modal */}
-        <AnimatePresence>
+        < AnimatePresence >
           {viewerOpen && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <ImageViewer images={images} startIndex={activeImageIndex} onClose={() => setViewerOpen(false)} />
             </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
+          )
+          }
+        </AnimatePresence >
+      </main >
     </>
   );
 }

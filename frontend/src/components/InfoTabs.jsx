@@ -50,7 +50,7 @@ const InfoTabs = ({ aboutData, educationData, careerData, preferencesData, inter
   return (
     <div>
       <nav className="flex justify-center mb-6">
-        <ul className="flex bg-white rounded-full p-1 shadow-md border border-gray-200">
+        <ul className="flex bg-white dark:bg-gray-800 rounded-full p-1 shadow-md border border-gray-200 dark:border-gray-700">
           {availableTabs.map((item) => (
             <li
               key={item}
@@ -63,7 +63,7 @@ const InfoTabs = ({ aboutData, educationData, careerData, preferencesData, inter
                 />
               )}
               <button
-                className={`relative px-4 py-2 rounded-full text-sm font-medium transition ${selectedTab === item ? 'text-white' : 'text-gray-700'
+                className={`relative px-4 py-2 rounded-full text-sm font-medium transition ${selectedTab === item ? 'text-white' : 'text-gray-700 dark:text-gray-300'
                   }`}
                 onClick={() => setSelectedTab(item)}
               >

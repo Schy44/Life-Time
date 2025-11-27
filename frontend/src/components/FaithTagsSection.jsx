@@ -77,7 +77,7 @@ const FaithTagsSection = ({ selectedTags = [], onTagsChange, isEditing = false }
           <motion.div
             key={tag}
             whileHover={{ scale: 1.05 }}
-            className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-900 border-2 border-gray-900"
+            className="px-3 py-1.5 rounded-full text-xs font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-2 border-gray-900 dark:border-gray-100"
           >
             {tag}
           </motion.div>
@@ -91,7 +91,7 @@ const FaithTagsSection = ({ selectedTags = [], onTagsChange, isEditing = false }
     <div className="space-y-6">
       {Object.entries(FAITH_TAGS).map(([category, tags]) => (
         <div key={category}>
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">{category}</h3>
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{category}</h3>
           <div className="flex flex-wrap gap-2">
             {tags.map((tag) => {
               const selected = isSelected(tag);
@@ -105,8 +105,8 @@ const FaithTagsSection = ({ selectedTags = [], onTagsChange, isEditing = false }
                   className={`
                     px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
                     ${selected
-                      ? 'bg-white text-gray-900 border-2 border-gray-900'
-                      : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-gray-400'
+                      ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-2 border-gray-900 dark:border-gray-100'
+                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-2 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
                     }
                     cursor-pointer
                   `}
@@ -119,7 +119,7 @@ const FaithTagsSection = ({ selectedTags = [], onTagsChange, isEditing = false }
         </div>
       ))}
 
-      <p className="text-xs text-gray-500 italic mt-4">
+      <p className="text-xs text-gray-500 dark:text-gray-400 italic mt-4">
         Click on tags to select or deselect them. You can choose multiple tags that represent you.
       </p>
     </div>

@@ -13,7 +13,7 @@ const CareerSection = ({ careerData, onEdit }) => {
         {onEdit && (
           <button
             onClick={onEdit}
-            className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+            className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium"
           >
             Edit
           </button>
