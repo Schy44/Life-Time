@@ -11,6 +11,7 @@ from rest_framework import viewsets
 from .models import Profile, Interest, WorkExperience, Notification
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from datetime import date, timedelta
@@ -84,26 +85,7 @@ class ProfessionListView(APIView):
         return Response(professions)
 
 
-class RegisterView(APIView):
-    def post(self, request):
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            # Create a profile for the new user
-            Profile.objects.create(user=user)
-            token, created = Token.objects.get_or_create(user=user)
-            return Response({'token': token.key}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class LoginView(APIView):
-    def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
-        user = authenticate(username=username, password=password)
-        if user:
-            token, created = Token.objects.get_or_create(user=user)
-            return Response({'token': token.key})
-        return Response({'error': 'Invalid Credentials'}, status=status.HTTP_400_BAD_REQUEST)
+# RegisterView and LoginView removed - authentication now handled by Supabase Auth on frontend
 
 class UserView(APIView):
     permission_classes = [IsAuthenticated]
@@ -130,6 +112,7 @@ class ProfileViewSet(viewsets.ModelViewSet):
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
+    pagination_class = PageNumberPagination
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -157,7 +140,14 @@ class ProfileViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def get_queryset(self):
-        queryset = Profile.objects.all().prefetch_related('work_experience', 'education')
+        # Optimize queryset with select_related and prefetch_related to reduce queries
+        queryset = Profile.objects.select_related('user').prefetch_related(
+            'work_experience',
+            'education', 
+            'additional_images',
+            'preference'
+        )
+        
         if self.action == 'list':
             queryset = queryset.exclude(user=self.request.user)
 

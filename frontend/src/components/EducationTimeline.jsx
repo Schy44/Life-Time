@@ -2,10 +2,20 @@ import React from 'react';
 import GlassCard from './GlassCard';
 import './Components.css';
 
-const EducationTimeline = ({ educationData }) => {
+const EducationTimeline = ({ educationData, onEdit }) => {
   return (
     <GlassCard className="p-6">
-      <h2 className="section-title dark:text-white">Education</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="section-title dark:text-white">Education</h2>
+        {onEdit && (
+          <button
+            onClick={onEdit}
+            className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+          >
+            Edit
+          </button>
+        )}
+      </div>
       <div className="timeline-container">
         {educationData && educationData.map((item, index) => (
           <div key={index} className="timeline-item">

@@ -2,7 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   margin: 0;
   padding: 0;
@@ -23,11 +25,13 @@ body {
 }
 
 html.light {
-  background-color: #f0f2f5; /* Light mode background */
+  background-color: #f0f2f5;
+  /* Light mode background */
 }
 
 html.dark {
-  background-color: #000; /* Dark mode background */
+  background-color: #000;
+  /* Dark mode background */
 }
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap');

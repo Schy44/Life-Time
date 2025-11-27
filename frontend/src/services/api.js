@@ -2,7 +2,7 @@ import apiClient from '../lib/api';
 
 export const getCountries = async () => {
     const response = await apiClient.get('/countries/');
-    return response.data.map(c => ({...c, value: c.code, label: c.name}));
+    return response.data.map(c => ({ ...c, value: c.code, label: c.name }));
 };
 
 export const getProfessions = async () => {
@@ -10,8 +10,8 @@ export const getProfessions = async () => {
     return response.data;
 };
 
-export const getProfiles = async () => {
-    const response = await apiClient.get('/profiles/');
+export const getProfiles = async (params = {}) => {
+    const response = await apiClient.get('/profiles/', { params });
     return response.data;
 };
 
@@ -52,21 +52,21 @@ export const cancelInterest = async (interestId) => {
 
 // --- Notification API Functions ---
 export const getNotifications = async () => {
-  const response = await apiClient.get('/notifications/');
-  return response.data;
+    const response = await apiClient.get('/notifications/');
+    return response.data;
 };
 
 export const markNotificationAsRead = async (notificationId) => {
-  const response = await apiClient.post('/notifications/mark-read/', { id: notificationId });
-  return response.data;
+    const response = await apiClient.post('/notifications/mark-read/', { id: notificationId });
+    return response.data;
 };
 
 export const markAllNotificationsAsRead = async () => {
-  const response = await apiClient.post('/notifications/mark-read/', { all: true });
-  return response.data;
+    const response = await apiClient.post('/notifications/mark-read/', { all: true });
+    return response.data;
 };
 
 export const getUnreadNotificationCount = async () => {
-  const response = await apiClient.get('/notifications/unread-count/');
-  return response.data;
+    const response = await apiClient.get('/notifications/unread-count/');
+    return response.data;
 };

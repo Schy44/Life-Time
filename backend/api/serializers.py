@@ -39,7 +39,8 @@ class AdditionalImageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AdditionalImage
-        fields = ('id', 'image', 'image_url')
+        fields = ('id', 'image', 'image_url', 'caption', 'order', 'uploaded_at')
+        read_only_fields = ('uploaded_at',)
 
     def get_image_url(self, obj):
         if obj.image:
@@ -63,8 +64,8 @@ class WorkExperienceSerializer(serializers.ModelSerializer):
 class PreferenceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Preference
-        fields = ('id', 'min_age', 'max_age', 'min_height_cm', 'religion', 'marital_statuses',
-                  'country', 'profession', 'require_non_alcoholic', 'require_non_smoker')
+        fields = ('id', 'min_age', 'max_age', 'min_height_inches', 'religion', 'marital_statuses',
+                  'country', 'profession')
 
 
 class NestedProfileSerializer(serializers.ModelSerializer):
@@ -100,18 +101,19 @@ class ProfileSerializer(serializers.ModelSerializer):
     additional_images_to_keep = serializers.ListField(
         child=serializers.IntegerField(), write_only=True, required=False
     )
+    clear_profile_image = serializers.BooleanField(write_only=True, required=False)
 
     class Meta:
         model = Profile
         fields = (
             'id', 'user', 'profile_for', 'name', 'date_of_birth', 'birth_year', 'gender',
-            'profile_image', 'additional_images', 'height_cm', 'blood_group', 'religion', 'alcohol', 'smoking',
+            'profile_image', 'additional_images', 'height_inches', 'skin_complexion', 'blood_group', 'religion',
             'current_city', 'current_country', 'origin_city', 'origin_country', 'visa_status', 'citizenship',
             'father_occupation', 'mother_occupation', 'siblings', 'family_type', 'marital_status', 'about', 'looking_for', 'email', 'phone',
             'facebook_profile', 'instagram_profile', 'linkedin_profile', 'is_verified',
             'profile_image_privacy', 'additional_images_privacy', 'is_deleted', 'created_at', 'updated_at',
             'education', 'work_experience', 'preference', 'uploaded_images', 'additional_images_to_keep',
-            'compatibility_score', 'interest'
+            'compatibility_score', 'interest', 'faith_tags', 'clear_profile_image'
         )
         read_only_fields = ('user', 'is_verified', 'birth_year',
                             'additional_images', 'created_at', 'updated_at', 'interest')
@@ -122,7 +124,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
         # The frontend sends some nested data as JSON strings. We need to parse them.
         json_fields = ['education', 'work_experience',
-                       'preference']
+                       'preference', 'faith_tags']
         for field in json_fields:
             field_value = data.get(field)
             if field_value and isinstance(field_value, str):
@@ -216,17 +218,20 @@ class ProfileSerializer(serializers.ModelSerializer):
         education_data = validated_data.pop('education', None)
         work_experience_data = validated_data.pop('work_experience', None)
         preference_data = validated_data.pop('preference', None)
+        clear_profile_image = validated_data.pop('clear_profile_image', False)
 
         # Update the main Profile instance with its own fields
         # This call handles the profile_image update correctly and saves the instance.
         instance = super().update(instance, validated_data)
 
+        if clear_profile_image:
+            instance.profile_image = None
+            instance.save()
+
         # --- Handle Additional Images ---
         if additional_images_to_keep is not None:
             # Normalize to list of ints (defensive)
             ids_to_keep = self._coerce_to_int_list(additional_images_to_keep)
-            # DEBUG: uncomment if you need to inspect
-            # print(f"DEBUG: additional_images_to_keep normalized: {ids_to_keep} (original: {additional_images_to_keep})")
 
             # Delete images that are not in the 'to_keep' list
             # If ids_to_keep is empty list -> exclude(id__in=[]) matches all rows (Django treats it as empty set, so nothing gets excluded),
@@ -286,73 +291,130 @@ class ProfileSerializer(serializers.ModelSerializer):
         return instance
 
     def get_compatibility_score(self, obj):
+        """
+        Calculate compatibility score between authenticated user and profile.
+        Returns 0-100 score based on weighted preference matching.
+        Uses mutual compatibility (average of both directions).
+        """
         request = self.context.get('request')
-        if not request or not request.user.is_authenticated or not hasattr(request.user, 'profile') or obj == request.user.profile:
+        
+        # Validation checks
+        if not request or not request.user.is_authenticated:
             return None
-
+        if not hasattr(request.user, 'profile'):
+            return None
+        if obj == request.user.profile:
+            return None
+        
         user_profile = request.user.profile
-
-        # Don't show compatibility score for same gender
-        if user_profile.gender == obj.gender:
+        other_profile = obj
+        
+        # Don't show compatibility for same gender
+        if user_profile.gender == other_profile.gender:
             return None
-        if not hasattr(user_profile, 'preference'):
-            return None  # Return None if the user has no preference object
-
-        preferences = user_profile.preference
+        
+        # Calculate scores in both directions (mutual compatibility)
+        my_score = self._calculate_one_way_compatibility(user_profile, other_profile)
+        their_score = self._calculate_one_way_compatibility(other_profile, user_profile)
+        
+        # Return average (mutual compatibility)
+        if my_score is None and their_score is None:
+            return None
+        elif my_score is None:
+            return their_score
+        elif their_score is None:
+            return my_score
+        else:
+            return int((my_score + their_score) / 2)
+    
+    def _calculate_one_way_compatibility(self, viewer_profile, viewed_profile):
+        """
+        Calculate how well viewed_profile matches viewer_profile's preferences.
+        Returns score 0-100 or None if no preferences set.
+        """
+        if not hasattr(viewer_profile, 'preference'):
+            return None
+        
+        prefs = viewer_profile.preference
         score = 0
         max_score = 0
-
-        # Age
-        if preferences.min_age is not None and preferences.max_age is not None and obj.age is not None:
-            max_score += 20  # Higher weight for age
-            if preferences.min_age <= obj.age <= preferences.max_age:
-                score += 20
-
-        # Height
-        if preferences.min_height_cm is not None and obj.height_cm is not None:
-            max_score += 10  # Lower weight for height
-            if preferences.min_height_cm <= obj.height_cm:
-                score += 10
-
-        # Religion
-        if preferences.religion and obj.religion:
-            max_score += 20  # Higher weight for religion
-            if obj.religion == preferences.religion:
-                score += 20
-
-        # Marital Status
-        if preferences.marital_statuses and obj.marital_status:
-            max_score += 15  # Medium weight for marital status
-            if obj.marital_status in preferences.marital_statuses:
+        
+        # 1. AGE (Weight: 25) - Sliding scale with grace range
+        if prefs.min_age and prefs.max_age and viewed_profile.age:
+            max_score += 25
+            age = viewed_profile.age
+            
+            if prefs.min_age <= age <= prefs.max_age:
+                # Perfect match
+                score += 25
+            elif prefs.min_age - 2 <= age <= prefs.max_age + 2:
+                # Within grace range (±2 years)
                 score += 15
-
-        # Country
-        if preferences.country and obj.current_country:
-            max_score += 15  # Medium weight for country
-            if obj.current_country == preferences.country:
+            elif prefs.min_age - 5 <= age <= prefs.max_age + 5:
+                # Close but not ideal (±5 years)
+                score += 5
+        
+        # 2. RELIGION (Weight: 25) - Critical factor
+        if prefs.religion and viewed_profile.religion:
+            max_score += 25
+            if viewed_profile.religion == prefs.religion:
+                score += 25
+        
+        # 3. COUNTRY (Weight: 20) - Fixed array matching
+        if prefs.country and viewed_profile.current_country:
+            max_score += 20
+            # prefs.country is an array, check if current_country is in it
+            if viewed_profile.current_country in prefs.country:
+                score += 20
+        
+        # 4. MARITAL STATUS (Weight: 15) - Array matching
+        if prefs.marital_statuses and viewed_profile.marital_status:
+            max_score += 15
+            if viewed_profile.marital_status in prefs.marital_statuses:
                 score += 15
-
-        # Profession
-        if preferences.profession and obj.work_experience.exists():
+        
+        # 5. PROFESSION (Weight: 10) - Fixed array comparison
+        if prefs.profession and viewed_profile.work_experience.exists():
             max_score += 10
-            if preferences.profession.lower() in [work.title.lower() for work in obj.work_experience.all()]:
+            viewed_professions = [work.title.lower() for work in viewed_profile.work_experience.all()]
+            # prefs.profession is an array, check if any matches
+            if any(pref_prof.lower() in ' '.join(viewed_professions) for pref_prof in prefs.profession):
                 score += 10
-
-        # Alcohol
-        if preferences.require_non_alcoholic and obj.alcohol:
-            max_score += 5  # Lower weight for lifestyle
-            if obj.alcohol == 'never':
+        
+        # 6. HEIGHT (Weight: 10) - Sliding scale
+        if prefs.min_height_inches and viewed_profile.height_inches:
+            max_score += 10
+            if viewed_profile.height_inches >= prefs.min_height_inches:
+                # Above preferred minimum
+                score += 10
+            elif viewed_profile.height_inches >= prefs.min_height_inches - 2:
+                # Within 2 inches below preferred
                 score += 5
-
-        # Smoking
-        if preferences.require_non_smoker and obj.smoking:
-            max_score += 5  # Lower weight for lifestyle
-            if obj.smoking == 'never':
-                score += 5
-
+        
+        # 7. LIFESTYLE (Weight: 10) - Faith Tags Check
+        # Check for "Non-Smoker" and "Non-Drinker" tags if required
+        # Note: This assumes specific tag names. Adjust if tag names differ.
+        lifestyle_score = 0
+        lifestyle_max = 0
+        
+        # Example logic: If preference requires non-smoker/drinker, check faith_tags
+        # Since we removed specific boolean flags from Preference model, we might need to 
+        # re-evaluate how lifestyle preferences are stored. 
+        # For now, let's skip lifestyle scoring or base it on matching faith tags if implemented.
+        
+        # Alternative: If you added specific tags to Preference model, use them.
+        # If not, we can remove this section or use a placeholder.
+        # Let's remove the old logic for now to fix the error.
+        
+        if lifestyle_max > 0:
+            max_score += 10
+            # Normalize lifestyle score to 10 points
+            score += int((lifestyle_score / lifestyle_max) * 10)
+        
+        # Calculate final percentage
         if max_score == 0:
-            return None  # Return None if no preferences are set
-
+            return None
+        
         return int((score / max_score) * 100)
 
     def get_interest(self, obj):
@@ -380,8 +442,6 @@ class ProfileSerializer(serializers.ModelSerializer):
         representation = super().to_representation(instance)
         request = self.context.get('request')
 
-        print(f"DEBUG: ProfileSerializer to_representation - instance.work_experience.all(): {instance.work_experience.all()}")
-        print(f"DEBUG: ProfileSerializer to_representation - representation: {representation}")
 
         if request and request.user.is_authenticated and request.user.profile != instance:
             requesting_user_profile = request.user.profile

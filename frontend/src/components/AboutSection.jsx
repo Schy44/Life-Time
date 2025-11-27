@@ -1,68 +1,103 @@
 import React from 'react';
-import GlassCard from './GlassCard';
+import SectionCard from './SectionCard';
+import InfoRow from './InfoRow';
 import './Components.css';
-import { ArrowUpRight, Heart, Book, MapPin, Home, Flag, Martini, Cigarette } from 'lucide-react';
+import {
+  ArrowUpRight,
+  Heart,
+  Book,
+  MapPin,
+  Home,
+  Flag,
+  Martini,
+  Cigarette,
+  Droplet,
+  Plane,
+  Users,
+  Briefcase as BriefcaseIcon
+} from 'lucide-react';
 
 const formatString = (str) => {
   if (typeof str !== 'string') return str;
   return str.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
 };
 
-const iconMapping = {
-  height: <ArrowUpRight size={20} className="text-purple-400" />,
-  marital_status: <Heart size={20} className="text-purple-400" />,
-  religion: <Book size={20} className="text-purple-400" />,
-  city: <MapPin size={20} className="text-purple-400" />,
-  origin: <Home size={20} className="text-purple-400" />,
-  citizenship: <Flag size={20} className="text-purple-400" />,
-  alcohol: <Martini size={20} className="text-purple-400" />,
-  smoking: <Cigarette size={20} className="text-purple-400" />,
-};
-
-const AboutSection = ({ aboutData, userLanguages }) => {
-  const { about, basicInfo, lifestyle } = aboutData;
+const AboutSection = ({ aboutData, onEdit }) => {
+  const { about, looking_for, basicInfo, basics, locationResidency, family } = aboutData || {};
 
   return (
-    <GlassCard className="p-6">
-      <h2 className="section-title dark:text-white">About Me</h2>
-      <p className="text-gray-700 dark:text-gray-300 mb-6">{about}</p>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <h3 className="subsection-title dark:text-white">Basic Information</h3>
-          <div className="space-y-4 mt-4">
-            {Object.entries(basicInfo).map(([key, value]) => (
-              <div key={key} className="flex items-center space-x-4">
-                <div className="w-8 h-8 flex-shrink-0 bg-purple-600/10 rounded-full flex items-center justify-center">
-                  {iconMapping[key] || <div className="w-5 h-5 bg-purple-400 rounded-full" />}
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-800 dark:text-white">{formatString(key)}</p>
-                  <p className="text-gray-600 dark:text-gray-300">{formatString(value)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div>
-          <h3 className="subsection-title dark:text-white">Lifestyle & Hobbies</h3>
-          <div className="space-y-4 mt-4">
-            {Object.entries(lifestyle).map(([key, value]) => (
-              <div key={key} className="flex items-center space-x-4">
-                <div className="w-8 h-8 flex-shrink-0 bg-purple-600/10 rounded-full flex items-center justify-center">
-                  {iconMapping[key] || <div className="w-5 h-5 bg-purple-400 rounded-full" />}
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-800 dark:text-white">{formatString(key)}</p>
-                  <p className="text-gray-600 dark:text-gray-300">{Array.isArray(value) ? value.map(item => typeof item === 'object' ? `${item.language} (${item.level})` : item).join(', ') : formatString(value)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+    <div className="space-y-4">
+      {/* About Section */}
+      {(about || looking_for) && (
+        <SectionCard title="About" icon={<Heart className="text-red-500" size={18} />}>
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              className="float-right text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+            >
+              Edit
+            </button>
+          )}
+          {about && <p className="text-gray-700 leading-relaxed">{about}</p>}
 
-    </GlassCard>
+          {looking_for && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Looking For</h4>
+              <p className="text-gray-700 leading-relaxed">{looking_for}</p>
+            </div>
+          )}
+        </SectionCard>
+      )}
+
+      {/* Basic Information */}
+      {basicInfo && Object.keys(basicInfo).length > 0 && (
+        <SectionCard title="Basic Information" icon={<Heart size={20} className="text-indigo-600" />}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {basicInfo.profile_for && <InfoRow label="Profile created by" value={basicInfo.profile_for === 'self' ? 'Self' : `Parent/Relative (${basicInfo.profile_for})`} />}
+            {basicInfo.gender && <InfoRow label="Gender" value={formatString(basicInfo.gender)} />}
+            {basicInfo.height && <InfoRow label="Height" value={basicInfo.height} />}
+            {basicInfo.skin_complexion && <InfoRow label="Skin Complexion" value={formatString(basicInfo.skin_complexion)} />}
+            {basicInfo.marital_status && <InfoRow label="Relationship" value={formatString(basicInfo.marital_status)} />}
+            {basicInfo.religion && <InfoRow label="Religion" value={formatString(basicInfo.religion)} />}
+            {basicInfo.citizenship && <InfoRow label="Citizenship" value={formatString(basicInfo.citizenship)} />}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Basics (Blood Group, etc.) */}
+      {basics && Object.keys(basics).filter(k => basics[k]).length > 0 && (
+        <SectionCard title="Basics" icon={<Droplet size={20} className="text-indigo-600" />}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {basics.blood_group && <InfoRow label="Blood group" value={basics.blood_group} />}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Location & Residency */}
+      {locationResidency && Object.keys(locationResidency).filter(k => locationResidency[k]).length > 0 && (
+        <SectionCard title="Location & Residency" icon={<MapPin size={20} className="text-indigo-600" />}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {locationResidency.current_city && <InfoRow label="Current city" value={locationResidency.current_city} />}
+            {locationResidency.current_country && <InfoRow label="Current country" value={locationResidency.current_country} />}
+            {locationResidency.origin_city && <InfoRow label="Origin city" value={locationResidency.origin_city} />}
+            {locationResidency.origin_country && <InfoRow label="Origin country" value={locationResidency.origin_country} />}
+            {locationResidency.visa_status && <InfoRow label="Visa status" value={formatString(locationResidency.visa_status)} />}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Family */}
+      {family && Object.keys(family).filter(k => family[k]).length > 0 && (
+        <SectionCard title="Family" icon={<Users size={20} className="text-indigo-600" />}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {family.father_occupation && <InfoRow label="Father's occupation" value={family.father_occupation} />}
+            {family.mother_occupation && <InfoRow label="Mother's occupation" value={family.mother_occupation} />}
+            {family.siblings && <InfoRow label="Siblings" value={family.siblings} />}
+            {family.family_type && <InfoRow label="Family type" value={formatString(family.family_type)} />}
+          </div>
+        </SectionCard>
+      )}
+    </div>
   );
 };
 

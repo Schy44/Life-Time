@@ -298,13 +298,13 @@ const InterestsSection = ({ interests = [], currentUserProfile, onUpdate = () =>
             <button
               key={t.key}
               onClick={() => { setActiveTab(t.key); setPage(1); }}
-              className={`px-4 py-2 rounded-full text-sm transition-all ${activeTab === t.key
-                ? 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-md'
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${activeTab === t.key
+                ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-sm'
                 : 'bg-white/60 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               aria-pressed={activeTab === t.key}
             >
-              {t.label} <span className="ml-2 inline-block text-xs opacity-80">({t.count})</span>
+              {t.label} <span className="ml-1.5 text-xs opacity-80">({t.count})</span>
             </button>
           ))}
         </div>

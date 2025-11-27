@@ -6,7 +6,7 @@ import CareerSection from './CareerSection';
 import PreferencesCard from './PreferencesCard';
 import InterestsSection from './InterestsSection';
 
-const InfoTabs = ({ aboutData, educationData, careerData, preferencesData, interestsData, currentUserProfile, onUpdateInterests, onUpdateProfile, showPreferences }) => {
+const InfoTabs = ({ aboutData, educationData, careerData, preferencesData, interestsData, currentUserProfile, onUpdateInterests, onUpdateProfile, showPreferences, onEditSection }) => {
   const [availableTabs, setAvailableTabs] = useState([]);
   const [selectedTab, setSelectedTab] = useState('');
 
@@ -34,11 +34,11 @@ const InfoTabs = ({ aboutData, educationData, careerData, preferencesData, inter
   const renderContent = () => {
     switch (selectedTab) {
       case 'About':
-        return <AboutSection aboutData={aboutData} />;
+        return <AboutSection aboutData={aboutData} onEdit={() => onEditSection?.('about')} />;
       case 'Education':
-        return <EducationTimeline educationData={educationData} onUpdateProfile={onUpdateProfile} />;
+        return <EducationTimeline educationData={educationData} onUpdateProfile={onUpdateProfile} onEdit={() => onEditSection?.('education')} />;
       case 'Career':
-        return <CareerSection careerData={careerData} onUpdateProfile={onUpdateProfile} />; case 'Preferences':
+        return <CareerSection careerData={careerData} onUpdateProfile={onUpdateProfile} onEdit={() => onEditSection?.('career')} />; case 'Preferences':
         return <PreferencesCard preferencesData={preferencesData} />;
       case 'Interests':
         return <InterestsSection interests={interestsData} currentUserProfile={currentUserProfile} onUpdate={onUpdateInterests} />;
@@ -50,17 +50,25 @@ const InfoTabs = ({ aboutData, educationData, careerData, preferencesData, inter
   return (
     <div>
       <nav className="flex justify-center mb-6">
-        <ul className="flex bg-white/50 rounded-full p-1 shadow-inner">
+        <ul className="flex bg-white rounded-full p-1 shadow-md border border-gray-200">
           {availableTabs.map((item) => (
             <li
               key={item}
-              className={`px-4 py-2 rounded-full cursor-pointer relative text-sm font-medium transition ${selectedTab === item ? 'text-white' : 'text-gray-600 dark:text-gray-300'}`}
-              onClick={() => setSelectedTab(item)}
+              className="relative"
             >
-              {item}
               {selectedTab === item && (
-                <motion.div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-500 rounded-full -z-10" layoutId="bubble" />
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"
+                  layoutId="bubble"
+                />
               )}
+              <button
+                className={`relative px-4 py-2 rounded-full text-sm font-medium transition ${selectedTab === item ? 'text-white' : 'text-gray-700'
+                  }`}
+                onClick={() => setSelectedTab(item)}
+              >
+                {item}
+              </button>
             </li>
           ))}
         </ul>

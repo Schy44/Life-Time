@@ -1,14 +1,13 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import RegisterView, LoginView, UserView, ProfileViewSet, ProfileDetailView, InterestViewSet, CountryListView, ProfessionListView, NotificationListView, MarkNotificationAsReadView, UnreadNotificationCountView
+from .views import UserView, ProfileViewSet, ProfileDetailView, InterestViewSet, CountryListView, ProfessionListView, NotificationListView, MarkNotificationAsReadView, UnreadNotificationCountView
 
 router = DefaultRouter()
 router.register('profiles', ProfileViewSet, basename='profile')
 router.register('interests', InterestViewSet, basename='interest')
 
 urlpatterns = [
-    path('register/', RegisterView.as_view(), name='register'),
-    path('login/', LoginView.as_view(), name='login'),
+    # Authentication now handled by Supabase on frontend
     path('user/', UserView.as_view(), name='user'),
     path('profile/', ProfileDetailView.as_view(), name='profile-detail'),
     path('countries/', CountryListView.as_view(), name='country-list'),

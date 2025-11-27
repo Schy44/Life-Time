@@ -2,13 +2,23 @@ import React from 'react';
 import GlassCard from './GlassCard';
 import './Components.css';
 
-const CareerSection = ({ careerData }) => {
+const CareerSection = ({ careerData, onEdit }) => {
   const currentJob = careerData?.find(job => job.currently_working);
   const previousJobs = careerData?.filter(job => !job.currently_working);
 
   return (
     <GlassCard className="p-6">
-      <h2 className="section-title dark:text-white">Career</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="section-title dark:text-white">Career</h2>
+        {onEdit && (
+          <button
+            onClick={onEdit}
+            className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+          >
+            Edit
+          </button>
+        )}
+      </div>
       <div className="space-y-4">
         {currentJob && (
           <div>

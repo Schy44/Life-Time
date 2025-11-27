@@ -1,82 +1,175 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { getProfiles, getProfile } from '../services/api';
+import { getProfiles, getProfile, sendInterest } from '../services/api';
 import GlassCard from '../components/GlassCard';
 import AnimatedBackground from '../components/AnimatedBackground';
-import { motion } from 'framer-motion';
-import { Search, MapPin, Filter, XCircle, Zap, User } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, MapPin, Filter, XCircle, Zap, User, Grid, List, Heart, Clock, Activity } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const ProfilesListPage = () => {
   const [profiles, setProfiles] = useState([]);
-  const [filteredProfiles, setFilteredProfiles] = useState([]);
+  const [allProfiles, setAllProfiles] = useState([]); // Cache all profiles for client-side filtering
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [error, setError] = useState(null);
+
+  // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
   const [ageFilter, setAgeFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
   const [interestFilter, setInterestFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('default');
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+
+  // View Mode
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
+  const [sendingInterest, setSendingInterest] = useState({}); // Track loading state per profile
 
+  // Debounce timer ref
+  const searchDebounceTimer = useRef(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [profilesData, userProfileData] = await Promise.all([
-          getProfiles(),
-          getProfile() // Fetch current user's profile
-        ]);
-        setProfiles(profilesData);
-        setFilteredProfiles(profilesData);
-        setCurrentUserProfile(userProfileData);
-      } catch (err) {
-        setError('Failed to fetch data.');
-        console.error(err);
-      } finally {
-        setLoading(false);
+  // Helper to check if profile is new (created within last 7 days)
+  const isNewProfile = (createdAt) => {
+    if (!createdAt) return false;
+    const created = new Date(createdAt);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return created > sevenDaysAgo;
+  };
+
+  // Helper to check if profile is active (updated within last 24 hours)
+  const isActiveProfile = (updatedAt) => {
+    if (!updatedAt) return false;
+    const updated = new Date(updatedAt);
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    return updated > oneDayAgo;
+  };
+
+  const fetchProfiles = useCallback(async (pageNum, reset = false) => {
+    try {
+      if (pageNum === 1 && initialLoad) setLoading(true);
+      else if (pageNum === 1) setLoadingMore(true);
+      else setLoadingMore(true);
+
+      const params = {
+        page: pageNum,
+        search: searchTerm,
+        age: ageFilter,
+        gender: genderFilter,
+        interest: interestFilter,
+      };
+
+      // If sorting by compatibility, we might need to handle it client-side if backend doesn't support it yet,
+      // or pass a sort param. For now, let's keep client-side sort logic or assume backend returns default order.
+      // Note: Backend pagination usually conflicts with client-side sorting of *all* data. 
+      // Ideally backend handles sort. For now, we'll fetch pages and sort what we have if needed, 
+      // but true compatibility sort requires backend support. 
+      // Let's assume default backend sort for now.
+
+      const response = await getProfiles(params);
+
+      // DRF PageNumberPagination returns { count: 123, next: '...', previous: '...', results: [...] }
+      // If your backend returns a flat list, this needs adjustment. 
+      // Assuming standard DRF pagination based on the plan.
+
+      let newProfiles = [];
+      let hasNextPage = false;
+
+      if (response.results) {
+        newProfiles = response.results;
+        hasNextPage = !!response.next;
+      } else if (Array.isArray(response)) {
+        // Fallback if pagination is not enabled on backend yet
+        newProfiles = response;
+        hasNextPage = false;
       }
-    };
 
-    fetchData();
-  }, []);
+      if (reset) {
+        setProfiles(newProfiles);
+        setAllProfiles(newProfiles); // Cache for client-side filtering
+      } else {
+        const combined = [...profiles, ...newProfiles];
+        setProfiles(combined);
+        setAllProfiles(combined);
+      }
 
+      setHasMore(hasNextPage);
+
+    } catch (err) {
+      setError('Failed to fetch profiles.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+      if (initialLoad) setInitialLoad(false);
+    }
+  }, [searchTerm, ageFilter, genderFilter, interestFilter]);
+
+  // Client-side filtering for instant results
   useEffect(() => {
-    let currentProfiles = [...profiles];
+    let filtered = [...allProfiles];
 
     // Apply search term
     if (searchTerm) {
-      currentProfiles = currentProfiles.filter(
+      const lowerSearch = searchTerm.toLowerCase();
+      filtered = filtered.filter(
         (profile) =>
-          profile.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          profile.current_city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          profile.current_country.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (profile.bio && profile.bio.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (profile.interests &&
-            profile.interests.some((interest) =>
-              interest.toLowerCase().includes(searchTerm.toLowerCase())
-            ))
+          profile.name?.toLowerCase().includes(lowerSearch) ||
+          profile.current_city?.toLowerCase().includes(lowerSearch) ||
+          profile.current_country?.toLowerCase().includes(lowerSearch) ||
+          profile.bio?.toLowerCase().includes(lowerSearch)
       );
+
+      // Generate suggestions
+      const nameSuggestions = allProfiles
+        .filter(p => p.name?.toLowerCase().includes(lowerSearch))
+        .slice(0, 3)
+        .map(p => ({ type: 'name', value: p.name, id: p.id }));
+
+      const citySuggestions = [...new Set(
+        allProfiles
+          .filter(p => p.current_city?.toLowerCase().includes(lowerSearch))
+          .map(p => p.current_city)
+      )]
+        .slice(0, 2)
+        .map(city => ({ type: 'city', value: city }));
+
+      setSuggestions([...nameSuggestions, ...citySuggestions]);
+      setShowSuggestions(true);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
     }
 
     // Apply age filter
     if (ageFilter) {
       const [minAge, maxAge] = ageFilter.split('-').map(Number);
-      currentProfiles = currentProfiles.filter(
+      filtered = filtered.filter(
         (profile) => profile.age >= minAge && profile.age <= maxAge
       );
     }
 
     // Apply gender filter
     if (genderFilter) {
-      currentProfiles = currentProfiles.filter(
-        (profile) => profile.gender.toLowerCase() === genderFilter.toLowerCase()
+      filtered = filtered.filter(
+        (profile) => profile.gender?.toLowerCase() === genderFilter.toLowerCase()
       );
     }
 
     // Apply interest filter
     if (interestFilter) {
-      currentProfiles = currentProfiles.filter(
+      filtered = filtered.filter(
         (profile) =>
           profile.interests &&
           profile.interests.some((interest) =>
@@ -85,13 +178,32 @@ const ProfilesListPage = () => {
       );
     }
 
-    // Apply sorting
-    if (sortBy === 'compatibility') {
-      currentProfiles.sort((a, b) => (b.compatibility_score || 0) - (a.compatibility_score || 0));
-    }
+    setProfiles(filtered);
+  }, [searchTerm, ageFilter, genderFilter, interestFilter, allProfiles]);
 
-    setFilteredProfiles(currentProfiles);
-  }, [searchTerm, ageFilter, genderFilter, interestFilter, profiles, sortBy]);
+  // Initial load only
+  useEffect(() => {
+    fetchProfiles(1, true);
+  }, [fetchProfiles]);
+
+  // Fetch current user profile once
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userProfile = await getProfile();
+        setCurrentUserProfile(userProfile);
+      } catch (err) {
+        console.error("Failed to fetch user profile", err);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchProfiles(nextPage, false);
+  };
 
   const handleClearFilters = () => {
     setSearchTerm('');
@@ -99,6 +211,33 @@ const ProfilesListPage = () => {
     setGenderFilter('');
     setInterestFilter('');
   };
+
+  const handleSendInterest = async (e, profileId) => {
+    e.preventDefault(); // Prevent navigation
+    e.stopPropagation();
+
+    if (sendingInterest[profileId]) return;
+
+    setSendingInterest(prev => ({ ...prev, [profileId]: true }));
+    try {
+      await sendInterest(profileId);
+      alert("Interest sent successfully!");
+      // Optionally update local state to show "Sent" status
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.error || "Failed to send interest.");
+    } finally {
+      setSendingInterest(prev => ({ ...prev, [profileId]: false }));
+    }
+  };
+
+  // Client-side sorting for the *currently loaded* profiles
+  const sortedProfiles = [...profiles].sort((a, b) => {
+    if (sortBy === 'compatibility') {
+      return (b.compatibility_score || 0) - (a.compatibility_score || 0);
+    }
+    return 0; // Default order (usually ID or created_at from backend)
+  });
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -110,19 +249,8 @@ const ProfilesListPage = () => {
     visible: { y: 0, opacity: 1 },
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen text-purple-400 text-xl font-semibold">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          style={{ fontSize: '3rem' }}
-        >
-          <Zap />
-        </motion.div>
-        <span className="ml-4">Loading profiles...</span>
-      </div>
-    );
+  if (loading && initialLoad) {
+    return <LoadingSpinner size="fullscreen" message="Discovering perfect matches..." />;
   }
 
   if (error) {
@@ -137,16 +265,35 @@ const ProfilesListPage = () => {
     <>
       <AnimatedBackground />
       <main className="relative min-h-screen p-4 sm:p-6 md:p-8 font-sans">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           {/* Page Header */}
-          <motion.h1
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-4xl md:text-5xl font-extrabold text-center text-gray-800 dark:text-white mb-8"
+            className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4"
           >
-            Discover Connections
-          </motion.h1>
+            <h1 className="text-4xl font-extrabold text-gray-800 dark:text-white">
+              Discover Connections
+            </h1>
+
+            {/* View Toggle */}
+            <div className="flex bg-white/20 backdrop-blur-md rounded-lg p-1 border border-white/30">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-white/10'}`}
+                title="Grid View"
+              >
+                <Grid size={20} />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-white/10'}`}
+                title="List View"
+              >
+                <List size={20} />
+              </button>
+            </div>
+          </motion.div>
 
           {currentUserProfile && currentUserProfile.compatibility_score === null && (
             <div className="p-3 mt-4 mb-6 bg-purple-800/30 border border-purple-600 rounded-lg flex items-center justify-center shadow-lg">
@@ -158,176 +305,262 @@ const ProfilesListPage = () => {
           )}
 
           {/* Filter and Search Section */}
-          <GlassCard className="p-6 mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6 mb-8">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
-              <div className="relative w-full md:w-1/2">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              {/* Enhanced Search Bar */}
+              <div className="relative w-full md:w-1/2 group">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-purple-500 transition-colors" size={20} />
                 <input
                   type="text"
                   placeholder="Search by name, city, or interests..."
-                  className="w-full pl-10 pr-4 py-2 rounded-full bg-white/20 dark:bg-gray-700/50 border border-purple-500/30 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800 dark:text-white placeholder-gray-400"
+                  className="w-full pl-12 pr-12 py-3 rounded-xl bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 focus:border-purple-500 focus:bg-white dark:focus:bg-gray-600 focus:outline-none transition-all text-gray-800 dark:text-white placeholder-gray-400 shadow-sm"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
+                {/* Clear Button */}
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <XCircle size={18} />
+                  </button>
+                )}
+                {/* Search Results Count */}
+                {searchTerm && (
+                  <div className="absolute -bottom-6 left-0 text-xs text-gray-500 dark:text-gray-400">
+                    {sortedProfiles.length} {sortedProfiles.length === 1 ? 'result' : 'results'} found
+                  </div>
+                )}
+
+                {/* Live Suggestions Dropdown */}
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute top-full mt-2 w-full bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+                    {suggestions.map((suggestion, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          if (suggestion.type === 'name') {
+                            setSearchTerm(suggestion.value);
+                            setShowSuggestions(false);
+                          } else {
+                            setSearchTerm(suggestion.value);
+                          }
+                        }}
+                        className="w-full px-4 py-3 text-left hover:bg-purple-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 last:border-0"
+                      >
+                        {suggestion.type === 'name' ? (
+                          <>
+                            <User size={16} className="text-purple-500 flex-shrink-0" />
+                            <span className="text-gray-800 dark:text-white font-medium">{suggestion.value}</span>
+                          </>
+                        ) : (
+                          <>
+                            <MapPin size={16} className="text-blue-500 flex-shrink-0" />
+                            <span className="text-gray-800 dark:text-white">{suggestion.value}</span>
+                          </>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center px-6 py-2 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 transition-colors"
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                <Filter size={20} className="mr-2" />
-                {showFilters ? 'Hide Filters' : 'Show Filters'}
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors"
-                onClick={() => setSortBy(sortBy === 'compatibility' ? 'default' : 'compatibility')}
-              >
-                <Zap size={20} className="mr-2" />
-                {sortBy === 'compatibility' ? 'Default Order' : 'Sort by Compatibility'}
-              </motion.button>
-            </div>
 
-            {showFilters && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-                className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4"
-              >
-                {/* Age Filter */}
-                <select
-                  className="w-full px-4 py-2 rounded-full bg-white/20 dark:bg-gray-700/50 border border-purple-500/30 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800 dark:text-white"
-                  value={ageFilter}
-                  onChange={(e) => setAgeFilter(e.target.value)}
-                >
-                  <option value="">All Ages</option>
-                  <option value="18-25">18-25</option>
-                  <option value="26-35">26-35</option>
-                  <option value="36-45">36-45</option>
-                  <option value="46-99">46+</option>
-                </select>
-
-                {/* Gender Filter */}
-                <select
-                  className="w-full px-4 py-2 rounded-full bg-white/20 dark:bg-gray-700/50 border border-purple-500/30 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800 dark:text-white"
-                  value={genderFilter}
-                  onChange={(e) => setGenderFilter(e.target.value)}
-                >
-                  <option value="">All Genders</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
-
-                {/* Interests Filter (simple text input for now) */}
-                <input
-                  type="text"
-                  placeholder="Filter by Interest (e.g., hiking)"
-                  className="w-full px-4 py-2 rounded-full bg-white/20 dark:bg-gray-700/50 border border-purple-500/30 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800 dark:text-white placeholder-gray-400"
-                  value={interestFilter}
-                  onChange={(e) => setInterestFilter(e.target.value)}
-                />
-
+              <div className="flex gap-2 w-full md:w-auto">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="flex items-center justify-center px-6 py-2 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-colors md:col-span-3"
-                  onClick={handleClearFilters}
+                  className="flex-1 md:flex-none flex items-center justify-center px-6 py-2 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 transition-colors"
+                  onClick={() => setShowFilters(!showFilters)}
                 >
-                  <XCircle size={20} className="mr-2" />
-                  Clear Filters
+                  <Filter size={20} className="mr-2" />
+                  {showFilters ? 'Hide' : 'Filters'}
                 </motion.button>
-              </motion.div>
-            )}
-          </GlassCard>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`flex-1 md:flex-none flex items-center justify-center px-6 py-2 rounded-full shadow-lg transition-colors ${sortBy === 'compatibility' ? 'bg-blue-700 text-white ring-2 ring-blue-400' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                  onClick={() => setSortBy(sortBy === 'compatibility' ? 'default' : 'compatibility')}
+                >
+                  <Zap size={20} className="mr-2" />
+                  {sortBy === 'compatibility' ? 'Best Match' : 'Sort: Default'}
+                </motion.button>
+              </div>
+            </div>
 
-          {/* Profile Grid */}
+            <AnimatePresence>
+              {showFilters && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 overflow-hidden"
+                >
+                  {/* Age Filter */}
+                  <select
+                    className="w-full px-4 py-2 rounded-full bg-white/20 dark:bg-gray-700/50 border border-purple-500/30 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800 dark:text-white"
+                    value={ageFilter}
+                    onChange={(e) => setAgeFilter(e.target.value)}
+                  >
+                    <option value="">All Ages</option>
+                    <option value="18-25">18-25</option>
+                    <option value="26-35">26-35</option>
+                    <option value="36-45">36-45</option>
+                    <option value="46-99">46+</option>
+                  </select>
+
+                  {/* Gender Filter */}
+                  <select
+                    className="w-full px-4 py-2 rounded-full bg-white/20 dark:bg-gray-700/50 border border-purple-500/30 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800 dark:text-white"
+                    value={genderFilter}
+                    onChange={(e) => setGenderFilter(e.target.value)}
+                  >
+                    <option value="">All Genders</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+
+                  {/* Interests Filter */}
+                  <input
+                    type="text"
+                    placeholder="Filter by Interest (e.g., hiking)"
+                    className="w-full px-4 py-2 rounded-full bg-white/20 dark:bg-gray-700/50 border border-purple-500/30 focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800 dark:text-white placeholder-gray-400"
+                    value={interestFilter}
+                    onChange={(e) => setInterestFilter(e.target.value)}
+                  />
+
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="flex items-center justify-center px-6 py-2 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-colors md:col-span-3"
+                    onClick={handleClearFilters}
+                  >
+                    <XCircle size={20} className="mr-2" />
+                    Clear Filters
+                  </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Profile Grid/List */}
           <motion.div
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}
           >
-            {filteredProfiles.length > 0 ? (
-              filteredProfiles.map((profile) => (
+            {sortedProfiles.length > 0 ? (
+              sortedProfiles.map((profile) => (
                 <motion.div key={profile.id} variants={itemVariants}>
                   <Link to={`/profiles/${profile.id}`} className="group block h-full">
-                    <GlassCard className="relative p-6 flex flex-col items-center text-center h-full hover:bg-white/20 transition-colors duration-300">
-                      {profile.compatibility_score === null ? (
-                        <div className="absolute top-4 right-4 text-sm text-gray-500 text-center">
-                          Not applicable
-                        </div>
-                      ) : (
-                        <div className="absolute top-4 right-4">
-                          <div className="relative w-16 h-16">
-                            <svg className="w-full h-full" viewBox="0 0 36 36">
-                              <path
-                                className="text-gray-200"
-                                d="M18 2.0845
-                                            a 15.9155 15.9155 0 0 1 0 31.831
-                                            a 15.9155 15.9155 0 0 1 0 -31.831"
-                                fill="none"
-                                strokeWidth="3"
-                              />
-                              <path
-                                className="text-purple-600"
-                                strokeDasharray={`${profile.compatibility_score || 0}, 100`}
-                                d="M18 2.0845
-                                            a 15.9155 15.9155 0 0 1 0 31.831
-                                            a 15.9155 15.9155 0 0 1 0 -31.831"
-                                fill="none"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                              />
-                            </svg>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-lg font-bold text-purple-600">{profile.compatibility_score || 0}%</span>
+                    <div className={`relative bg-white dark:bg-gray-800 rounded-2xl overflow-hidden h-full transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 border border-transparent ${viewMode === 'list' ? 'flex flex-row items-stretch' : 'flex flex-col'}`}>
+
+                      {/* Badges */}
+                      <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
+                        {isNewProfile(profile.created_at) && (
+                          <span className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1 backdrop-blur-sm">
+                            <Clock size={10} /> NEW
+                          </span>
+                        )}
+                        {isActiveProfile(profile.updated_at) && (
+                          <span className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1 backdrop-blur-sm">
+                            <Activity size={10} /> ACTIVE
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Quick Action Button (Top Right) */}
+                      <button
+                        onClick={(e) => handleSendInterest(e, profile.id)}
+                        disabled={sendingInterest[profile.id]}
+                        className={`absolute top-3 right-3 z-20 w-9 h-9 rounded-full shadow-md transition-all transform hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center ${sendingInterest[profile.id] ? 'bg-gray-100' : 'bg-white hover:bg-pink-50 text-gray-400 hover:text-pink-500'
+                          }`}
+                        title="Send Interest"
+                      >
+                        {sendingInterest[profile.id] ? (
+                          <LoadingSpinner size="small" color="purple" />
+                        ) : (
+                          <Heart size={18} className="fill-current" />
+                        )}
+                      </button>
+
+                      {/* Image Section with Overlay Content */}
+                      <div className={`relative ${viewMode === 'list' ? 'w-64 h-64 flex-shrink-0' : 'w-full'}`}>
+                        {/* Compatibility Score Badge on Image */}
+                        {profile.compatibility_score !== null && (
+                          <div className="absolute top-3 right-14 z-10">
+                            <div className="bg-white/95 backdrop-blur-sm rounded-full px-2.5 py-1 shadow-lg border border-transparent">
+                              <span className="text-xs font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                                {profile.compatibility_score}% Match
+                              </span>
                             </div>
                           </div>
-                        </div>
-                      )}
-                      {profile.profile_image ? (
-                        <img
-                          src={profile.profile_image}
-                          alt={profile.name}
-                          className="w-28 h-28 rounded-full object-cover mb-4 border-2 border-purple-400 shadow-md"
-                        />
-                      ) : (
-                        <div className="w-28 h-28 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center mb-4 border-2 border-purple-400 shadow-md">
-                          <User size={48} className="text-gray-600 dark:text-gray-400" />
-                        </div>
-                      )}
-                      <h2 className="text-2xl font-bold text-gray-800 dark:text-white group-hover:text-purple-600 transition-colors">
-                        {profile.name}
-                        {profile.age && <span className="font-normal text-gray-600 dark:text-gray-300">, {profile.age}</span>}
-                      </h2>
-                      <p className="text-gray-600 dark:text-gray-300 text-sm mb-2 flex items-center">
-                        <MapPin size={16} className="mr-1 text-purple-400" />
-                        {profile.current_city || 'Unknown City'}, {profile.current_country || 'Unknown Country'}
-                      </p>
-                      {profile.bio && (
-                        <p className="text-gray-500 dark:text-gray-400 text-xs italic mb-3 line-clamp-3">
-                          "{profile.bio}"
-                        </p>
-                      )}
-                      {profile.interests && profile.interests.length > 0 && (
-                        <div className="flex flex-wrap justify-center gap-2 mt-auto pt-4 border-t border-purple-500/20 w-full">
-                          {profile.interests.slice(0, 3).map((interest, idx) => (
-                            <span
-                              key={idx}
-                              className="bg-purple-600/20 text-purple-400 text-xs px-3 py-1 rounded-full"
-                            >
-                              {interest}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                        )}
 
-                    </GlassCard>
+                        <div className={`relative ${viewMode === 'list' ? 'h-full' : 'h-80'} bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-700 dark:to-gray-600`}>
+                          {profile.profile_image ? (
+                            <img
+                              src={profile.profile_image}
+                              alt={profile.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <User size={64} className="text-gray-300 dark:text-gray-500" />
+                            </div>
+                          )}
+
+                          {/* Gradient Overlay for Text Readability */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+
+                          {/* Content Overlay */}
+                          <div className={`absolute bottom-0 left-0 right-0 p-5 flex flex-col text-white`}>
+                            {/* Name and Age */}
+                            <h2 className="text-xl font-bold mb-1 drop-shadow-lg">
+                              {profile.name}
+                              {profile.age && <span className="font-medium text-base ml-1 opacity-90">{profile.age}</span>}
+                            </h2>
+
+                            {/* Location */}
+                            <div className="flex items-center text-sm mb-3 drop-shadow-md">
+                              <MapPin size={14} className="mr-1.5 flex-shrink-0" />
+                              <span className="truncate">{profile.current_city || 'Unknown City'}, {profile.current_country || 'Unknown'}</span>
+                            </div>
+
+                            {/* Bio */}
+                            {profile.bio && (
+                              <p className="text-sm leading-relaxed mb-3 line-clamp-2 drop-shadow-md opacity-90">
+                                {profile.bio}
+                              </p>
+                            )}
+
+                            {/* Interests Tags */}
+                            {profile.interests && profile.interests.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5">
+                                {profile.interests.slice(0, 3).map((interest, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="bg-white/20 backdrop-blur-sm text-white text-xs font-medium px-2.5 py-1 rounded-lg border border-white/30"
+                                  >
+                                    {interest}
+                                  </span>
+                                ))}
+                                {profile.interests.length > 3 && (
+                                  <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-medium px-2.5 py-1 rounded-lg border border-white/30">
+                                    +{profile.interests.length - 3}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
                   </Link>
                 </motion.div>
               ))
@@ -342,6 +575,19 @@ const ProfilesListPage = () => {
               </motion.div>
             )}
           </motion.div>
+
+          {/* Load More Button */}
+          {hasMore && sortedProfiles.length > 0 && (
+            <div className="flex justify-center mt-12">
+              <button
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="px-8 py-3 bg-white text-purple-600 font-bold rounded-full shadow-lg hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {loadingMore ? <LoadingSpinner size="small" /> : 'Load More Profiles'}
+              </button>
+            </div>
+          )}
         </div>
       </main>
     </>

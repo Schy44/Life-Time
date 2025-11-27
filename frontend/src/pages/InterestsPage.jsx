@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getInterests, acceptInterest, rejectInterest, getProfile } from '../services/api';
 import GlassCard from '../components/GlassCard';
 import AnimatedBackground from '../components/AnimatedBackground';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { Link } from 'react-router-dom';
 
 const InterestsPage = () => {
@@ -47,7 +48,7 @@ const InterestsPage = () => {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen text-white text-xl">Loading interests...</div>;
+    return <LoadingSpinner size="fullscreen" message="Loading your interests..." />;
   }
 
   if (error) {
@@ -64,7 +65,7 @@ const InterestsPage = () => {
         <div className="max-w-4xl mx-auto">
           <GlassCard className="p-6">
             <h1 className="text-3xl font-bold text-gray-800 mb-4">Interests</h1>
-            
+
             <div className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-800 mb-4">Interests Received</h2>
               {receivedInterests.length > 0 ? (

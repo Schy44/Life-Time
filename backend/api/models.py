@@ -24,6 +24,14 @@ class SleepCycle(models.TextChoices):
     EARLY_BIRD = 'early_bird', 'Early Bird'
     NIGHT_OWL = 'night_owl', 'Night Owl'
 
+class SkinComplexion(models.TextChoices):
+    FAIR = 'fair', 'Fair'
+    LIGHT = 'light', 'Light'
+    MEDIUM = 'medium', 'Medium'
+    OLIVE = 'olive', 'Olive'
+    BROWN = 'brown', 'Brown'
+    DARK = 'dark', 'Dark'
+
 # Import storage backend
 from api.storage import SupabaseStorage
 
@@ -68,13 +76,15 @@ class Profile(models.Model):
     )
 
     # Physical
-    height_cm = models.PositiveSmallIntegerField(blank=True, null=True, help_text="centimeters")
+    height_inches = models.PositiveSmallIntegerField(blank=True, null=True, help_text="height in inches")
+    skin_complexion = models.CharField(max_length=20, choices=SkinComplexion.choices, blank=True, null=True)
     blood_group = models.CharField(max_length=3, choices=BLOOD_GROUP_CHOICES, blank=True, null=True)
+
 
     # Faith & lifestyle
     religion = models.CharField(max_length=20, choices=Religion.choices, blank=True, null=True)
-    alcohol = models.CharField(max_length=20, choices=Alcohol.choices, blank=True, null=True)
-    smoking = models.CharField(max_length=20, choices=Smoking.choices, blank=True, null=True)
+    faith_tags = models.JSONField(default=list, blank=True, null=True, help_text="User's faith and lifestyle tags")
+
 
 
     # Location (use ISO-3166 alpha-2 codes)
@@ -165,13 +175,11 @@ class Preference(models.Model):
     # Hard filters
     min_age = models.PositiveSmallIntegerField(blank=True, null=True)
     max_age = models.PositiveSmallIntegerField(blank=True, null=True)
-    min_height_cm = models.PositiveSmallIntegerField(blank=True, null=True)
+    min_height_inches = models.PositiveSmallIntegerField(blank=True, null=True)
     religion = models.CharField(max_length=20, choices=Religion.choices, blank=True, null=True)
     marital_statuses = models.JSONField(default=list, blank=True, null=True)    # e.g., ['never_married']
     country = models.CharField(max_length=2, blank=True, null=True)
     profession = models.CharField(max_length=100, blank=True, null=True)
-    require_non_alcoholic = models.BooleanField(default=False)
-    require_non_smoker = models.BooleanField(default=False)
 
 
 
@@ -183,9 +191,24 @@ class AdditionalImage(models.Model):
         upload_to='additional_images/',
         storage=SupabaseStorage()  # <-- Force use of SupabaseStorage
     )
+    caption = models.CharField(
+        max_length=200, 
+        blank=True, 
+        null=True,
+        help_text="Optional photo caption"
+    )
+    order = models.PositiveSmallIntegerField(
+        default=0,
+        help_text="Display order in gallery (lower = first)"
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', '-uploaded_at']
 
     def __str__(self):
         return f"Image for {self.profile.name}"
+
 
 
 class Interest(models.Model):

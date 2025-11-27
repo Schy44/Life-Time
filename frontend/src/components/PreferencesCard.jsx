@@ -19,8 +19,8 @@ const PreferencesCard = ({ preferencesData }) => {
         {preferencesData.min_age && preferencesData.max_age && (
           <li><span className="font-semibold text-gray-700 dark:text-white">Age Range</span><span className="text-gray-700 dark:text-gray-300">{preferencesData.min_age} - {preferencesData.max_age}</span></li>
         )}
-        {preferencesData.min_height_cm && (
-          <li><span className="font-semibold text-gray-700 dark:text-white">Min Height</span><span className="text-gray-700 dark:text-gray-300">{preferencesData.min_height_cm}cm</span></li>
+        {preferencesData.min_height_inches && (
+          <li><span className="font-semibold text-gray-700 dark:text-white">Min Height</span><span className="text-gray-700 dark:text-gray-300">{Math.floor(preferencesData.min_height_inches / 12)}'{preferencesData.min_height_inches % 12}"</span></li>
         )}
         {preferencesData.religion && (
           <li><span className="font-semibold text-gray-700 dark:text-white">Religion</span><span className="text-gray-700 dark:text-gray-300">{preferencesData.religion}</span></li>
@@ -33,12 +33,6 @@ const PreferencesCard = ({ preferencesData }) => {
         )}
         {preferencesData.profession && (
           <li><span className="font-semibold text-gray-700 dark:text-white">Profession</span><span className="text-gray-700 dark:text-gray-300">{preferencesData.profession}</span></li>
-        )}
-        {preferencesData.require_non_alcoholic && (
-          <li><span className="font-semibold text-gray-700 dark:text-white">Require Non-Alcoholic</span><span className="text-gray-700 dark:text-gray-300">Yes</span></li>
-        )}
-        {preferencesData.require_non_smoker && (
-          <li><span className="font-semibold text-gray-700 dark:text-white">Non-Smoker</span><span className="text-gray-700 dark:text-gray-300">Yes</span></li>
         )}
       </ul>
     </GlassCard>

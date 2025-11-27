@@ -6,7 +6,6 @@ import { ThemeProvider } from './context/ThemeContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProfilePage from './pages/profile_page';
-import EditProfilePage from './pages/EditProfilePage';
 import CreateProfilePage from './pages/CreateProfilePage';
 import PublicProfilePage from './pages/PublicProfilePage';
 import ProfilesListPage from './pages/ProfilesListPage';
@@ -23,55 +22,52 @@ function App() {
     <Router>
       <ThemeProvider>
         <AuthProvider>
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route
-            path="/profile"
-            element={
-              <PrivateRoute>
-                <ProfilePage />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/profile/edit/:id"
-            element={
-              <PrivateRoute>
-                <EditProfilePage />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/profile/create"
-            element={
-              <PrivateRoute>
-                <CreateProfilePage />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/profiles"
-            element={
-              <PrivateRoute>
-                <ProfilesListPage />
-              </PrivateRoute>
-            }
-          />
+          <Navbar />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route
+              path="/profile"
+              element={
+                <PrivateRoute>
+                  <ProfilePage />
+                </PrivateRoute>
+              }
+            />
+            {/* Redirect old edit route to profile page (now has inline editing) */}
+            <Route
+              path="/profile/edit/:id"
+              element={<Navigate to="/profile" replace />}
+            />
+            <Route
+              path="/profile/create"
+              element={
+                <PrivateRoute>
+                  <CreateProfilePage />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/profiles"
+              element={
+                <PrivateRoute>
+                  <ProfilesListPage />
+                </PrivateRoute>
+              }
+            />
 
-          <Route
-            path="/profiles/:id"
-            element={
-              <PrivateRoute>
-                <PublicProfilePage />
-              </PrivateRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </AuthProvider>
+            <Route
+              path="/profiles/:id"
+              element={
+                <PrivateRoute>
+                  <PublicProfilePage />
+                </PrivateRoute>
+              }
+            />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </AuthProvider>
       </ThemeProvider>
     </Router>
   );

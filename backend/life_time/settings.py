@@ -26,7 +26,7 @@ load_dotenv(os.path.join(BASE_DIR, '.env')) # Load .env from backend directory
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-naq7tg)x(o8xd+^d3f8qr=p^l*%n1t)w4@svcbb+&f1hyq58__'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-naq7tg)x(o8xd+^d3f8qr=p^l*%n1t)w4@svcbb+&f1hyq58__')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = 'RENDER' not in os.environ
@@ -192,8 +192,11 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 STATICFILES_DIRS = []
 
-SUPABASE_JWT_SECRET = 'ZSSOtSBi5+eZ0hS8RkF1AcjgfaX+Srnt1v7KWR4g/+FkBLB360vfTr2XUuFFwWMCqOuQjUshOGLAtHReXVVUeA=='
+SUPABASE_JWT_SECRET = os.environ.get('SUPABASE_JWT_SECRET')
 SUPABASE_AUDIENCE = 'authenticated'
+
+if not DEBUG and not SUPABASE_JWT_SECRET:
+    raise ValueError("SUPABASE_JWT_SECRET environment variable not set in production")
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [

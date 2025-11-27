@@ -3,20 +3,26 @@ import AnimatedBackground from '../components/AnimatedBackground';
 import ProfileHeader from '../components/ProfileHeader';
 import InfoTabs from '../components/InfoTabs';
 import Socials from '../components/Socials';
-import FloatingActionButton from '../components/FloatingActionButton';
-import GlassCard from '../components/GlassCard';
+import PhotoGallery from '../components/PhotoGallery';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ProfileForm from '../components/ProfileForm';
+import PreviewModal from '../components/PreviewModal';
+import FaithTagsSection from '../components/FaithTagsSection';
 import apiClient from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import { useNavigate, useLocation } from 'react-router-dom'; // <-- ADDED useLocation
+import { useNavigate, useLocation } from 'react-router-dom';
+import { FaEdit, FaEye, FaTimes, FaSave } from 'react-icons/fa';
 
 const ProfilePage = () => {
   const [profileData, setProfileData] = useState(null);
   const [interests, setInterests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [editSection, setEditSection] = useState(null); // null, 'about', 'education', 'career', 'all'
+  const [showPreview, setShowPreview] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation(); // <-- INITIALIZE useLocation
+  const location = useLocation();
   const { user } = useAuth();
 
   const addCacheBust = (url, token) => (url ? `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(token)}` : url);
@@ -36,7 +42,7 @@ const ProfilePage = () => {
     };
   };
 
-  const fetchAllData = async () => {
+  const fetchAllData = async (isBackground = false) => {
     if (!user) {
       setError('You must be logged in to view this page.');
       setLoading(false);
@@ -44,7 +50,10 @@ const ProfilePage = () => {
     }
 
     try {
-      setLoading(true); // Set loading to true before fetch (important for manual refresh)
+      if (!isBackground) {
+        setLoading(true); // Only show spinner for initial load or manual refresh
+      }
+
       // Add a small "t" param to bypass intermediary caches and set no-cache header
       const { data: profile } = await apiClient.get('/profile/', {
         headers: {
@@ -78,7 +87,9 @@ const ProfilePage = () => {
         console.error(err);
       }
     } finally {
-      setLoading(false);
+      if (!isBackground) {
+        setLoading(false);
+      }
     }
   };
 
@@ -96,8 +107,11 @@ const ProfilePage = () => {
 
     // Keep the window focus handler for background tab updates
     const handleFocus = () => {
-      if (user) {
-        fetchAllData();
+      // Only fetch if user is logged in AND NOT currently editing
+      // Fetching while editing would reset the form and lose unsaved changes!
+      if (user && !editSection) {
+        console.log('Window focused, refreshing data (background)...');
+        fetchAllData(true); // Pass true for isBackground
       }
     };
 
@@ -107,7 +121,7 @@ const ProfilePage = () => {
       window.removeEventListener('focus', handleFocus);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, location.state]);
+  }, [user, location.state, editSection]); // Added editSection to dependencies
 
   const handleUpdateInterests = async () => {
     if (!profileData) return;
@@ -125,7 +139,7 @@ const ProfilePage = () => {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen text-gray-800 dark:text-white text-xl">Loading profile...</div>;
+    return <LoadingSpinner size="fullscreen" message="Loading your profile..." />;
   }
 
   if (error) {
@@ -136,24 +150,33 @@ const ProfilePage = () => {
     return (
       <>
         <AnimatedBackground />
-        <div className="flex flex-col justify-center items-center h-screen text-gray-800 dark:text-white text-center">
-          <GlassCard className="p-8">
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-4">Welcome!</h1>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">You haven't created a profile yet. Let's get started!</p>
-            <button
-              onClick={() => navigate('/profile/create')}
-              className="w-full p-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold text-lg hover:from-purple-700 hover:to-pink-600 transition duration-300"
-            >
-              Create Your Profile
-            </button>
-          </GlassCard>
+        <div className="min-h-screen p-0 bg-gray-50">
+          <div className="w-full flex justify-center items-center min-h-screen">
+            <div className="bg-white rounded-2xl shadow-md p-8 max-w-md mx-4">
+              <h1 className="text-3xl font-bold text-gray-800 mb-4">Welcome!</h1>
+              <p className="text-gray-600 mb-6">You haven't created a profile yet. Let's get started!</p>
+              <button
+                onClick={() => navigate('/profile/create')}
+                className="w-full p-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold text-lg hover:from-purple-700 hover:to-pink-600 transition duration-300"
+              >
+                Create Your Profile
+              </button>
+            </div>
+          </div>
         </div>
       </>
     );
   }
 
-  // Destructure data for components
-  const { id, name, date_of_birth, profile_image, facebook_profile, instagram_profile, linkedin_profile, education, work_experience, preference, is_verified, height_cm, religion, alcohol, smoking, current_city, origin_city, citizenship, marital_status, about, additional_images, profile_image_privacy } = profileData;
+  // Destructure data for components (including all fields)
+  const {
+    id, name, date_of_birth, profile_image, facebook_profile, instagram_profile, linkedin_profile,
+    education, work_experience, preference, is_verified, height_inches, skin_complexion, religion,
+    current_city, origin_city, citizenship, marital_status, about, additional_images, profile_image_privacy,
+    blood_group, current_country, origin_country, visa_status,
+    father_occupation, mother_occupation, siblings, family_type,
+    profile_for, gender, looking_for
+  } = profileData;
 
   // Calculate age from date_of_birth
   const age = date_of_birth ? new Date().getFullYear() - new Date(date_of_birth).getFullYear() : null;
@@ -171,18 +194,33 @@ const ProfilePage = () => {
 
   const aboutData = {
     about: about,
+    looking_for: looking_for,
     basicInfo: {
-      height: height_cm ? `${height_cm}cm` : 'N/A',
+      profile_for: profile_for,
+      gender: gender,
+      height: height_inches ? `${Math.floor(height_inches / 12)}'${height_inches % 12}"` : 'N/A',
+      skin_complexion: skin_complexion,
       marital_status: marital_status,
       religion: religion,
-      city: current_city,
-      origin: origin_city,
       citizenship: citizenship,
     },
-    lifestyle: {
-      alcohol: alcohol,
-      smoking: smoking,
+    basics: {
+      blood_group: blood_group,
     },
+    locationResidency: {
+      current_city: current_city,
+      current_country: current_country,
+      origin_city: origin_city,
+      origin_country: origin_country,
+      visa_status: visa_status,
+    },
+    family: {
+      father_occupation: father_occupation,
+      mother_occupation: mother_occupation,
+      siblings: siblings,
+      family_type: family_type,
+    },
+    faith_tags: profileData.faith_tags || [],
   };
 
   const socialData = [
@@ -191,60 +229,159 @@ const ProfilePage = () => {
     { icon: 'FaLinkedin', url: linkedin_profile },
   ].filter(s => s.url); // Filter out empty social links
 
-  const handleEditProfile = () => {
-    navigate(`/profile/edit/${id}`);
+  const handleEditSection = (section) => {
+    setEditSection(section);
+  };
+
+  const handleCancelEdit = () => {
+    setEditSection(null);
+  };
+
+  const handleSaveProfile = async (formData) => {
+    console.log('=== ProfilePage handleSaveProfile called ===');
+    console.log('FormData entries:');
+    for (let pair of formData.entries()) {
+      console.log(pair[0], ':', pair[1]);
+    }
+
+    if (!user) {
+      alert('You must be logged in to update a profile.');
+      return;
+    }
+
+    try {
+      console.log('Sending PUT request to:', `/profiles/${id}/`);
+      const response = await apiClient.put(`/profiles/${id}/`, formData);
+      console.log('Response received:', response);
+
+      // Update the state with the new data from the server
+      const normalized = normalizeProfile(response.data);
+      setProfileData(normalized);
+      setEditSection(null);
+
+      alert('Profile updated successfully!');
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      console.error('Error response:', err.response);
+      alert('Failed to update profile. Please try again.');
+    }
   };
 
   return (
     <>
       <AnimatedBackground />
-      <main className="relative min-h-screen p-4 sm:p-6 md:p-8 font-sans">
-        <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column */}
-          <div className="lg:col-span-1 space-y-8">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-              <ProfileHeader {...headerData} />
-            </motion.div>
+      <main className="min-h-screen p-0 bg-gray-50">
+        <div className="w-full flex justify-center">
+          <div className="w-full max-w-screen-xl px-6 py-8">
+            <div className="bg-white rounded-2xl shadow-md overflow-hidden p-6">
+              {/* Action Buttons - Always visible */}
+              <div className="flex justify-end gap-3 mb-6">
+                {!editSection ? (
+                  <>
+                    <button
+                      onClick={() => setShowPreview(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition duration-200"
+                    >
+                      <FaEye /> Preview Public Profile
+                    </button>
+                    <button
+                      onClick={() => handleEditSection('all')}
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200"
+                    >
+                      <FaEdit /> Edit All
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleCancelEdit}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition duration-200"
+                  >
+                    <FaTimes /> Cancel
+                  </button>
+                )}
+              </div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-              <GlassCard className="p-6">
-                <h2 className="section-title dark:text-white">Gallery</h2>
-                <div className="grid grid-cols-2 gap-2">
-                  {additional_images && additional_images.map((img, index) => (
-                    <motion.img
-                      key={index}
-                      src={img.image_url} // Using normalized image_url (with cache-bust)
-                      alt={`gallery-${index}`}
-                      className="rounded-lg object-cover w-full h-24 cursor-pointer"
-                      whileHover={{ scale: 1.05 }}
-                    />
-                  ))}
+              {/* Conditional Content - View Mode vs Edit Mode */}
+              {!editSection ? (
+                // VIEW MODE - Original layout
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* Left Column */}
+                  <div className="lg:col-span-1 space-y-6">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+                      <ProfileHeader {...headerData} />
+                    </motion.div>
+
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
+                      <div className="bg-white rounded-xl shadow-sm border p-4">
+                        <h2 className="text-sm font-semibold text-gray-800 mb-4">Photo Gallery</h2>
+                        <PhotoGallery images={additional_images || []} />
+                      </div>
+                    </motion.div>
+
+                    {/* Faith Tags - Display under photo gallery */}
+                    {profileData.faith_tags && profileData.faith_tags.length > 0 && (
+                      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.25 }}>
+                        <div className="bg-white rounded-xl shadow-sm border p-4">
+                          <h2 className="text-sm font-semibold text-gray-800 mb-3">My Faith</h2>
+                          <FaithTagsSection selectedTags={profileData.faith_tags} isEditing={false} />
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {/* Right Column */}
+                  <div className="lg:col-span-2 space-y-6">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
+                      <InfoTabs
+                        aboutData={aboutData}
+                        educationData={education}
+                        careerData={work_experience}
+                        preferencesData={preference || {}}
+                        interestsData={interests}
+                        currentUserProfile={profileData}
+                        onUpdateInterests={handleUpdateInterests}
+                        onUpdateProfile={fetchAllData}
+                        onEditSection={handleEditSection}
+                      />
+                    </motion.div>
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }}>
+                      <Socials socials={socialData} />
+                    </motion.div>
+                  </div>
                 </div>
-              </GlassCard>
-            </motion.div>
-          </div>
-
-          {/* Right Column */}
-          <div className="lg:col-span-2 space-y-8">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
-              <InfoTabs
-                aboutData={aboutData}
-                educationData={education}
-                careerData={work_experience}
-                preferencesData={preference || {}}
-                interestsData={interests}
-                currentUserProfile={profileData}
-                onUpdateInterests={handleUpdateInterests}
-                onUpdateProfile={fetchAllData}
-              />
-            </motion.div>
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }}>
-              <Socials socials={socialData} />
-            </motion.div>
+              ) : (
+                // EDIT MODE - Profile Form
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="max-w-4xl mx-auto"
+                >
+                  <h1 className="text-3xl font-bold text-gray-800 mb-6">
+                    {editSection === 'about' && 'Edit About'}
+                    {editSection === 'education' && 'Edit Education'}
+                    {editSection === 'career' && 'Edit Career'}
+                    {editSection === 'all' && 'Edit Your Profile'}
+                  </h1>
+                  <ProfileForm
+                    initialData={profileData}
+                    onSubmit={handleSaveProfile}
+                    section={editSection}
+                  />
+                </motion.div>
+              )}
+            </div>
           </div>
         </div>
       </main>
-      <FloatingActionButton onClick={handleEditProfile} />
+
+      {/* Preview Modal */}
+      {showPreview && (
+        <PreviewModal
+          profileData={profileData}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
     </>
   );
 };

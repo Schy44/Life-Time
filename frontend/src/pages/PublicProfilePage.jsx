@@ -3,6 +3,10 @@ import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Socials from '../components/Socials';
+import LoadingSpinner from '../components/LoadingSpinner';
+import SectionCard from '../components/SectionCard';
+import InfoRow from '../components/InfoRow';
+import FaithTagsSection from '../components/FaithTagsSection';
 import {
   getProfileById,
   getProfile,
@@ -14,23 +18,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { FaCheckCircle, FaMapMarkerAlt, FaGraduationCap, FaBriefcase, FaHeart, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 
-const InfoRow = ({ label, value }) => (
-  <div className="flex justify-start items-center gap-2 py-1 border-b last:border-b-0">
-    <div className="text-sm text-gray-700 w-32">{label}</div>
-    <div className="text-sm font-medium text-gray-900">{value || '—'}</div>
-  </div>
-);
-
-const SectionCard = ({ title, icon, children }) => (
-  <section className="bg-white rounded-xl shadow-sm border p-4">
-    <div className="flex items-center space-x-3 mb-3">
-      {icon}
-      <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
-    </div>
-
-    <div>{children}</div>
-  </section>
-);
+// InfoRow and SectionCard components now imported from separate files
 
 const Skeleton = ({ className = '' }) => (
   <div className={`animate-pulse bg-gray-200 rounded ${className}`} />
@@ -153,7 +141,7 @@ export default function PublicProfilePage() {
   const renderInterestControls = () => {
     if (!user || !currentUserProfile || !profileData) return null;
     if (currentUserProfile.id === profileData.id) return null;
-    if (!interestStatus) return <button onClick={handleSendInterest} className="px-4 py-2 rounded-md bg-indigo-600 text-white font-medium focus:outline-none focus:ring-2 focus:ring-indigo-300">Send Interest</button>;
+    if (!interestStatus) return <button onClick={handleSendInterest} className="px-4 py-2 rounded-md bg-indigo-600 text-white font-medium focus:outline-none focus:ring-2 focus:ring-indigo-300">Get Connected </button>;
     const isSender = interestStatus.sender?.id === currentUserProfile.id;
     const isReceiver = interestStatus.receiver?.id === currentUserProfile.id;
     if (isSender) {
@@ -170,20 +158,7 @@ export default function PublicProfilePage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-full max-w-4xl p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Skeleton className="h-72 md:col-span-1" />
-            <div className="md:col-span-2 space-y-4">
-              <Skeleton className="h-6 w-1/4" />
-              <Skeleton className="h-10" />
-              <Skeleton className="h-40" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner size="fullscreen" message="Loading profile..." />;
   }
 
   if (error) return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>;
@@ -223,6 +198,7 @@ export default function PublicProfilePage() {
     marital_status,
     created_at,
     updated_at,
+    faith_tags = [],
   } = profileData;
 
   const age = date_of_birth ? new Date().getFullYear() - new Date(date_of_birth).getFullYear() : '—';
@@ -249,7 +225,7 @@ export default function PublicProfilePage() {
 
                   <div className="flex items-center gap-3">
                     {compatibility_score != null && (
-                      <div className="text-sm font-semibold bg-gray-50 border px-3 py-1 rounded-full">{Math.round(compatibility_score * 100)}%</div>
+                      <div className="text-sm font-semibold bg-gray-50 border px-3 py-1 rounded-full">{Math.round(compatibility_score)}%</div>
                     )}
 
                     {is_verified && (
@@ -320,6 +296,14 @@ export default function PublicProfilePage() {
 
                         <div>{renderInterestControls()}</div>
                       </div>
+
+                      {/* Faith Tags - Display under photo section */}
+                      {faith_tags && faith_tags.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <h3 className="text-xs font-semibold text-gray-700 mb-2">My Faith</h3>
+                          <FaithTagsSection selectedTags={faith_tags} isEditing={false} />
+                        </div>
+                      )}
                     </div>
                   </div>
 

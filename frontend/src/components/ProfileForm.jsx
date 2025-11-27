@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { FaPlus, FaTrash } from 'react-icons/fa';
 import Select from 'react-select'; // Import react-select
 import GlassCard from './GlassCard';
+import FaithTagsSection from './FaithTagsSection';
 import { getCountries } from '../services/api.js'; // Import getCountries
 import { useTheme } from '../context/ThemeContext'; // Import useTheme
+import DragDropUpload from './DragDropUpload'; // Import DragDropUpload
 
 // Choices from models.py
 const PROFILE_FOR_CHOICES = [
@@ -61,11 +63,20 @@ const PRIVACY_CHOICES = [
   { value: 'matches', label: 'Matches Only' },
 ];
 
+const SKIN_COMPLEXION_CHOICES = [
+  { value: 'fair', label: 'Fair' },
+  { value: 'light', label: 'Light' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'olive', label: 'Olive' },
+  { value: 'brown', label: 'Brown' },
+  { value: 'dark', label: 'Dark' },
+];
 
 
 
 
-const ProfileForm = ({ initialData, onSubmit }) => {
+
+const ProfileForm = ({ initialData, onSubmit, section = 'all' }) => {
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
 
@@ -74,6 +85,8 @@ const ProfileForm = ({ initialData, onSubmit }) => {
     preference: initialData.preference || {},
   });
   const [profileImageFile, setProfileImageFile] = useState(null);
+  const [profileImagePreview, setProfileImagePreview] = useState(null);
+  const profileImageInputRef = React.useRef(null);
   const [additionalImageFiles, setAdditionalImageFiles] = useState([]);
   const [additionalImagesToKeep, setAdditionalImagesToKeep] = useState(initialData.additional_images ? initialData.additional_images.map(img => img.id) : []);
   const [errors, setErrors] = useState({});
@@ -135,6 +148,16 @@ const ProfileForm = ({ initialData, onSubmit }) => {
     }
   }, [formData.preference?.religion]);
 
+  // Cleanup preview URL ONLY when component unmounts (not on every change!)
+  useEffect(() => {
+    return () => {
+      if (profileImagePreview) {
+        URL.revokeObjectURL(profileImagePreview);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array - only run on unmount
+
   const handleChange = (e) => {
     const name = e.target.name;
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -176,11 +199,48 @@ const ProfileForm = ({ initialData, onSubmit }) => {
   };
 
   const handleProfileImageChange = (e) => {
-    setProfileImageFile(e.target.files[0]);
+    // No preventDefault or stopPropagation needed for file input onChange
+    if (!e || !e.target || !e.target.files || e.target.files.length === 0) {
+      console.log('No file selected');
+      return;
+    }
+
+    const file = e.target.files[0];
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      console.error('Invalid file type. Please select an image.');
+      alert('Please select a valid image file.');
+      // Clear the input
+      if (e.target) e.target.value = '';
+      return;
+    }
+
+    // Revoke previous preview URL to prevent memory leak
+    if (profileImagePreview) {
+      URL.revokeObjectURL(profileImagePreview);
+    }
+
+    setProfileImageFile(file);
+
+    // Create new preview URL
+    const previewUrl = URL.createObjectURL(file);
+    setProfileImagePreview(previewUrl);
+
+    console.log('Profile image selected:', file.name);
   };
 
-  const handleAdditionalImageChange = (e) => {
-    setAdditionalImageFiles(prev => [...prev, ...Array.from(e.target.files)]);
+  const triggerFileInput = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (profileImageInputRef.current) {
+      profileImageInputRef.current.click();
+    }
+    return false;
+  };
+
+  const handleAdditionalImageChange = (files) => {
+    setAdditionalImageFiles(prev => [...prev, ...files]);
   };
 
   const handleRemoveAdditionalImage = (idToRemove) => {
@@ -208,6 +268,13 @@ const ProfileForm = ({ initialData, onSubmit }) => {
         ...(prev.preference || {}),
         [name]: value,
       },
+    }));
+  };
+
+  const handleFaithTagsChange = (newTags) => {
+    setFormData(prev => ({
+      ...prev,
+      faith_tags: newTags,
     }));
   };
 
@@ -242,6 +309,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     console.log('=== ProfileForm handleSubmit called ===');
 
     if (!validateForm()) {
@@ -269,6 +337,13 @@ const ProfileForm = ({ initialData, onSubmit }) => {
     data.append('education', JSON.stringify(cleanNestedObjects(formData.education)));
     data.append('work_experience', JSON.stringify(cleanNestedObjects(formData.work_experience)));
 
+    // Handle faith_tags
+    if (formData.faith_tags && Array.isArray(formData.faith_tags)) {
+      data.append('faith_tags', JSON.stringify(formData.faith_tags));
+    } else {
+      data.append('faith_tags', JSON.stringify([]));
+    }
+
 
     // Handle preference separately, filtering out empty values
     if (formData.preference) {
@@ -289,8 +364,8 @@ const ProfileForm = ({ initialData, onSubmit }) => {
       console.log('Appending profile_image:', profileImageFile.name, profileImageFile.size, 'bytes');
       data.append('profile_image', profileImageFile);
     } else if (formData.profile_image === null) {
-      console.log('Setting profile_image to empty');
-      data.append('profile_image', '');
+      console.log('Setting clear_profile_image flag');
+      data.append('clear_profile_image', 'true');
     } else {
       console.log('No profile_image change');
     }
@@ -343,267 +418,398 @@ const ProfileForm = ({ initialData, onSubmit }) => {
   return (
     <form onSubmit={handleSubmit} className={`space-y-6 ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>
       {/* Basic Info */}
-      <GlassCard className="p-6">
-        <h3 className="text-xl font-semibold mb-4">Basic Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Profile For <span className="text-red-500">*</span></label>
-            <select name="profile_for" value={formData.profile_for || ''} onChange={handleChange} className="form-input">
-              {PROFILE_FOR_CHOICES.map(choice => (
-                <option key={choice.value} value={choice.value}>{choice.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Name <span className="text-red-500">*</span></label>
-            <input type="text" name="name" value={formData.name || ''} onChange={handleChange} className="form-input" />
-            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Date of Birth <span className="text-red-500">*</span></label>
-            <input type="date" name="date_of_birth" value={formData.date_of_birth || ''} onChange={handleChange} className="form-input" />
-            {errors.date_of_birth && <p className="text-red-500 text-xs mt-1">{errors.date_of_birth}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Gender <span className="text-red-500">*</span></label>
-            <select name="gender" value={formData.gender || ''} onChange={handleChange} className="form-input">
-              {GENDER_CHOICES.map(choice => (
-                <option key={choice.value} value={choice.value}>{choice.label}</option>
-              ))}
-            </select>
-            {errors.gender && <p className="text-red-500 text-xs mt-1">{errors.gender}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Height (cm)</label>
-            <input type="number" name="height_cm" value={formData.height_cm || ''} onChange={handleChange} className="form-input" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Blood Group</label>
-            <select name="blood_group" value={formData.blood_group || ''} onChange={handleChange} className="form-input">
-              <option value="">Select Blood Group</option>
-              {BLOOD_GROUP_CHOICES.map(choice => (
-                <option key={choice.value} value={choice.value}>{choice.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Religion <span className="text-red-500">*</span></label>
-            <select name="religion" value={formData.religion || ''} onChange={handleChange} className="form-input">
-              <option value="">Select Religion</option>
-              {RELIGION_CHOICES.map(choice => (
-                <option key={choice.value} value={choice.value}>{choice.label}</option>
-              ))}
-            </select>
-            {errors.religion && <p className="text-red-500 text-xs mt-1">{errors.religion}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Alcohol</label>
-            <select name="alcohol" value={formData.alcohol || ''} onChange={handleChange} className="form-input">
-              <option value="">Select Alcohol Preference</option>
-              {ALCOHOL_CHOICES.map(choice => (
-                <option key={choice.value} value={choice.value}>{choice.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Smoking</label>
-            <select name="smoking" value={formData.smoking || ''} onChange={handleChange} className="form-input">
-              <option value="">Select Smoking Preference</option>
-              {SMOKING_CHOICES.map(choice => (
-                <option key={choice.value} value={choice.value}>{choice.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </GlassCard>
+      {(section === 'all' || section === 'about') && (
+        <>
+          <GlassCard className="p-6">
+            <h3 className="text-xl font-semibold mb-4">Basic Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Profile For <span className="text-red-500">*</span></label>
+                <select name="profile_for" value={formData.profile_for || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
+                  {PROFILE_FOR_CHOICES.map(choice => (
+                    <option key={choice.value} value={choice.value}>{choice.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Name <span className="text-red-500">*</span></label>
+                <input type="text" name="name" value={formData.name || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+                {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Date of Birth <span className="text-red-500">*</span></label>
+                <div className="grid grid-cols-3 gap-2">
+                  {/* Day Dropdown */}
+                  <select
+                    name="dob_day"
+                    value={formData.date_of_birth ? new Date(formData.date_of_birth).getDate() : ''}
+                    onChange={(e) => {
+                      const day = parseInt(e.target.value);
+                      const currentDate = formData.date_of_birth ? new Date(formData.date_of_birth) : new Date();
+                      const month = currentDate.getMonth() + 1;
+                      const year = currentDate.getFullYear();
+                      if (day && month && year) {
+                        const newDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        handleChange({ target: { name: 'date_of_birth', value: newDate } });
+                      } else {
+                        handleChange({ target: { name: 'date_of_birth', value: '' } });
+                      }
+                    }}
+                    className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Day</option>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                      <option key={day} value={day}>{day}</option>
+                    ))}
+                  </select>
 
-      {/* Location */}
-      <GlassCard className="p-6">
-        <h3 className="text-xl font-semibold mb-4">Location</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Current City <span className="text-red-500">*</span></label>
-            <input type="text" name="current_city" value={formData.current_city || ''} onChange={handleChange} className="form-input" />
-            {errors.current_city && <p className="text-red-500 text-xs mt-1">{errors.current_city}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Current Country <span className="text-red-500">*</span></label>
-            <select name="current_country" value={formData.current_country || ''} onChange={handleChange} className="form-input">
-              <option value="">Select Country</option>
-              {countries.map(country => (
-                <option key={country.code} value={country.code}>{country.name}</option>
-              ))}
-            </select>
-            {errors.current_country && <p className="text-red-500 text-xs mt-1">{errors.current_country}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Origin City</label>
-            <input type="text" name="origin_city" value={formData.origin_city || ''} onChange={handleChange} className="form-input" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Origin Country</label>
-            <select name="origin_country" value={formData.origin_country || ''} onChange={handleChange} className="form-input">
-              <option value="">Select Country</option>
-              {countries.map(country => (
-                <option key={country.code} value={country.code}>{country.name}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </GlassCard>
+                  {/* Month Dropdown */}
+                  <select
+                    name="dob_month"
+                    value={formData.date_of_birth ? new Date(formData.date_of_birth).getMonth() + 1 : ''}
+                    onChange={(e) => {
+                      const month = parseInt(e.target.value);
+                      const currentDate = formData.date_of_birth ? new Date(formData.date_of_birth) : new Date();
+                      const day = currentDate.getDate();
+                      const year = currentDate.getFullYear();
+                      if (day && month && year) {
+                        const newDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        handleChange({ target: { name: 'date_of_birth', value: newDate } });
+                      } else {
+                        handleChange({ target: { name: 'date_of_birth', value: '' } });
+                      }
+                    }}
+                    className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Month</option>
+                    <option value="1">January</option>
+                    <option value="2">February</option>
+                    <option value="3">March</option>
+                    <option value="4">April</option>
+                    <option value="5">May</option>
+                    <option value="6">June</option>
+                    <option value="7">July</option>
+                    <option value="8">August</option>
+                    <option value="9">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                  </select>
 
-      {/* Immigration */}
-      <GlassCard className="p-6">
-        <h3 className="text-xl font-semibold mb-4">Immigration</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Visa Status</label>
-            <input type="text" name="visa_status" value={formData.visa_status || ''} onChange={handleChange} className="form-input" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Citizenship</label>
-            <input type="text" name="citizenship" value={formData.citizenship || ''} onChange={handleChange} className="form-input" />
-          </div>
-        </div>
-      </GlassCard>
+                  {/* Year Dropdown */}
+                  <select
+                    name="dob_year"
+                    value={formData.date_of_birth ? new Date(formData.date_of_birth).getFullYear() : ''}
+                    onChange={(e) => {
+                      const year = parseInt(e.target.value);
+                      const currentDate = formData.date_of_birth ? new Date(formData.date_of_birth) : new Date();
+                      const day = currentDate.getDate();
+                      const month = currentDate.getMonth() + 1;
+                      if (day && month && year) {
+                        const newDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        handleChange({ target: { name: 'date_of_birth', value: newDate } });
+                      } else {
+                        handleChange({ target: { name: 'date_of_birth', value: '' } });
+                      }
+                    }}
+                    className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Year</option>
+                    {Array.from({ length: 70 }, (_, i) => new Date().getFullYear() - 18 - i).map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+                {errors.date_of_birth && <p className="text-red-500 text-xs mt-1">{errors.date_of_birth}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Gender <span className="text-red-500">*</span></label>
+                <select name="gender" value={formData.gender || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
+                  <option value="">Select Gender</option>
+                  {GENDER_CHOICES.map(choice => (
+                    <option key={choice.value} value={choice.value}>{choice.label}</option>
+                  ))}
+                </select>
+                {errors.gender && <p className="text-red-500 text-xs mt-1">{errors.gender}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Height</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Feet Dropdown */}
+                  <select
+                    name="height_feet"
+                    value={formData.height_inches ? Math.floor(formData.height_inches / 12) : ''}
+                    onChange={(e) => {
+                      const feet = parseInt(e.target.value) || 0;
+                      const inches = formData.height_inches ? formData.height_inches % 12 : 0;
+                      const totalInches = (feet * 12) + inches;
+                      handleChange({ target: { name: 'height_inches', value: totalInches || '' } });
+                    }}
+                    className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Feet</option>
+                    {Array.from({ length: 5 }, (_, i) => i + 4).map(ft => (
+                      <option key={ft} value={ft}>{ft} ft</option>
+                    ))}
+                  </select>
 
-      {/* Family */}
-      <GlassCard className="p-6">
-        <h3 className="text-xl font-semibold mb-4">Family Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Father's Occupation</label>
-            <input type="text" name="father_occupation" value={formData.father_occupation || ''} onChange={handleChange} className="form-input" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Mother's Occupation</label>
-            <input type="text" name="mother_occupation" value={formData.mother_occupation || ''} onChange={handleChange} className="form-input" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Siblings</label>
-            <input type="text" name="siblings" value={formData.siblings || ''} onChange={handleChange} className="form-input" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Family Type</label>
-            <select name="family_type" value={formData.family_type || ''} onChange={handleChange} className="form-input">
-              <option value="">Select Family Type</option>
-              {FAMILY_TYPE_CHOICES.map(choice => (
-                <option key={choice.value} value={choice.value}>{choice.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Marital Status <span className="text-red-500">*</span></label>
-            <select name="marital_status" value={formData.marital_status || ''} onChange={handleChange} className="form-input">
-              <option value="">Select Marital Status</option>
-              {MARITAL_STATUS_CHOICES.map(choice => (
-                <option key={choice.value} value={choice.value}>{choice.label}</option>
-              ))}
-            </select>
-            {errors.marital_status && <p className="text-red-500 text-xs mt-1">{errors.marital_status}</p>}
-          </div>
-        </div>
-      </GlassCard>
+                  {/* Inches Dropdown */}
+                  <select
+                    name="height_inches_part"
+                    value={formData.height_inches ? formData.height_inches % 12 : ''}
+                    onChange={(e) => {
+                      const inches = parseInt(e.target.value) || 0;
+                      const feet = formData.height_inches ? Math.floor(formData.height_inches / 12) : 0;
+                      const totalInches = (feet * 12) + inches;
+                      handleChange({ target: { name: 'height_inches', value: totalInches || '' } });
+                    }}
+                    className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Inches</option>
+                    {Array.from({ length: 12 }, (_, i) => i).map(inch => (
+                      <option key={inch} value={inch}>{inch} in</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Skin Complexion</label>
+                <select name="skin_complexion" value={formData.skin_complexion || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
+                  <option value="">Select Complexion</option>
+                  {SKIN_COMPLEXION_CHOICES.map(choice => (
+                    <option key={choice.value} value={choice.value}>{choice.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Blood Group</label>
+                <select name="blood_group" value={formData.blood_group || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
+                  <option value="">Select Blood Group</option>
+                  {BLOOD_GROUP_CHOICES.map(choice => (
+                    <option key={choice.value} value={choice.value}>{choice.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Religion <span className="text-red-500">*</span></label>
+                <select name="religion" value={formData.religion || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
+                  <option value="">Select Religion</option>
+                  {RELIGION_CHOICES.map(choice => (
+                    <option key={choice.value} value={choice.value}>{choice.label}</option>
+                  ))}
+                </select>
+                {errors.religion && <p className="text-red-500 text-xs mt-1">{errors.religion}</p>}
+              </div>
+            </div>
+          </GlassCard>
 
-      {/* About & Contact */}
-      <GlassCard className="p-6">
-        <h3 className="text-xl font-semibold mb-4">About & Contact</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">About Me <span className="text-red-500">*</span></label>
-            <textarea name="about" value={formData.about || ''} onChange={handleChange} className="form-input"></textarea>
-            {errors.about && <p className="text-red-500 text-xs mt-1">{errors.about}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Looking For</label>
-            <textarea name="looking_for" value={formData.looking_for || ''} onChange={handleChange} className="form-input"></textarea>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Email <span className="text-red-500">*</span></label>
-            <input type="email" name="email" value={formData.email || ''} onChange={handleChange} className="form-input" />
-            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Phone</label>
-            <input type="text" name="phone" value={formData.phone || ''} onChange={handleChange} className="form-input" />
-          </div>
-        </div>
-      </GlassCard>
+          {/* Location */}
+          <GlassCard className="p-6">
+            <h3 className="text-xl font-semibold mb-4">Location</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Current City <span className="text-red-500">*</span></label>
+                <input type="text" name="current_city" value={formData.current_city || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+                {errors.current_city && <p className="text-red-500 text-xs mt-1">{errors.current_city}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Current Country <span className="text-red-500">*</span></label>
+                <select name="current_country" value={formData.current_country || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
+                  <option value="">Select Country</option>
+                  {countries.map(country => (
+                    <option key={country.code} value={country.code}>{country.name}</option>
+                  ))}
+                </select>
+                {errors.current_country && <p className="text-red-500 text-xs mt-1">{errors.current_country}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Origin City</label>
+                <input type="text" name="origin_city" value={formData.origin_city || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Origin Country</label>
+                <select name="origin_country" value={formData.origin_country || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
+                  <option value="">Select Country</option>
+                  {countries.map(country => (
+                    <option key={country.code} value={country.code}>{country.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </GlassCard>
+
+          {/* Immigration */}
+          <GlassCard className="p-6">
+            <h3 className="text-xl font-semibold mb-4">Immigration</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Visa Status</label>
+                <input type="text" name="visa_status" value={formData.visa_status || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Citizenship</label>
+                <input type="text" name="citizenship" value={formData.citizenship || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+              </div>
+            </div>
+          </GlassCard>
+
+          {/* Family */}
+          <GlassCard className="p-6">
+            <h3 className="text-xl font-semibold mb-4">Family Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Father's Occupation</label>
+                <input type="text" name="father_occupation" value={formData.father_occupation || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Mother's Occupation</label>
+                <input type="text" name="mother_occupation" value={formData.mother_occupation || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Siblings</label>
+                <input type="text" name="siblings" value={formData.siblings || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Family Type</label>
+                <select name="family_type" value={formData.family_type || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
+                  <option value="">Select Family Type</option>
+                  {FAMILY_TYPE_CHOICES.map(choice => (
+                    <option key={choice.value} value={choice.value}>{choice.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Marital Status <span className="text-red-500">*</span></label>
+                <select name="marital_status" value={formData.marital_status || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
+                  <option value="">Select Marital Status</option>
+                  {MARITAL_STATUS_CHOICES.map(choice => (
+                    <option key={choice.value} value={choice.value}>{choice.label}</option>
+                  ))}
+                </select>
+                {errors.marital_status && <p className="text-red-500 text-xs mt-1">{errors.marital_status}</p>}
+              </div>
+            </div>
+          </GlassCard>
+
+          {/* About & Contact */}
+          <GlassCard className="p-6">
+            <h3 className="text-xl font-semibold mb-4">About & Contact</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">About Me <span className="text-red-500">*</span></label>
+                <textarea name="about" value={formData.about || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"></textarea>
+                {errors.about && <p className="text-red-500 text-xs mt-1">{errors.about}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Looking For</label>
+                <textarea name="looking_for" value={formData.looking_for || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"></textarea>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Email <span className="text-red-500">*</span></label>
+                <input type="email" name="email" value={formData.email || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Phone</label>
+                <input type="text" name="phone" value={formData.phone || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+              </div>
+            </div>
+          </GlassCard>
 
 
 
-      {/* Social Media */}
-      <GlassCard className="p-6">
-        <h3 className="text-xl font-semibold mb-4">Social Media</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Facebook Profile</label>
-            <input type="url" name="facebook_profile" value={formData.facebook_profile || ''} onChange={handleChange} className="form-input" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Instagram Profile</label>
-            <input type="url" name="instagram_profile" value={formData.instagram_profile || ''} onChange={handleChange} className="form-input" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">LinkedIn Profile</label>
-            <input type="url" name="linkedin_profile" value={formData.linkedin_profile || ''} onChange={handleChange} className="form-input" />
-          </div>
-        </div>
-      </GlassCard>
+          {/* Social Media */}
+          <GlassCard className="p-6">
+            <h3 className="text-xl font-semibold mb-4">Social Media</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Facebook Profile</label>
+                <input type="url" name="facebook_profile" value={formData.facebook_profile || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Instagram Profile</label>
+                <input type="url" name="instagram_profile" value={formData.instagram_profile || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">LinkedIn Profile</label>
+                <input type="url" name="linkedin_profile" value={formData.linkedin_profile || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+              </div>
+            </div>
+          </GlassCard>
+
+          {/* My Faith Tags */}
+          <GlassCard className="p-6">
+            <h3 className="text-xl font-semibold mb-4">My Faith</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Select tags that represent your values, lifestyle, and preferences. These help others understand you better.
+            </p>
+            <FaithTagsSection
+              selectedTags={formData.faith_tags || []}
+              onTagsChange={handleFaithTagsChange}
+              isEditing={true}
+            />
+          </GlassCard>
+        </>
+      )}
 
       {/* Education */}
-      <GlassCard className="p-6">
-        <h3 className="text-xl font-semibold mb-4">Education</h3>
-        {formData.education && formData.education.map((edu, index) => (
-          <div key={index} className="border border-white/30 rounded-lg p-4 mb-4 relative">
-            <button type="button" onClick={() => handleRemoveNested('education', index)} className="absolute top-2 right-2 text-red-500"><FaTrash /></button>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Degree</label>
-                <input type="text" value={edu.degree || ''} onChange={(e) => handleNestedChange('education', index, 'degree', e.target.value)} className="form-input" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">School</label>
-                <input type="text" value={edu.school || ''} onChange={(e) => handleNestedChange('education', index, 'school', e.target.value)} className="form-input" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Field of Study</label>
-                <input type="text" value={edu.field_of_study || ''} onChange={(e) => handleNestedChange('education', index, 'field_of_study', e.target.value)} className="form-input" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Graduation Year</label>
-                <input type="number" value={edu.graduation_year || ''} onChange={(e) => handleNestedChange('education', index, 'graduation_year', e.target.value)} className="form-input" />
+      {(section === 'all' || section === 'education') && (
+        <GlassCard className="p-6">
+          <h3 className="text-xl font-semibold mb-4">Education</h3>
+          {formData.education && formData.education.map((edu, index) => (
+            <div key={index} className="border border-white/30 rounded-lg p-4 mb-4 relative">
+              <button type="button" onClick={() => handleRemoveNested('education', index)} className="absolute top-2 right-2 text-red-500"><FaTrash /></button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Degree</label>
+                  <input type="text" value={edu.degree || ''} onChange={(e) => handleNestedChange('education', index, 'degree', e.target.value)} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">School</label>
+                  <input type="text" value={edu.school || ''} onChange={(e) => handleNestedChange('education', index, 'school', e.target.value)} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Field of Study</label>
+                  <input type="text" value={edu.field_of_study || ''} onChange={(e) => handleNestedChange('education', index, 'field_of_study', e.target.value)} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Graduation Year</label>
+                  <input type="number" value={edu.graduation_year || ''} onChange={(e) => handleNestedChange('education', index, 'graduation_year', e.target.value)} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-        <button type="button" onClick={() => handleAddNested('education', { degree: '', school: '', field_of_study: '', graduation_year: '' })} className="btn-add"><FaPlus className="mr-2" />Add Education</button>
-      </GlassCard>
+          ))}
+          <button type="button" onClick={() => handleAddNested('education', { degree: '', school: '', field_of_study: '', graduation_year: '' })} className="btn-add"><FaPlus className="mr-2" />Add Education</button>
+        </GlassCard>
+      )}
 
       {/* Work Experience */}
-      <GlassCard className="p-6">
-        <h3 className="text-xl font-semibold mb-4">Work Experience</h3>
-        {formData.work_experience && formData.work_experience.map((work, index) => (
-          <div key={index} className="border border-white/30 rounded-lg p-4 mb-4 relative">
-            <button type="button" onClick={() => handleRemoveNested('work_experience', index)} className="absolute top-2 right-2 text-red-500"><FaTrash /></button>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Title</label>
-                <input type="text" value={work.title || ''} onChange={(e) => handleNestedChange('work_experience', index, 'title', e.target.value)} className="form-input" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Company</label>
-                <input type="text" value={work.company || ''} onChange={(e) => handleNestedChange('work_experience', index, 'company', e.target.value)} className="form-input" />
-              </div>
-              <div className="flex items-center">
-                <input type="checkbox" checked={work.currently_working || false} onChange={(e) => handleNestedChange('work_experience', index, 'currently_working', e.target.checked)} className="mr-2" />
-                <label className="block text-sm font-medium">Currently working here</label>
+      {(section === 'all' || section === 'career') && (
+        <GlassCard className="p-6">
+          <h3 className="text-xl font-semibold mb-4">Work Experience</h3>
+          {formData.work_experience && formData.work_experience.map((work, index) => (
+            <div key={index} className="border border-white/30 rounded-lg p-4 mb-4 relative">
+              <button type="button" onClick={() => handleRemoveNested('work_experience', index)} className="absolute top-2 right-2 text-red-500"><FaTrash /></button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Title</label>
+                  <input type="text" value={work.title || ''} onChange={(e) => handleNestedChange('work_experience', index, 'title', e.target.value)} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Company</label>
+                  <input type="text" value={work.company || ''} onChange={(e) => handleNestedChange('work_experience', index, 'company', e.target.value)} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div className="flex items-center">
+                  <input type="checkbox" checked={work.currently_working || false} onChange={(e) => handleNestedChange('work_experience', index, 'currently_working', e.target.checked)} className="mr-2" />
+                  <label className="block text-sm font-medium">Currently working here</label>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-        <button type="button" onClick={() => handleAddNested('work_experience', { title: '', company: '', currently_working: false })} className="btn-add"><FaPlus className="mr-2" />Add Work Experience</button>
-      </GlassCard>
+          ))}
+          <button type="button" onClick={() => handleAddNested('work_experience', { title: '', company: '', currently_working: false })} className="btn-add"><FaPlus className="mr-2" />Add Work Experience</button>
+        </GlassCard>
+      )}
+
 
 
 
@@ -615,19 +821,19 @@ const ProfileForm = ({ initialData, onSubmit }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Min Age</label>
-              <input type="number" name="min_age" value={formData.preference.min_age || ''} onChange={handlePreferenceChange} className="form-input" />
+              <input type="number" name="min_age" value={formData.preference.min_age || ''} onChange={handlePreferenceChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Max Age</label>
-              <input type="number" name="max_age" value={formData.preference.max_age || ''} onChange={handlePreferenceChange} className="form-input" />
+              <input type="number" name="max_age" value={formData.preference.max_age || ''} onChange={handlePreferenceChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Min Height (cm)</label>
-              <input type="number" name="min_height_cm" value={formData.preference.min_height_cm || ''} onChange={handlePreferenceChange} className="form-input" />
+              <label className="block text-sm font-medium mb-1">Min Height (inches)</label>
+              <input type="number" name="min_height_inches" value={formData.preference.min_height_inches || ''} onChange={handlePreferenceChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Religion</label>
-              <select name="religion" value={formData.preference.religion || ''} onChange={handlePreferenceChange} className="form-input">
+              <select name="religion" value={formData.preference.religion || ''} onChange={handlePreferenceChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
                 <option value="">Select Religion</option>
                 <option value="muslim">Muslim</option>
                 <option value="hindu">Hindu</option>
@@ -674,14 +880,6 @@ const ProfileForm = ({ initialData, onSubmit }) => {
               />
             </div>
 
-            <div className="flex items-center">
-              <input type="checkbox" name="require_non_alcoholic" checked={formData.preference.require_non_alcoholic || false} onChange={handlePreferenceChange} className="mr-2" />
-              <label className="block text-sm font-medium">Require Non-Alcoholic</label>
-            </div>
-            <div className="flex items-center">
-              <input type="checkbox" name="require_non_smoker" checked={formData.preference.require_non_smoker || false} onChange={handlePreferenceChange} className="mr-2" />
-              <label className="block text-sm font-medium">Non-Smoker</label>
-            </div>
           </div>
         )}
       </GlassCard>
@@ -694,7 +892,7 @@ const ProfileForm = ({ initialData, onSubmit }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium mb-1">Profile Image Privacy</label>
-            <select name="profile_image_privacy" value={formData.profile_image_privacy || ''} onChange={handleChange} className="form-input">
+            <select name="profile_image_privacy" value={formData.profile_image_privacy || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
               {PRIVACY_CHOICES.map(choice => (
                 <option key={choice.value} value={choice.value}>{choice.label}</option>
               ))}
@@ -702,50 +900,76 @@ const ProfileForm = ({ initialData, onSubmit }) => {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Upload New Image</label>
-            <input type="file" accept="image/*" onChange={handleProfileImageChange} className="form-input" />
+            {/* Hidden file input */}
+            <input
+              ref={profileImageInputRef}
+              id="profile-image-input"
+              type="file"
+              accept="image/*"
+              onChange={handleProfileImageChange}
+              style={{ display: 'none' }}
+            />
+            {/* Button to trigger file input */}
+            <button
+              type="button"
+              onClick={triggerFileInput}
+              className="w-full px-4 py-2 rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-2 focus:ring-indigo-500 transition-colors"
+            >
+              {profileImageFile ? `Selected: ${profileImageFile.name}` : 'Choose Image File'}
+            </button>
           </div>
         </div>
-        {formData.profile_image && (
+
+        {/* Show preview of newly selected image or current profile image */}
+        {(profileImagePreview || formData.profile_image) && (
           <div className="relative w-32 h-32 mx-auto">
-            <img src={formData.profile_image} alt="Current Profile" className="w-32 h-32 object-cover rounded-full" />
-            <button type="button" onClick={() => setFormData(prev => ({ ...prev, profile_image: null }))} className="absolute bottom-0 right-0 bg-red-500 text-white rounded-full p-1 text-xs"><FaTrash /></button>
+            <img
+              src={profileImagePreview || formData.profile_image}
+              alt={profileImagePreview ? "New Profile Preview" : "Current Profile"}
+              className="w-32 h-32 object-cover rounded-full border-4 border-indigo-200"
+            />
+            {profileImagePreview && (
+              <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                New
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setFormData(prev => ({ ...prev, profile_image: null }));
+                setProfileImageFile(null);
+                setProfileImagePreview(null);
+              }}
+              className="absolute bottom-0 right-0 bg-red-500 text-white rounded-full p-1 text-xs hover:bg-red-600"
+            >
+              <FaTrash />
+            </button>
           </div>
         )}
       </GlassCard>
 
       {/* Additional Images */}
       <GlassCard className="p-6">
-        <h3 className="text-xl font-semibold mb-4">Additional Images</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Additional Images Privacy</label>
-            <select name="additional_images_privacy" value={formData.additional_images_privacy || ''} onChange={handleChange} className="form-input">
-              {PRIVACY_CHOICES.map(choice => (
-                <option key={choice.value} value={choice.value}>{choice.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Upload New Images</label>
-            <input type="file" accept="image/*" multiple onChange={handleAdditionalImageChange} className="form-input" />
-          </div>
+        <h3 className="text-xl font-semibold mb-4">Photo Gallery</h3>
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">Gallery Privacy</label>
+          <select name="additional_images_privacy" value={formData.additional_images_privacy || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
+            {PRIVACY_CHOICES.map(choice => (
+              <option key={choice.value} value={choice.value}>{choice.label}</option>
+            ))}
+          </select>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {formData.additional_images && formData.additional_images.map((img) => (
-            additionalImagesToKeep.includes(img.id) && (
-              <div key={img.id} className="relative">
-                <img src={img.image} alt="Additional" className="w-full h-24 object-cover rounded-lg" />
-                <button type="button" onClick={() => handleRemoveAdditionalImage(img.id)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 text-xs"><FaTrash /></button>
-              </div>
-            )
-          ))}
-        </div>
+        <DragDropUpload
+          onFilesAdded={handleAdditionalImageChange}
+          existingImages={initialData.additional_images || []}
+          onRemoveExisting={handleRemoveAdditionalImage}
+        />
       </GlassCard>
 
       <button type="submit" className="w-full p-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold text-lg hover:from-purple-700 hover:to-pink-600 transition duration-300">
         Save Profile
       </button>
-    </form>
+    </form >
   );
 };
 

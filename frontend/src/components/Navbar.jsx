@@ -12,46 +12,89 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-    setIsMobileMenuOpen(false);
-  };
-
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
-  return (
-    <nav className="navbar">
-      <div className="navbar-container">
-        <Link to="/" className="navbar-logo">Life-Time</Link>
+  const handleLogout = async () => {
+    try {
+      await logout();
+      closeMobileMenu();
+      navigate('/login');
+    } catch (err) {
+      // handle logout error gracefully
+      console.error('Logout failed', err);
+      // Optionally show a toast or alert
+      alert('Logout failed. Please try again.');
+    }
+  };
 
-        <div className="hidden md:flex navbar-links">
+  // helper to compute active class for NavLink (keeps BEM-style)
+  const navLinkClass = ({ isActive }) =>
+    isActive ? 'navbar-link active' : 'navbar-link';
+
+  return (
+    <nav className="navbar" role="navigation" aria-label="Main navigation">
+      <div className="navbar-container">
+        <Link to="/" className="navbar-logo" onClick={closeMobileMenu}>
+          Life-Time
+        </Link>
+
+        {/* Desktop links */}
+        <div className="hidden md:flex navbar-links" role="menubar" aria-hidden={isMobileMenuOpen}>
           {user ? (
             <>
-              <NavLink to="/profile" className="navbar-link" activeClassName="active">My Profile</NavLink>
-              <NavLink to="/profiles" className="navbar-link" activeClassName="active">All Profiles</NavLink>
+              <NavLink to="/profile" className={navLinkClass} onClick={closeMobileMenu}>
+                My Profile
+              </NavLink>
+              <NavLink to="/profiles" className={navLinkClass} onClick={closeMobileMenu}>
+                All Profiles
+              </NavLink>
             </>
           ) : (
-            <NavLink to="/login" className="navbar-link" activeClassName="active">Login</NavLink>
+            <NavLink to="/login" className={navLinkClass} onClick={closeMobileMenu}>
+              Login
+            </NavLink>
           )}
         </div>
 
+        {/* Desktop actions */}
         <div className="hidden md:flex navbar-actions">
           {user ? (
             <>
               <NotificationsDropdown />
-              <button onClick={handleLogout} className="navbar-button logout-button">Logout</button>
+              <button
+                onClick={handleLogout}
+                className="navbar-button logout-button"
+                aria-label="Logout"
+                title="Logout"
+              >
+                Logout
+              </button>
             </>
           ) : (
-            <Link to="/register" className="navbar-button register-button">Register</Link>
+            <Link to="/register" className="navbar-button register-button" onClick={closeMobileMenu}>
+              Register
+            </Link>
           )}
-          <button onClick={toggleTheme} className="theme-toggle">
-            {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+
+          <button
+            onClick={toggleTheme}
+            className="theme-toggle"
+            aria-label="Toggle theme"
+            title={theme === 'light' ? 'Switch to dark' : 'Switch to light'}
+          >
+            {theme === 'light' ? <Sun size={20} /> : <Moon size={20} />}
           </button>
         </div>
 
+        {/* Hamburger */}
         <div className="hamburger-menu md:hidden">
-          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+          <button
+            onClick={() => setIsMobileMenuOpen((s) => !s)}
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="mobile-menu"
+            aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+            className="hamburger-button"
+          >
             {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
           </button>
         </div>
@@ -59,24 +102,49 @@ const Navbar = () => {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="mobile-menu md:hidden">
+        <div id="mobile-menu" className="mobile-menu md:hidden" role="menu" aria-label="Mobile menu">
           {user ? (
             <>
-              <NavLink to="/profile" className="navbar-link" onClick={closeMobileMenu}>My Profile</NavLink>
-              <NavLink to="/profiles" className="navbar-link" onClick={closeMobileMenu}>All Profiles</NavLink>
-              <div className="mt-4">
+              <NavLink to="/profile" className={navLinkClass} onClick={closeMobileMenu}>
+                My Profile
+              </NavLink>
+              <NavLink to="/profiles" className={navLinkClass} onClick={closeMobileMenu}>
+                All Profiles
+              </NavLink>
+
+              <div className="mobile-notifications mt-4">
+                {/* If NotificationsDropdown is interactive, ensure it works well on mobile */}
                 <NotificationsDropdown />
               </div>
-              <button onClick={handleLogout} className="navbar-button logout-button mt-4">Logout</button>
+
+              <button
+                onClick={handleLogout}
+                className="navbar-button logout-button mt-4"
+                aria-label="Logout"
+              >
+                Logout
+              </button>
             </>
           ) : (
             <>
-              <NavLink to="/login" className="navbar-link" onClick={closeMobileMenu}>Login</NavLink>
-              <Link to="/register" className="navbar-button register-button mt-4" onClick={closeMobileMenu}>Register</Link>
+              <NavLink to="/login" className={navLinkClass} onClick={closeMobileMenu}>
+                Login
+              </NavLink>
+              <Link to="/register" className="navbar-button register-button mt-4" onClick={closeMobileMenu}>
+                Register
+              </Link>
             </>
           )}
-          <button onClick={toggleTheme} className="theme-toggle mt-4">
-            {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+
+          <button
+            onClick={() => {
+              toggleTheme();
+              // optionally keep mobile menu open so user can continue navigating
+            }}
+            className="theme-toggle mt-4"
+            aria-label="Toggle theme"
+          >
+            {theme === 'light' ? <Sun size={20} /> : <Moon size={20} />}
           </button>
         </div>
       )}

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import Logo from '../assets/images/Logo.png'; // Import the logo
+import Logo from '../assets/images/Logo.png';
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -26,47 +28,110 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
-            <div className="flex bg-white rounded-lg shadow-xl overflow-hidden max-w-4xl w-full">
-                <div className="w-1/2 hidden md:block">
-                    <img src={Logo} alt="Life Time Logo" className="object-cover h-full w-full" />
-                </div>
-                <div className="w-full md:w-1/2 p-8">
-                    <h2 className="text-3xl font-bold text-gray-800 mb-4 text-center">Welcome Back</h2>
-                    <p className="text-gray-600 mb-6 text-center">Login to continue your journey</p>
-                    <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="min-h-screen flex w-full bg-white">
+            {/* Left Side - Logo/Image (50%) */}
+            <div className="hidden md:block md:w-1/2 relative">
+                <img
+                    src={Logo}
+                    alt="Life Time Logo"
+                    className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black bg-opacity-20"></div>
+            </div>
+
+            {/* Right Side - Login Form (50%) */}
+            <div className="w-full md:w-1/2 flex items-center justify-center p-8 md:p-12 lg:p-16">
+                <div className="w-full max-w-md">
+                    <h2 className="text-3xl font-bold text-gray-800 mb-4 text-center">
+                        Login to Your Account
+                    </h2>
+                    <p className="text-gray-600 mb-8 text-center">
+                        Enter your details below
+                    </p>
+
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* Email */}
                         <div>
-                            <label className="block text-gray-700 text-sm font-medium mb-1">Email Address</label>
-                            <input
-                                type="email"
-                                placeholder="Email Address"
-                                className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                            />
+                            <label className="text-sm font-medium text-gray-700 block mb-1">
+                                Email Address
+                            </label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-lavender-500 transition-colors" />
+                                </div>
+                                <input
+                                    type="email"
+                                    placeholder="name@example.com"
+                                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 
+                                    focus:bg-white focus:border-lavender-500 focus:ring-2 focus:ring-lavender-200 
+                                    outline-none transition-all duration-200"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                />
+                            </div>
                         </div>
+
+                        {/* Password */}
                         <div>
-                            <label className="block text-gray-700 text-sm font-medium mb-1">Password</label>
-                            <input
-                                type="password"
-                                placeholder="Password"
-                                className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                            />
+                            <div className="flex justify-between items-center">
+                                <label className="text-sm font-medium text-gray-700 block mb-1">
+                                    Password
+                                </label>
+                                <Link
+                                    to="/forgot-password"
+                                    className="text-xs font-medium text-lavender-600 hover:text-lavender-700 hover:underline"
+                                >
+                                    Forgot password?
+                                </Link>
+                            </div>
+
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-lavender-500 transition-colors" />
+                                </div>
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    placeholder="Password"
+                                    className="w-full pl-10 pr-12 py-3 rounded-xl border border-gray-200 bg-gray-50 
+                                    focus:bg-white focus:border-lavender-500 focus:ring-2 focus:ring-lavender-200 
+                                    outline-none transition-all duration-200"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                                >
+                                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                </button>
+                            </div>
                         </div>
+
+                        {/* Submit Button */}
                         <button
                             type="submit"
-                            className="w-full p-3 rounded-lg bg-lavender-600 text-white font-bold text-lg hover:bg-lavender-700 transition duration-300 shadow-md"
+                            className="w-full p-3 rounded-xl bg-lavender-600 text-white font-bold text-lg 
+                            hover:bg-lavender-700 transition duration-300 shadow-md"
                         >
                             Login
                         </button>
                     </form>
-                    <p className="text-gray-500 mt-6 text-center">
-                        Don't have an account? <Link to="/register" className="font-bold text-lavender-600 hover:underline">Register here</Link>
-                    </p>
+
+                    {/* Footer */}
+                    <div className="mt-8 text-center">
+                        <p className="text-gray-600">
+                            Don't have an account?{' '}
+                            <Link
+                                to="/register"
+                                className="font-bold text-lavender-600 hover:text-lavender-700 hover:underline"
+                            >
+                                Create Account
+                            </Link>
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
