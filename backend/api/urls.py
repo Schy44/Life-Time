@@ -1,10 +1,17 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import UserView, ProfileViewSet, ProfileDetailView, InterestViewSet, CountryListView, ProfessionListView, NotificationListView, MarkNotificationAsReadView, UnreadNotificationCountView
+from .views import (
+    UserView, ProfileViewSet, ProfileDetailView, InterestViewSet, 
+    CountryListView, ProfessionListView, NotificationListView, 
+    MarkNotificationAsReadView, UnreadNotificationCountView,
+    VerificationDocumentViewSet, AdminVerificationDocumentViewSet
+)
 
 router = DefaultRouter()
 router.register('profiles', ProfileViewSet, basename='profile')
 router.register('interests', InterestViewSet, basename='interest')
+router.register('verification-documents', VerificationDocumentViewSet, basename='verification-document')
+router.register('admin/verification-documents', AdminVerificationDocumentViewSet, basename='admin-verification-document')
 
 urlpatterns = [
     # Authentication now handled by Supabase on frontend

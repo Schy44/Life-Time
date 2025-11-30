@@ -25,9 +25,8 @@ const PreviewModal = ({ profileData, onClose }) => {
                 </button>
 
                 {/* Header */}
-                <div className="bg-gradient-to-r from-purple-600 to-pink-500 text-white p-6 rounded-t-2xl">
-                    <h2 className="text-2xl font-bold">Public Profile Preview</h2>
-                    <p className="text-sm opacity-90 mt-1">This is how others will see your profile</p>
+                <div className="bg-white dark:bg-gray-800 text-gray-800 dark:text-white p-6 rounded-t-2xl border-b border-gray-200 dark:border-gray-700">
+                    <h2 className="text-2xl font-bold">Preview</h2>
                 </div>
 
                 {/* Content - using actual PublicProfileView component */}

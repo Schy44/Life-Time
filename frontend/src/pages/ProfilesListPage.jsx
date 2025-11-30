@@ -4,8 +4,9 @@ import { getProfiles, getProfile, sendInterest } from '../services/api';
 import GlassCard from '../components/GlassCard';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, MapPin, Filter, XCircle, Zap, User, Grid, List, Heart, Clock, Activity } from 'lucide-react';
+import { Search, MapPin, Filter, XCircle, Zap, User, Grid, List, Heart, Clock, Activity, Layers } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ProfileCardStack from '../components/ProfileCardStack';
 
 const ProfilesListPage = () => {
   const [profiles, setProfiles] = useState([]);
@@ -34,6 +35,7 @@ const ProfilesListPage = () => {
 
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [sendingInterest, setSendingInterest] = useState({}); // Track loading state per profile
+  const [currentCardIndex, setCurrentCardIndex] = useState(0); // Track current card in Quick Match
 
   // Debounce timer ref
   const searchDebounceTimer = useRef(null);
@@ -266,6 +268,61 @@ const ProfilesListPage = () => {
       <AnimatedBackground />
       <main className="relative min-h-screen p-4 sm:p-6 md:p-8 font-sans bg-gray-50 dark:bg-gray-900">
         <div className="max-w-7xl mx-auto">
+          {/* Featured Swipeable Cards Section */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-12"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Quick Match</h2>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Swipe to connect</span>
+            </div>
+
+            {/* Card Container with Side Preview */}
+            <div className="flex justify-center items-center gap-6 lg:gap-8">
+              {/* Main Card Stack */}
+              <div className="w-full max-w-md mx-auto" style={{ height: '550px' }}>
+                <ProfileCardStack
+                  profiles={sortedProfiles.slice(0, 10)}
+                  onIndexChange={(index) => setCurrentCardIndex(index)}
+                  onLike={async (profile) => {
+                    try {
+                      await sendInterest(profile.id);
+                      console.log('Liked:', profile.name);
+                    } catch (err) {
+                      console.error('Failed to send interest:', err);
+                    }
+                  }}
+                  onPass={(profile) => {
+                    console.log('Passed:', profile.name);
+                  }}
+                  onUndo={(action) => {
+                    console.log('Undid action:', action);
+                  }}
+                />
+              </div>
+
+              {/* Right Preview Card - Hidden on mobile, shown on lg+ */}
+              <div className="hidden lg:block w-72 h-96 relative">
+                {sortedProfiles[currentCardIndex + 1] && (
+                  <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-lg blur-sm opacity-40 hover:blur-none hover:opacity-60 transition-all duration-300">
+                    <img
+                      src={sortedProfiles[currentCardIndex + 1].profile_image || '/placeholder-profile.png'}
+                      alt="Next profile"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    <div className="absolute bottom-4 left-4 text-white">
+                      <p className="font-semibold">{sortedProfiles[currentCardIndex + 1].name}</p>
+                      <p className="text-sm opacity-80">Up next</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+
           {/* Page Header */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -520,9 +577,16 @@ const ProfilesListPage = () => {
                           {/* Content Overlay */}
                           <div className={`absolute bottom-0 left-0 right-0 p-5 flex flex-col text-white`}>
                             {/* Name and Age */}
-                            <h2 className="text-xl font-bold mb-1 drop-shadow-lg">
-                              {profile.name}
-                              {profile.age && <span className="font-medium text-base ml-1 opacity-90">{profile.age}</span>}
+                            <h2 className="text-xl font-bold mb-1 drop-shadow-lg flex items-center gap-2">
+                              <span>
+                                {profile.name}
+                                {profile.age && <span className="font-medium text-base ml-1 opacity-90">{profile.age}</span>}
+                              </span>
+                              {profile.is_verified && (
+                                <svg className="w-5 h-5 text-blue-400 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                </svg>
+                              )}
                             </h2>
 
                             {/* Location */}
@@ -588,6 +652,86 @@ const ProfilesListPage = () => {
               </button>
             </div>
           )}
+
+          {/* Enhanced Disclaimer Banner */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="mt-16 mb-8 px-4"
+          >
+            <motion.div
+              animate={{
+                backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+              }}
+              transition={{
+                duration: 5,
+                ease: "linear",
+                repeat: Infinity,
+              }}
+              className="relative bg-gradient-to-r from-amber-400 via-orange-400 to-amber-400 bg-[length:200%_100%] rounded-2xl p-[3px] shadow-2xl max-w-5xl mx-auto overflow-hidden"
+            >
+              {/* Subtle glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-400/20 via-orange-400/20 to-amber-400/20 blur-xl"></div>
+
+              <div className="relative bg-gradient-to-br from-white to-amber-50/50 dark:from-gray-800 dark:to-gray-900 rounded-2xl backdrop-blur-sm">
+                <div className="flex flex-col md:flex-row items-center justify-center gap-4 px-6 py-6 md:px-8 md:py-7">
+                  {/* Enhanced Icon with gradient background */}
+                  <motion.div
+                    animate={{
+                      scale: [1, 1.05, 1],
+                      rotate: [0, 5, -5, 0]
+                    }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                    className="flex-shrink-0"
+                  >
+                    <div className="relative">
+                      {/* Icon glow */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full blur-md opacity-50"></div>
+                      <div className="relative w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white dark:border-gray-700">
+                        <svg
+                          className="w-7 h-7 text-white drop-shadow-md"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* Enhanced Text Content */}
+                  <div className="flex-1 text-center md:text-left">
+                    <p className="text-sm md:text-base leading-relaxed text-gray-800 dark:text-gray-200">
+                      <span className="font-semibold text-gray-900 dark:text-white">Our platform is here to help people meet and connect.</span>{' '}
+                      Since we don't verify backgrounds, please make sure to do your own checks. We are not responsible for any consequences.
+                    </p>
+                  </div>
+
+                  {/* Decorative pulsing dot */}
+                  <motion.div
+                    animate={{
+                      scale: [1, 1.2, 1],
+                      opacity: [0.5, 1, 0.5],
+                    }}
+                    transition={{
+                      duration: 2,
+                      ease: "easeInOut",
+                      repeat: Infinity,
+                    }}
+                    className="hidden lg:block flex-shrink-0"
+                  >
+                    <div className="w-3 h-3 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full shadow-lg"></div>
+                  </motion.div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
         </div>
       </main>
     </>

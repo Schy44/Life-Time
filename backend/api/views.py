@@ -3,12 +3,12 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
-from .serializers import UserSerializer, ProfileSerializer, InterestSerializer, NotificationSerializer
+from .serializers import UserSerializer, ProfileSerializer, InterestSerializer, NotificationSerializer, VerificationDocumentSerializer
 from django.contrib.auth.models import User
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import viewsets
-from .models import Profile, Interest, WorkExperience, Notification
+from .models import Profile, Interest, WorkExperience, Notification, VerificationDocument
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.pagination import PageNumberPagination
@@ -17,6 +17,7 @@ from django.shortcuts import get_object_or_404
 from datetime import date, timedelta
 from django.utils import timezone
 from rest_framework import generics
+from rest_framework.permissions import IsAdminUser
 
 
 class CountryListView(APIView):
@@ -104,7 +105,16 @@ class ProfileDetailView(generics.RetrieveAPIView):
 
     def get_object(self):
         # This view is for the user's own profile, so we fetch it via the request.user
-        return get_object_or_404(Profile, user=self.request.user)
+        # Optimize query with prefetching to prevent N+1 queries
+        queryset = Profile.objects.select_related('user').prefetch_related(
+            'work_experience',
+            'education', 
+            'additional_images',
+            'preference',
+            'sent_interests',
+            'received_interests'
+        )
+        return get_object_or_404(queryset, user=self.request.user)
 
 
 class ProfileViewSet(viewsets.ModelViewSet):
@@ -327,3 +337,82 @@ class UnreadNotificationCountView(APIView):
     def get(self, request):
         count = request.user.received_notifications.filter(unread=True).count()
         return Response({'unread_count': count}, status=status.HTTP_200_OK)
+
+
+class VerificationDocumentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for users to upload and manage their verification documents.
+    Users can only view and upload their own documents.
+    """
+    serializer_class = VerificationDocumentSerializer
+    permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
+    
+    def get_queryset(self):
+        # Users can only see their own verification documents
+        if hasattr(self.request.user, 'profile'):
+            return VerificationDocument.objects.filter(profile=self.request.user.profile)
+        return VerificationDocument.objects.none()
+    
+    def perform_create(self, serializer):
+        # Automatically associate the document with the user's profile
+        serializer.save(profile=self.request.user.profile)
+
+
+class AdminVerificationDocumentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for admins to review verification documents.
+    Only accessible to admin users.
+    """
+    serializer_class = VerificationDocumentSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    
+    def get_queryset(self):
+        # Filter by status if provided, default to pending
+        status_filter = self.request.query_params.get('status', 'pending')
+        if status_filter:
+            return VerificationDocument.objects.filter(status=status_filter).select_related('profile')
+        return VerificationDocument.objects.all().select_related('profile')
+    
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        """
+        Approve a verification document and verify the profile.
+        """
+        document = self.get_object()
+        document.status = 'approved'
+        document.reviewed_by = request.user
+        document.reviewed_at = timezone.now()
+        document.admin_notes = request.data.get('admin_notes', '')
+        document.save()
+        
+        # Update profile verification status
+        profile = document.profile
+        profile.is_verified = True
+        profile.save()
+        
+        return Response({
+            'status': 'success',
+            'message': 'Document approved and profile verified',
+            'document_id': document.id,
+            'profile_id': profile.id
+        })
+    
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        """
+        Reject a verification document with optional admin notes.
+        """
+        document = self.get_object()
+        document.status = 'rejected'
+        document.reviewed_by = request.user
+        document.reviewed_at = timezone.now()
+        document.admin_notes = request.data.get('admin_notes', 'Document rejected by admin')
+        document.save()
+        
+        return Response({
+            'status': 'success',
+            'message': 'Document rejected',
+            'document_id': document.id,
+            'admin_notes': document.admin_notes
+        })

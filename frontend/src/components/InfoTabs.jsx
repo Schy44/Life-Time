@@ -5,12 +5,13 @@ import EducationTimeline from './EducationTimeline';
 import CareerSection from './CareerSection';
 import PreferencesCard from './PreferencesCard';
 import InterestsSection from './InterestsSection';
+import VerificationDocumentUpload from './VerificationDocumentUpload';
 
 const InfoTabs = ({ aboutData, educationData, careerData, preferencesData, interestsData, currentUserProfile, onUpdateInterests, onUpdateProfile, showPreferences, onEditSection }) => {
   const [availableTabs, setAvailableTabs] = useState([]);
   const [selectedTab, setSelectedTab] = useState('');
 
-  console.log("careerData in InfoTabs:", careerData);
+
 
   useEffect(() => {
     const newTabs = ['About', 'Education', 'Career'];
@@ -19,6 +20,10 @@ const InfoTabs = ({ aboutData, educationData, careerData, preferencesData, inter
     }
     if (currentUserProfile && interestsData) {
       newTabs.push('Interests');
+    }
+    // Add Verification tab for own profile
+    if (currentUserProfile) {
+      newTabs.push('Verification');
     }
     setAvailableTabs(newTabs);
 
@@ -38,10 +43,13 @@ const InfoTabs = ({ aboutData, educationData, careerData, preferencesData, inter
       case 'Education':
         return <EducationTimeline educationData={educationData} onUpdateProfile={onUpdateProfile} onEdit={() => onEditSection?.('education')} />;
       case 'Career':
-        return <CareerSection careerData={careerData} onUpdateProfile={onUpdateProfile} onEdit={() => onEditSection?.('career')} />; case 'Preferences':
+        return <CareerSection careerData={careerData} onUpdateProfile={onUpdateProfile} onEdit={() => onEditSection?.('career')} />;
+      case 'Preferences':
         return <PreferencesCard preferencesData={preferencesData} />;
       case 'Interests':
         return <InterestsSection interests={interestsData} currentUserProfile={currentUserProfile} onUpdate={onUpdateInterests} />;
+      case 'Verification':
+        return <VerificationDocumentUpload />;
       default:
         return null;
     }

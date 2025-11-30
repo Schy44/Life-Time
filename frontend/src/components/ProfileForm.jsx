@@ -688,6 +688,41 @@ const ProfileForm = ({ initialData, onSubmit, section = 'all' }) => {
                 </select>
                 {errors.marital_status && <p className="text-red-500 text-xs mt-1">{errors.marital_status}</p>}
               </div>
+
+              {/* Extended Family Details */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-1">Siblings Details</label>
+                <textarea
+                  name="siblings_details"
+                  value={formData.siblings_details || ''}
+                  onChange={handleChange}
+                  rows={2}
+                  placeholder="e.g. 1 Brother (Engineer), 1 Sister (Student)"
+                  className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
+                ></textarea>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-1">Paternal Family Details (Father's Side)</label>
+                <textarea
+                  name="paternal_family_details"
+                  value={formData.paternal_family_details || ''}
+                  onChange={handleChange}
+                  rows={3}
+                  placeholder="Details about Uncles, Aunts, Grandparents..."
+                  className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
+                ></textarea>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-1">Maternal Family Details (Mother's Side)</label>
+                <textarea
+                  name="maternal_family_details"
+                  value={formData.maternal_family_details || ''}
+                  onChange={handleChange}
+                  rows={3}
+                  placeholder="Details about Uncles, Aunts, Grandparents..."
+                  className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
+                ></textarea>
+              </div>
             </div>
           </GlassCard>
 

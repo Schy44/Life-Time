@@ -54,28 +54,14 @@ const ProfilePage = () => {
         setLoading(true); // Only show spinner for initial load or manual refresh
       }
 
-      // Add a small "t" param to bypass intermediary caches and set no-cache header
-      const { data: profile } = await apiClient.get('/profile/', {
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
-        params: {
-          t: Date.now(),
-        },
-      });
+      // Fetch profile data
+      const { data: profile } = await apiClient.get('/profile/');
 
       const normalized = normalizeProfile(profile);
       setProfileData(normalized);
 
       if (normalized) {
-        const { data: interestsData } = await apiClient.get(`/interests/?profile_id=${normalized.id}`, {
-          headers: {
-            'Cache-Control': 'no-cache',
-          },
-          params: {
-            t: Date.now(),
-          },
-        });
+        const { data: interestsData } = await apiClient.get(`/interests/?profile_id=${normalized.id}`);
         setInterests(interestsData || []);
       }
 
@@ -175,6 +161,7 @@ const ProfilePage = () => {
     current_city, origin_city, citizenship, marital_status, about, additional_images, profile_image_privacy,
     blood_group, current_country, origin_country, visa_status,
     father_occupation, mother_occupation, siblings, family_type,
+    siblings_details, paternal_family_details, maternal_family_details,
     profile_for, gender, looking_for
   } = profileData;
 
@@ -219,6 +206,9 @@ const ProfilePage = () => {
       mother_occupation: mother_occupation,
       siblings: siblings,
       family_type: family_type,
+      siblings_details: siblings_details,
+      paternal_family_details: paternal_family_details,
+      maternal_family_details: maternal_family_details,
     },
     faith_tags: profileData.faith_tags || [],
   };

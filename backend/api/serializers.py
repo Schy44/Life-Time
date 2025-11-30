@@ -2,7 +2,8 @@ import json
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.db import models
-from .models import Profile, AdditionalImage, Education, WorkExperience, Preference, Interest, Notification
+from .models import Profile, AdditionalImage, Education, WorkExperience, Preference, Interest, Notification, VerificationDocument
+
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -109,7 +110,9 @@ class ProfileSerializer(serializers.ModelSerializer):
             'id', 'user', 'profile_for', 'name', 'date_of_birth', 'birth_year', 'gender',
             'profile_image', 'additional_images', 'height_inches', 'skin_complexion', 'blood_group', 'religion',
             'current_city', 'current_country', 'origin_city', 'origin_country', 'visa_status', 'citizenship',
-            'father_occupation', 'mother_occupation', 'siblings', 'family_type', 'marital_status', 'about', 'looking_for', 'email', 'phone',
+            'father_occupation', 'mother_occupation', 'siblings', 'family_type', 'marital_status',
+            'siblings_details', 'paternal_family_details', 'maternal_family_details',
+            'about', 'looking_for', 'email', 'phone',
             'facebook_profile', 'instagram_profile', 'linkedin_profile', 'is_verified',
             'profile_image_privacy', 'additional_images_privacy', 'is_deleted', 'created_at', 'updated_at',
             'education', 'work_experience', 'preference', 'uploaded_images', 'additional_images_to_keep',
@@ -485,4 +488,25 @@ class NotificationSerializer(serializers.ModelSerializer):
     def get_target_profile_url(self, obj):
         if obj.target_profile:
             return f"/profiles/{obj.target_profile.id}"
+        return None
+
+
+class VerificationDocumentSerializer(serializers.ModelSerializer):
+    """
+    Serializer for user verification documents.
+    Provides image_url for easy frontend access to uploaded documents.
+    """
+    image_url = serializers.SerializerMethodField()
+    profile_name = serializers.CharField(source='profile.name', read_only=True)
+    
+    class Meta:
+        model = VerificationDocument
+        fields = ('id', 'document_image', 'image_url', 'uploaded_at', 
+                  'status', 'admin_notes', 'reviewed_at', 'profile_name')
+        read_only_fields = ('uploaded_at', 'status', 'admin_notes', 'reviewed_at', 'profile_name')
+    
+    def get_image_url(self, obj):
+        """Return the URL of the uploaded document image"""
+        if obj.document_image:
+            return obj.document_image.url
         return None

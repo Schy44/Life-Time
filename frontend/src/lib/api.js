@@ -19,10 +19,8 @@ apiClient.interceptors.request.use(
 
       if (session && session.access_token) {
         config.headers.Authorization = `Bearer ${session.access_token}`;
-        console.log('✅ Auth header added');
-      } else {
-        console.warn('⚠️ No valid session found');
       }
+
     } catch (err) {
       console.error('Error in auth interceptor:', err);
     }

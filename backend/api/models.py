@@ -103,6 +103,11 @@ class Profile(models.Model):
     siblings = models.CharField(max_length=20, blank=True, null=True)  # e.g., "1B,2S"
     family_type = models.CharField(max_length=20, choices=FAMILY_TYPE_CHOICES, blank=True, null=True)
     marital_status = models.CharField(max_length=20, choices=MARITAL_STATUS_CHOICES, blank=True, null=True)
+    
+    # Extended Family Details
+    siblings_details = models.TextField(blank=True, null=True, help_text="Details about siblings")
+    paternal_family_details = models.TextField(blank=True, null=True, help_text="Uncles, Aunts, Grandparents from Father's side")
+    maternal_family_details = models.TextField(blank=True, null=True, help_text="Uncles, Aunts, Grandparents from Mother's side")
 
 
     # About & contact
@@ -310,3 +315,59 @@ def create_interest_notification(sender, instance, created, **kwargs):
                 verb="accepted your interest request",
                 target_profile=instance.sender # The profile that was accepted
             )
+
+
+class VerificationDocument(models.Model):
+    """
+    Model to store verification documents uploaded by users for profile verification.
+    Admins can review and approve/reject these documents.
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Pending Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    profile = models.ForeignKey(
+        Profile, 
+        related_name='verification_documents', 
+        on_delete=models.CASCADE,
+        help_text="Profile that this verification document belongs to"
+    )
+    document_image = models.ImageField(
+        upload_to='verification_documents/', 
+        storage=SupabaseStorage(),
+        help_text="Verification document image (passport, NID, etc.)"
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(
+        max_length=20, 
+        choices=STATUS_CHOICES, 
+        default='pending',
+        db_index=True
+    )
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        null=True, 
+        blank=True, 
+        on_delete=models.SET_NULL, 
+        related_name='reviewed_documents',
+        help_text="Admin user who reviewed this document"
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    admin_notes = models.TextField(
+        blank=True, 
+        null=True, 
+        help_text="Admin notes or rejection reason"
+    )
+    
+    class Meta:
+        ordering = ['-uploaded_at']
+        verbose_name = "Verification Document"
+        verbose_name_plural = "Verification Documents"
+        indexes = [
+            models.Index(fields=['profile', 'status']),
+        ]
+    
+    def __str__(self):
+        return f"Verification document for {self.profile.name} - {self.status}"

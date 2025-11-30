@@ -40,6 +40,9 @@ const Navbar = () => {
 
         {/* Desktop links */}
         <div className="hidden md:flex navbar-links" role="menubar" aria-hidden={isMobileMenuOpen}>
+          <NavLink to="/about" className={navLinkClass} onClick={closeMobileMenu}>
+            About
+          </NavLink>
           {user ? (
             <>
               <NavLink to="/profile" className={navLinkClass} onClick={closeMobileMenu}>
@@ -103,6 +106,9 @@ const Navbar = () => {
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div id="mobile-menu" className="mobile-menu md:hidden" role="menu" aria-label="Mobile menu">
+          <NavLink to="/about" className={navLinkClass} onClick={closeMobileMenu}>
+            About
+          </NavLink>
           {user ? (
             <>
               <NavLink to="/profile" className={navLinkClass} onClick={closeMobileMenu}>

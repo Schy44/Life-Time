@@ -38,12 +38,12 @@ const AboutSection = ({ aboutData, onEdit }) => {
               Edit
             </button>
           )}
-          {about && <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{about}</p>}
+          {about && <p className="text-gray-900 dark:text-gray-200 leading-relaxed">{about}</p>}
 
           {looking_for && (
             <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Looking For</h4>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{looking_for}</p>
+              <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wider mb-2">Looking For</h4>
+              <p className="text-gray-900 dark:text-gray-200 leading-relaxed">{looking_for}</p>
             </div>
           )}
         </SectionCard>
@@ -94,6 +94,27 @@ const AboutSection = ({ aboutData, onEdit }) => {
             {family.mother_occupation && <InfoRow label="Mother's occupation" value={family.mother_occupation} />}
             {family.siblings && <InfoRow label="Siblings" value={family.siblings} />}
             {family.family_type && <InfoRow label="Family type" value={formatString(family.family_type)} />}
+
+            {family.siblings_details && (
+              <div className="md:col-span-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                <span className="text-xs font-semibold text-gray-900 uppercase tracking-wider block mb-1">Siblings Details</span>
+                <p className="text-gray-900 dark:text-gray-200 text-sm whitespace-pre-wrap">{family.siblings_details}</p>
+              </div>
+            )}
+
+            {family.paternal_family_details && (
+              <div className="md:col-span-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                <span className="text-xs font-semibold text-gray-900 uppercase tracking-wider block mb-1">Paternal Family (Father's Side)</span>
+                <p className="text-gray-900 dark:text-gray-200 text-sm whitespace-pre-wrap">{family.paternal_family_details}</p>
+              </div>
+            )}
+
+            {family.maternal_family_details && (
+              <div className="md:col-span-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                <span className="text-xs font-semibold text-gray-900 uppercase tracking-wider block mb-1">Maternal Family (Mother's Side)</span>
+                <p className="text-gray-900 dark:text-gray-200 text-sm whitespace-pre-wrap">{family.maternal_family_details}</p>
+              </div>
+            )}
           </div>
         </SectionCard>
       )}

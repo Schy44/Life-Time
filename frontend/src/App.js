@@ -11,6 +11,8 @@ import PublicProfilePage from './pages/PublicProfilePage';
 import ProfilesListPage from './pages/ProfilesListPage';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
+import AboutPage from './pages/AboutPage';
+import ProfileSuggestionExample from './components/ProfileSuggestionExample';
 
 const PrivateRoute = ({ children }) => {
   const { user } = useAuth();
@@ -25,6 +27,7 @@ function App() {
           <Navbar />
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/about" element={<AboutPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route
@@ -65,6 +68,10 @@ function App() {
                 </PrivateRoute>
               }
             />
+
+            {/* Demo Route for Profile Suggestion Modal */}
+            <Route path="/demo/profile-modal" element={<ProfileSuggestionExample />} />
+
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </AuthProvider>
