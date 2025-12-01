@@ -130,6 +130,7 @@ class Profile(models.Model):
     # Privacy
     profile_image_privacy = models.CharField(max_length=20, choices=PRIVACY_CHOICES, default='public')
     additional_images_privacy = models.CharField(max_length=20, choices=PRIVACY_CHOICES, default='matches')
+    show_on_map = models.BooleanField(default=True, help_text="Show profile on the global map")
 
 
     # Lifecycle

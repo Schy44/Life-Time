@@ -11,6 +11,7 @@ import FaqsPage from '../components/FaqsPage';
 import PricingPage from '../components/PricingPage';
 import Footer from '../components/Footer'; // Import the new Footer component
 import { FlipWords } from '../components/FlipWords';
+import GlobalMap from '../components/GlobalMap';
 gsap.registerPlugin(ScrollTrigger);
 
 const StoryCard = ({ image, quote, author, index }) => {
@@ -145,10 +146,12 @@ const RoadmapSection = () => {
 const Home = () => {
   useAuth();
   const words = ["Securely.", "Effortlessly."];
+  const [profileCount, setProfileCount] = React.useState(0);
+
   return (
     <>
       <AnimatedBackground />
-      <main className="relative w-full text-gray-800 dark:text-white overflow-x-hidden">
+      <main className="relative w-full text-gray-800 dark:text-white">
 
         {/* Hero Section - Modular Glassmorphism Design */}
         <section className="relative min-h-screen flex flex-col justify-center items-center text-center px-6 md:px-12 overflow-hidden">
@@ -311,6 +314,34 @@ const Home = () => {
         <PricingPage id="choose-your-journey" />
 
         <FaqsPage />
+
+        {/* Global Map Section */}
+        <section className="relative py-16 px-6 md:px-12 bg-gray-50 dark:bg-gray-900/50">
+          <div className="max-w-7xl mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-8"
+            >
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">
+                Discover {profileCount > 0 ? `${profileCount.toLocaleString()}+` : ''} Members Worldwide
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                Connect with people from around the globe. Click on any profile to learn more.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+            >
+              <GlobalMap onProfilesLoaded={setProfileCount} />
+            </motion.div>
+          </div>
+        </section>
 
         <Footer />
       </main>

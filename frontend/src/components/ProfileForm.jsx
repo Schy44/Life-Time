@@ -934,6 +934,23 @@ const ProfileForm = ({ initialData, onSubmit, section = 'all' }) => {
             </select>
           </div>
           <div>
+            <label className="block text-sm font-medium mb-1">Global Map Visibility</label>
+            <div className="flex items-center h-full pt-2">
+              <input
+                type="checkbox"
+                name="show_on_map"
+                checked={formData.show_on_map !== false}
+                onChange={handleChange}
+                className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 mr-2"
+              />
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Show my profile on the global map
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
             <label className="block text-sm font-medium mb-1">Upload New Image</label>
             {/* Hidden file input */}
             <input

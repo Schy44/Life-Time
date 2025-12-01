@@ -19,8 +19,8 @@ class PreferenceInline(admin.StackedInline):
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'gender', 'is_verified', 'created_at')
-    list_filter = ('gender', 'is_verified', 'created_at')
+    list_display = ('name', 'user', 'gender', 'is_verified', 'show_on_map', 'created_at')
+    list_filter = ('gender', 'is_verified', 'show_on_map', 'created_at')
     search_fields = ('name', 'user__username', 'current_city', 'current_country')
     inlines = [EducationInline, WorkExperienceInline, PreferenceInline, AdditionalImageInline]
     fieldsets = (
@@ -30,7 +30,7 @@ class ProfileAdmin(admin.ModelAdmin):
         ('Immigration', {'fields': ('visa_status', 'citizenship')}),
         ('Optional Details', {'fields': ('marital_status', 'blood_group')}),
         ('Social Media', {'fields': ('facebook_profile', 'instagram_profile', 'linkedin_profile')}),
-        ('Privacy Settings', {'fields': ('profile_image_privacy', 'additional_images_privacy')}),
+        ('Privacy Settings', {'fields': ('profile_image_privacy', 'additional_images_privacy', 'show_on_map')}),
         ('Verification', {'fields': ('is_verified',)}),
         ('Lifecycle', {'fields': ('is_deleted',)}),
     )
