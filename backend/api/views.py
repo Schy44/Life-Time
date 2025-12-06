@@ -82,7 +82,8 @@ class CountryListView(APIView):
 
 class ProfessionListView(APIView):
     def get(self, request):
-        professions = WorkExperience.objects.values_list('title', flat=True).distinct()
+        professions = WorkExperience.objects.values_list(
+            'title', flat=True).distinct()
         return Response(professions)
 
 
@@ -108,7 +109,7 @@ class ProfileDetailView(generics.RetrieveAPIView):
         # Optimize query with prefetching to prevent N+1 queries
         queryset = Profile.objects.select_related('user').prefetch_related(
             'work_experience',
-            'education', 
+            'education',
             'additional_images',
             'preference',
             'sent_interests',
@@ -141,8 +142,8 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
                 if not recent_notification_exists:
                     Notification.objects.create(
-                        recipient=instance.user, # The owner of the profile being viewed
-                        actor_profile=request.user.profile, # The profile of the viewer
+                        recipient=instance.user,  # The owner of the profile being viewed
+                        actor_profile=request.user.profile,  # The profile of the viewer
                         verb="viewed your profile",
                     )
         # ------------------------------------------
@@ -153,11 +154,11 @@ class ProfileViewSet(viewsets.ModelViewSet):
         # Optimize queryset with select_related and prefetch_related to reduce queries
         queryset = Profile.objects.select_related('user').prefetch_related(
             'work_experience',
-            'education', 
+            'education',
             'additional_images',
             'preference'
         )
-        
+
         if self.action == 'list':
             queryset = queryset.exclude(user=self.request.user)
 
@@ -170,9 +171,9 @@ class ProfileViewSet(viewsets.ModelViewSet):
                     max_age = int(max_age_str)
                 elif '+' in age_range_str:
                     min_age = int(age_range_str.replace('+', ''))
-                    max_age = 150 # Effectively no upper limit
+                    max_age = 150  # Effectively no upper limit
                 else:
-                    return None, None # Invalid format
+                    return None, None  # Invalid format
 
                 min_birth_year = current_year - max_age
                 max_birth_year = current_year - min_age
@@ -182,7 +183,8 @@ class ProfileViewSet(viewsets.ModelViewSet):
             search_term = self.request.query_params.get('search', None)
             age_filter = self.request.query_params.get('age', None)
             gender_filter = self.request.query_params.get('gender', None)
-            interest_filter = self.request.query_params.get('interest', None) # Assuming this is a text search for now
+            interest_filter = self.request.query_params.get(
+                'interest', None)  # Assuming this is a text search for now
 
             if search_term:
                 queryset = queryset.filter(
@@ -195,13 +197,15 @@ class ProfileViewSet(viewsets.ModelViewSet):
                 ).distinct()
 
             if age_filter:
-                min_birth_year, max_birth_year = _get_birth_year_range_from_age(age_filter)
+                min_birth_year, max_birth_year = _get_birth_year_range_from_age(
+                    age_filter)
                 if min_birth_year and max_birth_year:
-                    queryset = queryset.filter(birth_year__gte=min_birth_year, birth_year__lte=max_birth_year)
+                    queryset = queryset.filter(
+                        birth_year__gte=min_birth_year, birth_year__lte=max_birth_year)
 
             if gender_filter:
                 queryset = queryset.filter(gender__iexact=gender_filter)
-            
+
             if interest_filter:
                 # For now, treat interest_filter as a general text search across relevant fields
                 queryset = queryset.filter(
@@ -214,6 +218,7 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
 
 class InterestViewSet(viewsets.ModelViewSet):
     queryset = Interest.objects.all()
@@ -230,18 +235,19 @@ class InterestViewSet(viewsets.ModelViewSet):
         receiver_id = request.data.get('receiver')
         if not receiver_id:
             return Response({"error": "Receiver ID is required."}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         try:
             receiver = Profile.objects.get(id=receiver_id)
         except Profile.DoesNotExist:
             return Response({"error": "Receiver profile not found."}, status=status.HTTP_404_NOT_FOUND)
 
         sender = request.user.profile
-        
+
         if sender == receiver:
             return Response({"error": "You cannot send an interest to yourself."}, status=status.HTTP_400_BAD_REQUEST)
 
-        interest, created = Interest.objects.get_or_create(sender=sender, receiver=receiver)
+        interest, created = Interest.objects.get_or_create(
+            sender=sender, receiver=receiver)
 
         if not created and interest.status in ['sent', 'accepted']:
             return Response({"error": "An interest has already been sent to this user."}, status=status.HTTP_400_BAD_REQUEST)
@@ -269,7 +275,7 @@ class InterestViewSet(viewsets.ModelViewSet):
         interest = self.get_object()
         if interest.receiver.user != request.user:
             return Response({'error': 'You are not authorized to accept this interest.'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         interest.status = 'accepted'
         interest.save()
         return Response({'status': 'Interest accepted'})
@@ -279,7 +285,7 @@ class InterestViewSet(viewsets.ModelViewSet):
         interest = self.get_object()
         if interest.receiver.user != request.user:
             return Response({'error': 'You are not authorized to reject this interest.'}, status=status.HTTP_403_FORBIDDEN)
-            
+
         interest.status = 'rejected'
         interest.save()
         return Response({'status': 'Interest rejected'})
@@ -288,7 +294,7 @@ class InterestViewSet(viewsets.ModelViewSet):
         interest = self.get_object()
         if interest.sender.user != request.user:
             return Response({'error': 'You are not authorized to cancel this interest.'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         return super().destroy(request, *args, **kwargs)
 
 
@@ -304,6 +310,7 @@ class NotificationListView(generics.ListAPIView):
         # Return only unread notifications for the current user, ordered by most recent
         return self.request.user.received_notifications.filter(unread=True).order_by('-created_at')
 
+
 class MarkNotificationAsReadView(APIView):
     """
     Mark a specific notification or all notifications for the current user as read.
@@ -316,17 +323,20 @@ class MarkNotificationAsReadView(APIView):
 
         if mark_all:
             # Mark all unread notifications for the current user as read
-            request.user.received_notifications.filter(unread=True).update(unread=False)
+            request.user.received_notifications.filter(
+                unread=True).update(unread=False)
             return Response(status=status.HTTP_204_NO_CONTENT)
-        
+
         if notification_id:
             # Mark a specific notification as read
-            notification = get_object_or_404(Notification, id=notification_id, recipient=request.user)
+            notification = get_object_or_404(
+                Notification, id=notification_id, recipient=request.user)
             notification.unread = False
             notification.save()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         return Response({"detail": "Provide 'id' or 'all: true' in the request body."}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class UnreadNotificationCountView(APIView):
     """
@@ -347,13 +357,13 @@ class VerificationDocumentViewSet(viewsets.ModelViewSet):
     serializer_class = VerificationDocumentSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
-    
+
     def get_queryset(self):
         # Users can only see their own verification documents
         if hasattr(self.request.user, 'profile'):
             return VerificationDocument.objects.filter(profile=self.request.user.profile)
         return VerificationDocument.objects.none()
-    
+
     def perform_create(self, serializer):
         # Automatically associate the document with the user's profile
         serializer.save(profile=self.request.user.profile)
@@ -366,14 +376,14 @@ class AdminVerificationDocumentViewSet(viewsets.ModelViewSet):
     """
     serializer_class = VerificationDocumentSerializer
     permission_classes = [IsAuthenticated, IsAdminUser]
-    
+
     def get_queryset(self):
         # Filter by status if provided, default to pending
         status_filter = self.request.query_params.get('status', 'pending')
         if status_filter:
             return VerificationDocument.objects.filter(status=status_filter).select_related('profile')
         return VerificationDocument.objects.all().select_related('profile')
-    
+
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
         """
@@ -385,19 +395,19 @@ class AdminVerificationDocumentViewSet(viewsets.ModelViewSet):
         document.reviewed_at = timezone.now()
         document.admin_notes = request.data.get('admin_notes', '')
         document.save()
-        
+
         # Update profile verification status
         profile = document.profile
         profile.is_verified = True
         profile.save()
-        
+
         return Response({
             'status': 'success',
             'message': 'Document approved and profile verified',
             'document_id': document.id,
             'profile_id': profile.id
         })
-    
+
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
         """
@@ -407,9 +417,10 @@ class AdminVerificationDocumentViewSet(viewsets.ModelViewSet):
         document.status = 'rejected'
         document.reviewed_by = request.user
         document.reviewed_at = timezone.now()
-        document.admin_notes = request.data.get('admin_notes', 'Document rejected by admin')
+        document.admin_notes = request.data.get(
+            'admin_notes', 'Document rejected by admin')
         document.save()
-        
+
         return Response({
             'status': 'success',
             'message': 'Document rejected',

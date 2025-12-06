@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getProfiles, getProfile, sendInterest } from '../services/api';
 import GlassCard from '../components/GlassCard';
@@ -7,14 +7,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, MapPin, Filter, XCircle, Zap, User, Grid, List, Heart, Clock, Activity, Layers } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProfileCardStack from '../components/ProfileCardStack';
+import { useInfiniteQuery } from '@tanstack/react-query';
 
 const ProfilesListPage = () => {
   const [profiles, setProfiles] = useState([]);
-  const [allProfiles, setAllProfiles] = useState([]); // Cache all profiles for client-side filtering
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [initialLoad, setInitialLoad] = useState(true);
-  const [error, setError] = useState(null);
 
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
@@ -26,19 +22,12 @@ const ProfilesListPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('default');
 
-  // Pagination
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-
   // View Mode
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
 
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [sendingInterest, setSendingInterest] = useState({}); // Track loading state per profile
   const [currentCardIndex, setCurrentCardIndex] = useState(0); // Track current card in Quick Match
-
-  // Debounce timer ref
-  const searchDebounceTimer = useRef(null);
 
   // Helper to check if profile is new (created within last 7 days)
   const isNewProfile = (createdAt) => {
@@ -58,69 +47,55 @@ const ProfilesListPage = () => {
     return updated > oneDayAgo;
   };
 
-  const fetchProfiles = useCallback(async (pageNum, reset = false) => {
-    try {
-      if (pageNum === 1 && initialLoad) setLoading(true);
-      else if (pageNum === 1) setLoadingMore(true);
-      else setLoadingMore(true);
-
+  // Server-side data with React Query (cached per filter set)
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['profiles', { searchTerm, ageFilter, genderFilter, interestFilter }],
+    queryFn: async ({ pageParam = 1 }) => {
       const params = {
-        page: pageNum,
+        page: pageParam,
         search: searchTerm,
         age: ageFilter,
         gender: genderFilter,
         interest: interestFilter,
       };
-
-      // If sorting by compatibility, we might need to handle it client-side if backend doesn't support it yet,
-      // or pass a sort param. For now, let's keep client-side sort logic or assume backend returns default order.
-      // Note: Backend pagination usually conflicts with client-side sorting of *all* data. 
-      // Ideally backend handles sort. For now, we'll fetch pages and sort what we have if needed, 
-      // but true compatibility sort requires backend support. 
-      // Let's assume default backend sort for now.
-
-      const response = await getProfiles(params);
-
-      // DRF PageNumberPagination returns { count: 123, next: '...', previous: '...', results: [...] }
-      // If your backend returns a flat list, this needs adjustment. 
-      // Assuming standard DRF pagination based on the plan.
-
-      let newProfiles = [];
-      let hasNextPage = false;
-
-      if (response.results) {
-        newProfiles = response.results;
-        hasNextPage = !!response.next;
-      } else if (Array.isArray(response)) {
-        // Fallback if pagination is not enabled on backend yet
-        newProfiles = response;
-        hasNextPage = false;
+      return getProfiles(params);
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage && lastPage.next) {
+        // DRF-style pagination: use next page number incrementally
+        return allPages.length + 1;
       }
+      return undefined;
+    },
+  });
 
-      if (reset) {
-        setProfiles(newProfiles);
-        setAllProfiles(newProfiles); // Cache for client-side filtering
-      } else {
-        const combined = [...profiles, ...newProfiles];
-        setProfiles(combined);
-        setAllProfiles(combined);
+  // Flatten all pages into a single list
+  const serverProfiles = React.useMemo(() => {
+    if (!data || !data.pages) return [];
+    const pages = data.pages;
+    let all = [];
+    pages.forEach((page) => {
+      if (page?.results) {
+        all = all.concat(page.results);
+      } else if (Array.isArray(page)) {
+        all = all.concat(page);
       }
-
-      setHasMore(hasNextPage);
-
-    } catch (err) {
-      setError('Failed to fetch profiles.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-      if (initialLoad) setInitialLoad(false);
-    }
-  }, [searchTerm, ageFilter, genderFilter, interestFilter]);
+    });
+    return all;
+  }, [data]);
 
   // Client-side filtering for instant results
   useEffect(() => {
-    let filtered = [...allProfiles];
+    let filtered = [...serverProfiles];
 
     // Apply search term
     if (searchTerm) {
@@ -134,13 +109,13 @@ const ProfilesListPage = () => {
       );
 
       // Generate suggestions
-      const nameSuggestions = allProfiles
+      const nameSuggestions = serverProfiles
         .filter(p => p.name?.toLowerCase().includes(lowerSearch))
         .slice(0, 3)
         .map(p => ({ type: 'name', value: p.name, id: p.id }));
 
       const citySuggestions = [...new Set(
-        allProfiles
+        serverProfiles
           .filter(p => p.current_city?.toLowerCase().includes(lowerSearch))
           .map(p => p.current_city)
       )]
@@ -181,12 +156,7 @@ const ProfilesListPage = () => {
     }
 
     setProfiles(filtered);
-  }, [searchTerm, ageFilter, genderFilter, interestFilter, allProfiles]);
-
-  // Initial load only
-  useEffect(() => {
-    fetchProfiles(1, true);
-  }, [fetchProfiles]);
+  }, [searchTerm, ageFilter, genderFilter, interestFilter, serverProfiles]);
 
   // Fetch current user profile once
   useEffect(() => {
@@ -202,9 +172,9 @@ const ProfilesListPage = () => {
   }, []);
 
   const handleLoadMore = () => {
-    const nextPage = page + 1;
-    setPage(nextPage);
-    fetchProfiles(nextPage, false);
+    if (hasNextPage) {
+      fetchNextPage();
+    }
   };
 
   const handleClearFilters = () => {
@@ -251,14 +221,14 @@ const ProfilesListPage = () => {
     visible: { y: 0, opacity: 1 },
   };
 
-  if (loading && initialLoad) {
+  if (isLoading) {
     return <LoadingSpinner size="fullscreen" message="Discovering perfect matches..." />;
   }
 
-  if (error) {
+  if (isError) {
     return (
       <div className="flex justify-center items-center h-screen text-red-500 text-xl">
-        Error: {error}
+        Error: {error?.message || 'Failed to fetch profiles.'}
       </div>
     );
   }
@@ -641,14 +611,14 @@ const ProfilesListPage = () => {
           </motion.div>
 
           {/* Load More Button */}
-          {hasMore && sortedProfiles.length > 0 && (
+          {hasNextPage && sortedProfiles.length > 0 && (
             <div className="flex justify-center mt-12">
               <button
                 onClick={handleLoadMore}
-                disabled={loadingMore}
+                disabled={isFetchingNextPage}
                 className="px-8 py-3 bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 font-bold rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
               >
-                {loadingMore ? <LoadingSpinner size="small" /> : 'Load More Profiles'}
+                {isFetchingNextPage ? <LoadingSpinner size="small" /> : 'Load More Profiles'}
               </button>
             </div>
           )}

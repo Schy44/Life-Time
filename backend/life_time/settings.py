@@ -12,21 +12,22 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import os
 from pathlib import Path
-from dotenv import load_dotenv # Import load_dotenv
+from dotenv import load_dotenv  # Import load_dotenv
 import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from .env file
-load_dotenv(os.path.join(BASE_DIR, '.env')) # Load .env from backend directory
+load_dotenv(os.path.join(BASE_DIR, '.env'))  # Load .env from backend directory
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-naq7tg)x(o8xd+^d3f8qr=p^l*%n1t)w4@svcbb+&f1hyq58__')
+SECRET_KEY = os.environ.get(
+    'SECRET_KEY', 'django-insecure-naq7tg)x(o8xd+^d3f8qr=p^l*%n1t)w4@svcbb+&f1hyq58__')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = 'RENDER' not in os.environ
@@ -34,10 +35,10 @@ DEBUG = 'RENDER' not in os.environ
 if not DEBUG:
     DATABASE_PASSWORD = os.environ.get('DATABASE_PASSWORD')
     if not DATABASE_PASSWORD:
-        raise ValueError("DATABASE_PASSWORD environment variable not set in production")
+        raise ValueError(
+            "DATABASE_PASSWORD environment variable not set in production")
 else:
     DATABASE_PASSWORD = os.environ.get('DATABASE_PASSWORD')
-
 
 
 ALLOWED_HOSTS = [
@@ -196,7 +197,8 @@ SUPABASE_JWT_SECRET = os.environ.get('SUPABASE_JWT_SECRET')
 SUPABASE_AUDIENCE = 'authenticated'
 
 if not DEBUG and not SUPABASE_JWT_SECRET:
-    raise ValueError("SUPABASE_JWT_SECRET environment variable not set in production")
+    raise ValueError(
+        "SUPABASE_JWT_SECRET environment variable not set in production")
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -211,16 +213,20 @@ REST_FRAMEWORK = {
 # Supabase Storage Configuration for Media Files
 # Using the official Supabase Python client.
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY") # Use service_role key for backend operations
+# Use service_role key for backend operations
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 SUPABASE_BUCKET_NAME = os.environ.get("SUPABASE_BUCKET_NAME")
 
 if not DEBUG:
     if not SUPABASE_URL:
-        raise ValueError("SUPABASE_URL environment variable not set in production")
+        raise ValueError(
+            "SUPABASE_URL environment variable not set in production")
     if not SUPABASE_KEY:
-        raise ValueError("SUPABASE_KEY environment variable not set in production")
+        raise ValueError(
+            "SUPABASE_KEY environment variable not set in production")
     if not SUPABASE_BUCKET_NAME:
-        raise ValueError("SUPABASE_BUCKET_NAME environment variable not set in production")
+        raise ValueError(
+            "SUPABASE_BUCKET_NAME environment variable not set in production")
 
 # Set the custom storage backend
 DEFAULT_FILE_STORAGE = 'api.storage.SupabaseStorage'
@@ -230,17 +236,13 @@ if SUPABASE_URL and SUPABASE_BUCKET_NAME:
     # Construct the public URL base for the bucket
     # Example: https://<project_id>.supabase.co/storage/v1/object/public/<bucket_name>/
     # We need to extract project_id from SUPABASE_URL if it's not explicitly set
-    project_id = SUPABASE_URL.split('//')[1].split('.')[0] if SUPABASE_URL else None
+    project_id = SUPABASE_URL.split(
+        '//')[1].split('.')[0] if SUPABASE_URL else None
     if project_id:
         MEDIA_URL = f'https://{project_id}.supabase.co/storage/v1/object/public/{SUPABASE_BUCKET_NAME}/'
     else:
-        MEDIA_URL = '/media/' # Fallback, though this should be caught by SUPABASE_URL check
+        MEDIA_URL = '/media/'  # Fallback, though this should be caught by SUPABASE_URL check
 else:
-    MEDIA_URL = '/media/' # Fallback for local development or if variables are missing
+    MEDIA_URL = '/media/'  # Fallback for local development or if variables are missing
 
 # Reverted temporary logging configuration.
-
-
-
-
-

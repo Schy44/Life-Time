@@ -8,16 +8,18 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ProfileForm from '../components/ProfileForm';
 import PreviewModal from '../components/PreviewModal';
 import FaithTagsSection from '../components/FaithTagsSection';
-import apiClient from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FaEdit, FaEye, FaTimes, FaSave } from 'react-icons/fa';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getProfile } from '../services/api';
+import apiClient from '../lib/api';
 
 const ProfilePage = () => {
   const [profileData, setProfileData] = useState(null);
   const [interests, setInterests] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // only used for explicit manual refreshes
   const [error, setError] = useState(null);
   const [editSection, setEditSection] = useState(null); // null, 'about', 'education', 'career', 'all'
   const [showPreview, setShowPreview] = useState(false);
@@ -42,36 +44,57 @@ const ProfilePage = () => {
     };
   };
 
+  const queryClient = useQueryClient();
+
+  // React Query: cache current user profile under a shared key
+  const {
+    data: queryProfile,
+    isLoading,
+    isError,
+    error: queryError,
+  } = useQuery({
+    queryKey: ['me'],
+    queryFn: getProfile,
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5, // 5 minutes: treat data as fresh
+    refetchOnWindowFocus: false, // we'll handle focus manually
+  });
+
+  // Normalize and sync query data into local state for existing logic
+  useEffect(() => {
+    if (queryProfile) {
+      const normalized = normalizeProfile(queryProfile);
+      setProfileData(normalized);
+    }
+  }, [queryProfile]);
+
   const fetchAllData = async (isBackground = false) => {
     if (!user) {
       setError('You must be logged in to view this page.');
-      setLoading(false);
       return;
     }
 
     try {
       if (!isBackground) {
-        setLoading(true); // Only show spinner for initial load or manual refresh
+        setLoading(true);
       }
 
-      // Fetch profile data
-      const { data: profile } = await apiClient.get('/profile/');
+      // Refetch profile via React Query to keep cache in sync
+      const fresh = await queryClient.fetchQuery({
+        queryKey: ['me'],
+        queryFn: getProfile,
+      });
 
-      const normalized = normalizeProfile(profile);
+      const normalized = normalizeProfile(fresh);
       setProfileData(normalized);
 
       if (normalized) {
         const { data: interestsData } = await apiClient.get(`/interests/?profile_id=${normalized.id}`);
         setInterests(interestsData || []);
       }
-
     } catch (err) {
-      if (err.response && err.response.status === 404) {
-        setProfileData(null);
-      } else {
-        setError('Failed to fetch data from the backend.');
-        console.error(err);
-      }
+      console.error(err);
+      setError('Failed to fetch data from the backend.');
     } finally {
       if (!isBackground) {
         setLoading(false);
@@ -86,9 +109,10 @@ const ProfilePage = () => {
       setProfileData(normalized);
       // Clean up the state to prevent re-using stale data on refresh
       navigate(location.pathname, { replace: true, state: {} });
-    } else if (user && !profileData) {
-      // Fallback to fetching if no navigation state or no data yet
-      fetchAllData();
+    } else if (user && !profileData && !isLoading) {
+      // Initial interests fetch in background without showing a full-screen loader.
+      // Profile data itself comes from React Query cache.
+      fetchAllData(true);
     }
 
     // Keep the window focus handler for background tab updates
@@ -124,12 +148,13 @@ const ProfilePage = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading && !profileData) {
     return <LoadingSpinner size="fullscreen" message="Loading your profile..." />;
   }
 
-  if (error) {
-    return <div className="flex justify-center items-center h-screen text-red-500 text-xl">Error: {error}</div>;
+  if (error || isError) {
+    const message = error || queryError?.message || 'Failed to fetch data from the backend.';
+    return <div className="flex justify-center items-center h-screen text-red-500 text-xl">Error: {message}</div>;
   }
 
   if (!profileData) {
@@ -247,6 +272,10 @@ const ProfilePage = () => {
       // Update the state with the new data from the server
       const normalized = normalizeProfile(response.data);
       setProfileData(normalized);
+
+      // Keep React Query cache in sync so all consumers of ['me'] get fresh data
+      queryClient.setQueryData(['me'], response.data);
+
       setEditSection(null);
 
       alert('Profile updated successfully!');

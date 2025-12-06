@@ -3,7 +3,8 @@ import { FaPlus, FaTrash } from 'react-icons/fa';
 import Select from 'react-select'; // Import react-select
 import GlassCard from './GlassCard';
 import FaithTagsSection from './FaithTagsSection';
-import { getCountries } from '../services/api.js'; // Import getCountries
+import { getCountries, getProfessions } from '../services/api.js'; // Import getCountries and getProfessions
+import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '../context/ThemeContext'; // Import useTheme
 import DragDropUpload from './DragDropUpload'; // Import DragDropUpload
 
@@ -90,8 +91,20 @@ const ProfileForm = ({ initialData, onSubmit, section = 'all' }) => {
   const [additionalImageFiles, setAdditionalImageFiles] = useState([]);
   const [additionalImagesToKeep, setAdditionalImagesToKeep] = useState(initialData.additional_images ? initialData.additional_images.map(img => img.id) : []);
   const [errors, setErrors] = useState({});
-  const [countries, setCountries] = useState([]); // Add countries state
-  const [professions, setProfessions] = useState([]); // Add professions state
+  const [countries, setCountries] = useState([]); // Local state, sourced from cached query
+  const [professions, setProfessions] = useState([]); // Local state, sourced from cached query
+
+  const { data: countriesData } = useQuery({
+    queryKey: ['countries'],
+    queryFn: getCountries,
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
+
+  const { data: professionsData } = useQuery({
+    queryKey: ['professions'],
+    queryFn: getProfessions,
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
 
   useEffect(() => {
     setFormData({
@@ -102,30 +115,16 @@ const ProfileForm = ({ initialData, onSubmit, section = 'all' }) => {
   }, [initialData]);
 
   useEffect(() => {
-    const fetchCountries = async () => {
-      try {
-        const data = await getCountries();
-        setCountries(data);
-      } catch (error) {
-        console.error('Error fetching countries:', error);
-      }
-    };
-    fetchCountries();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (countriesData) {
+      setCountries(countriesData);
+    }
+  }, [countriesData]);
 
   useEffect(() => {
-    const fetchProfessions = async () => {
-      try {
-        const { getProfessions } = await import('../services/api.js');
-        const data = await getProfessions();
-        setProfessions(data.map(p => ({ value: p, label: p })));
-      } catch (error) {
-        console.error('Error fetching professions:', error);
-      }
-    };
-    fetchProfessions();
-  }, []);
+    if (professionsData) {
+      setProfessions(professionsData.map(p => ({ value: p, label: p })));
+    }
+  }, [professionsData]);
 
   useEffect(() => {
     if (formData.religion && !RELIGION_CHOICES.some(choice => choice.value === formData.religion)) {

@@ -6,6 +6,7 @@ import { getProfiles } from '../services/api';
 import { getCityCoordinates } from '../lib/cityCoordinates';
 import LoadingSpinner from './LoadingSpinner';
 import 'leaflet/dist/leaflet.css';
+import { useQuery } from '@tanstack/react-query';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -122,30 +123,36 @@ const processProfilesForMap = (profiles) => {
 
 const GlobalMap = ({ onProfilesLoaded }) => {
     const [mapProfiles, setMapProfiles] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [zoom, setZoom] = useState(2);
     const ZOOM_THRESHOLD = 5;
 
+    const {
+        data: mapData,
+        isLoading,
+        isError,
+        error,
+    } = useQuery({
+        queryKey: ['mapProfiles'],
+        queryFn: async () => {
+            const response = await getProfiles({ show_on_map: true });
+            const profilesData = response.results || response;
+            const profilesWithLocation = profilesData.filter(p => p.current_city || p.current_country);
+            const processed = processProfilesForMap(profilesWithLocation);
+            return {
+                processedProfiles: processed,
+                profileCount: profilesWithLocation.length,
+            };
+        },
+        staleTime: 1000 * 60 * 5, // cache map data for 5 minutes
+        refetchOnWindowFocus: false,
+    });
+
     useEffect(() => {
-        const fetchMapProfiles = async () => {
-            try {
-                setLoading(true);
-                const response = await getProfiles({ show_on_map: true });
-                const profilesData = response.results || response;
-                const profilesWithLocation = profilesData.filter(p => p.current_city || p.current_country);
-                const processed = processProfilesForMap(profilesWithLocation);
-                setMapProfiles(processed);
-                if (onProfilesLoaded) onProfilesLoaded(profilesWithLocation.length);
-            } catch (err) {
-                console.error('Failed to fetch map profiles:', err);
-                setError('Failed to load map');
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchMapProfiles();
-    }, [onProfilesLoaded]);
+        if (mapData) {
+            setMapProfiles(mapData.processedProfiles);
+            if (onProfilesLoaded) onProfilesLoaded(mapData.profileCount);
+        }
+    }, [mapData, onProfilesLoaded]);
 
     const getLocationGroups = () => {
         const groups = {};
@@ -158,8 +165,8 @@ const GlobalMap = ({ onProfilesLoaded }) => {
         return Object.values(groups);
     };
 
-    if (loading) return <div className="w-full h-[400px] md:h-[500px] bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center"><LoadingSpinner message="Loading global map..." /></div>;
-    if (error) return <div className="w-full h-[400px] bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center"><p className="text-gray-600 dark:text-gray-400">{error}</p></div>;
+    if (isLoading) return <div className="w-full h-[400px] md:h-[500px] bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center"><LoadingSpinner message="Loading global map..." /></div>;
+    if (isError) return <div className="w-full h-[400px] bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center"><p className="text-gray-600 dark:text-gray-400">{error?.message || 'Failed to load map'}</p></div>;
 
     const locationGroups = getLocationGroups();
 

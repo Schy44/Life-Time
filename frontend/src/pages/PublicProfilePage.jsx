@@ -17,6 +17,8 @@ import {
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { FaCheckCircle, FaMapMarkerAlt, FaGraduationCap, FaBriefcase, FaHeart, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { useQuery } from '@tanstack/react-query';
+import { jsPDF } from 'jspdf';
 
 // InfoRow and SectionCard components now imported from separate files
 
@@ -93,43 +95,39 @@ export default function PublicProfilePage() {
     backdropFilter: 'none',
   };
 
-  // data states
-  const [profileData, setProfileData] = useState(null);
-  const [currentUserProfile, setCurrentUserProfile] = useState(null);
+  // interest state (separate so we can update without refetch)
   const [interestStatus, setInterestStatus] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // --- React Query: cache profile data per ID ---
+  const {
+    data: profileData,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ['publicProfile', id],
+    queryFn: () => getProfileById(id),
+  });
+
+  const {
+    data: currentUserProfile,
+  } = useQuery({
+    queryKey: ['currentUserProfile'],
+    queryFn: () => getProfile(),
+    enabled: !!user,
+  });
 
   // UI states
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [viewerOpen, setViewerOpen] = useState(false);
 
+  // Initialize interest status from loaded profile
   useEffect(() => {
-    let mounted = true;
-    const fetch = async () => {
-      try {
-        const prof = await getProfileById(id);
-        if (!mounted) return;
-        setProfileData(prof);
-        if (prof?.interest) setInterestStatus(prof.interest);
-
-        if (user) {
-          const u = await getProfile();
-          if (!mounted) return;
-          setCurrentUserProfile(u);
-        }
-      } catch (err) {
-        console.error(err);
-        if (!mounted) return;
-        setError('Unable to load profile.');
-      } finally {
-        if (!mounted) return;
-        setLoading(false);
-      }
-    };
-    fetch();
-    return () => { mounted = false; };
-  }, [id, user]);
+    if (profileData?.interest) {
+      setInterestStatus(profileData.interest);
+    } else {
+      setInterestStatus(null);
+    }
+  }, [profileData]);
 
   // interest handlers (same as before)
   const safeAlert = msg => alert(msg);
@@ -157,11 +155,11 @@ export default function PublicProfilePage() {
     return null;
   };
 
-  if (loading) {
+  if (isLoading) {
     return <LoadingSpinner size="fullscreen" message="Loading profile..." />;
   }
 
-  if (error) return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>;
+  if (isError) return <div className="min-h-screen flex items-center justify-center text-red-500">{error?.message || 'Unable to load profile.'}</div>;
   if (!profileData) return <div className="min-h-screen flex items-center justify-center">Profile not found</div>;
 
   // --- destructure with safe defaults ---
@@ -208,6 +206,254 @@ export default function PublicProfilePage() {
   const formattedUpdated = updated_at ? new Date(updated_at).toLocaleDateString() : '—';
   const formattedCreated = created_at ? new Date(created_at).toLocaleDateString() : '—';
 
+  const handleDownloadBiodata = () => {
+    if (!profileData) return;
+
+    const doc = new jsPDF({
+      unit: 'pt',
+      format: 'a4',
+      orientation: 'portrait',
+    });
+
+    const safeName = (name || 'profile').replace(/[^\w\-]+/g, '_');
+
+    // --- NEW MODERN DESIGN ---
+
+    // 1. THEME & COLORS
+    const colors = {
+      primary: '#2C3E50', // Dark Slate Blue
+      secondary: '#3498DB', // Bright Blue for accents
+      text: '#34495E', // Dark Grey for body
+      subtle: '#BDC3C7', // Light Grey for lines/borders
+      background: '#F8F9F9',
+    };
+
+    // 2. DIMENSIONS & LAYOUT
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 40;
+    const footerHeight = 40;
+    const contentWidth = pageWidth - margin * 2;
+
+    let y = margin;
+
+    // 3. HELPERS
+    const checkPageBreak = (requiredHeight) => {
+      if (y + requiredHeight > pageHeight - footerHeight) {
+        doc.addPage();
+        y = margin;
+        return true;
+      }
+      return false;
+    };
+
+    const drawSection = (title, contentCallback) => {
+      checkPageBreak(40); // Min space for a section header
+      
+      // Draw title
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(colors.primary);
+      doc.text(title, margin, y);
+
+      // Draw underline accent
+      doc.setDrawColor(colors.secondary);
+      doc.setLineWidth(2);
+      doc.line(margin, y + 4, margin + 40, y + 4);
+
+      y += 25; // Space after header
+      
+      contentCallback();
+
+      y += 20; // Space after section
+    };
+
+    const addText = (text, x, startY, options = {}) => {
+      const {
+        fontSize = 11,
+        isBold = false,
+        color = colors.text,
+        maxWidth = contentWidth,
+        lineHeight = 1.3,
+      } = options;
+
+      doc.setFontSize(fontSize);
+      doc.setFont(undefined, isBold ? 'bold' : 'normal');
+      doc.setTextColor(color);
+
+      const lines = doc.splitTextToSize(String(text), maxWidth);
+      lines.forEach((line, idx) => {
+        checkPageBreak(fontSize);
+        doc.text(line, x, y);
+        y += fontSize * lineHeight;
+      });
+      return lines.length * fontSize * lineHeight;
+    };
+
+    // --- PDF CONTENT ---
+
+    // HEADER
+    doc.setFontSize(30);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(colors.primary);
+    doc.text(name, margin, y);
+    y += 20;
+
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(colors.text);
+    doc.text(`Biodata Generated by Life-Time on ${new Date().toLocaleDateString()}`, margin, y);
+    y += 40;
+
+    // --- TWO-COLUMN LAYOUT FOR KEY INFO ---
+    const colWidth = (contentWidth - 20) / 2;
+    const col2_X = margin + colWidth + 20;
+    const initialY = y;
+    
+    let yLeft = initialY;
+    let yRight = initialY;
+
+    const drawInfoRow = (label, value, column) => {
+      let currentY = column === 'left' ? yLeft : yRight;
+      const currentX = column === 'left' ? margin : col2_X;
+      doc.setFontSize(10);
+      doc.setTextColor(colors.text);
+      doc.setFont(undefined, 'normal');
+      doc.text(`${label}:`, currentX, currentY);
+
+      doc.setFont(undefined, 'bold');
+      doc.text(String(value), currentX + 60, currentY);
+
+      if (column === 'left') yLeft += 20;
+      else yRight += 20;
+    };
+
+    // BASIC INFO
+    y = initialY;
+    checkPageBreak(30);
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(colors.primary);
+    doc.text("Key Information", margin, y);
+    y += 20;
+    yLeft = y;
+    drawInfoRow("Age", age || '—', 'left');
+    if (marital_status) drawInfoRow("Status", marital_status, 'left');
+    if (height_cm) drawInfoRow("Height", `${height_cm} cm`, 'left');
+    if (religion) drawInfoRow("Religion", religion, 'left');
+    
+    // LOCATION INFO
+    y = initialY;
+    checkPageBreak(30);
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(colors.primary);
+    doc.text("Location & Citizenship", col2_X, y);
+    y += 20;
+    yRight = y;
+
+    if (current_city && current_country) drawInfoRow("Current", `${current_city}, ${current_country}`, 'right');
+    else if (current_city) drawInfoRow("Current", current_city, 'right');
+
+    if (origin_city && origin_country) drawInfoRow("Origin", `${origin_city}, ${origin_country}`, 'right');
+    else if (origin_city) drawInfoRow("Origin", origin_city, 'right');
+
+    if (citizenship) drawInfoRow("Citizenship", citizenship, 'right');
+    if (visa_status) drawInfoRow("Visa Status", visa_status, 'right');
+
+    y = Math.max(yLeft, yRight) + 20;
+
+    // --- FULL-WIDTH SECTIONS ---
+
+    if (about) {
+      drawSection("About Me", () => {
+        addText(about, margin, y, { maxWidth: contentWidth });
+      });
+    }
+
+    if (looking_for) {
+      drawSection("My Ideal Partner", () => {
+        addText(looking_for, margin, y, { maxWidth: contentWidth });
+      });
+    }
+
+    // Education
+    if (education.length) {
+      drawSection("Education", () => {
+        education.forEach(edu => {
+          const title = edu.degree || edu.institution || "N/A";
+          const subtitle = `${edu.field_of_study || ''}${edu.year_from ? ` (${edu.year_from} - ${edu.year_to || 'Present'})` : ''}`;
+          
+          addText(title, margin, y, { isBold: true, color: colors.primary });
+          addText(subtitle, margin, y, { fontSize: 10 });
+          y += 10; // Add consistent space after each entry
+        });
+      });
+    }
+
+    // Work Experience
+    if (work_experience.length) {
+      drawSection("Work Experience", () => {
+        work_experience.forEach(work => {
+          const title = work.title || work.company || "N/A";
+          const subtitle = `${work.company ? `${work.company} | ` : ''}${work.start_date ? `${work.start_date} - ${work.end_date || 'Present'}` : ''}`;
+          
+          addText(title, margin, y, { isBold: true, color: colors.primary });
+          addText(subtitle, margin, y, { fontSize: 10 });
+          y += 10; // Add consistent space after each entry
+        });
+      });
+    }
+    
+    // Family
+    const familyDetails = [
+        { label: "Father's Occupation", value: father_occupation },
+        { label: "Mother's Occupation", value: mother_occupation },
+        { label: "Siblings", value: siblings },
+        { label: "Family Type", value: family_type },
+    ].filter(detail => detail.value);
+
+    if (familyDetails.length > 0) {
+        drawSection("Family Details", () => {
+            const col1X = margin;
+            const col2X = margin + contentWidth / 2;
+            const itemWidth = contentWidth / 2 - 10;
+            let yCol1 = y;
+            let yCol2 = y;
+
+            familyDetails.forEach((detail, index) => {
+                // Alternate between columns
+                if (index % 2 === 0) { // Left column
+                    y = yCol1; // Use left column's Y
+                    addText(`${detail.label}:`, col1X, y, { fontSize: 10, maxWidth: itemWidth });
+                    addText(detail.value, col1X, y, { isBold: true, maxWidth: itemWidth });
+                    yCol1 = y; // Update this column's Y
+                } else { // Right column
+                    y = yCol2; // Use right column's Y
+                    addText(`${detail.label}:`, col2X, y, { fontSize: 9, maxWidth: itemWidth });
+                    addText(detail.value, col2X, y, { isBold: true, maxWidth: itemWidth });
+                    yCol2 = y; // Update this column's Y
+                }
+            });
+
+            // Set the main Y to the bottom of the taller column
+            y = Math.max(yCol1, yCol2);
+        });
+    }
+    
+    // Footer
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(9);
+      doc.setTextColor(colors.subtle);
+      doc.text(`Page ${i} of ${pageCount}`, pageWidth - margin - 35, pageHeight - 20);
+      doc.text(`Life-Time Profile | ${name}`, margin, pageHeight - 20);
+    }
+
+    doc.save(`${safeName}_biodata.pdf`);
+  };
+
   return (
     <>
       <AnimatedBackground />
@@ -241,6 +487,13 @@ export default function PublicProfilePage() {
                         <FaCheckCircle /> Verified
                       </div>
                     )}
+
+                    <button
+                      onClick={handleDownloadBiodata}
+                      className="ml-2 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600"
+                    >
+                      Download Biodata
+                    </button>
                   </div>
                 </div>
 
