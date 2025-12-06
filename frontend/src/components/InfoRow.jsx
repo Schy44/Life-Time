@@ -7,4 +7,5 @@ const InfoRow = ({ label, value, className = '' }) => (
     </div>
 );
 
-export default InfoRow;
+export default React.memo(InfoRow);
+

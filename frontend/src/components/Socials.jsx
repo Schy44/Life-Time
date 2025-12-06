@@ -33,4 +33,4 @@ const Socials = ({ socials }) => {
   );
 };
 
-export default Socials;
+export default React.memo(Socials);

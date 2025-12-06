@@ -11,4 +11,5 @@ const SectionCard = ({ title, icon, children, className = '' }) => (
     </section>
 );
 
-export default SectionCard;
+export default React.memo(SectionCard);
+

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaCheckCircle, FaMapMarkerAlt, FaBriefcase, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaCheckCircle, FaMapMarkerAlt, FaGraduationCap, FaBriefcase, FaHeart, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import SectionCard from './SectionCard';
+import InfoRow from './InfoRow';
 import Socials from './Socials';
 import FaithTagsSection from './FaithTagsSection';
 
@@ -88,15 +89,32 @@ const PublicProfileView = ({
         is_verified,
         compatibility_score,
         about = '',
+        looking_for = '',
+        height_cm,
+        religion,
+        alcohol,
+        smoking,
+        education = [],
+        work_experience = [],
+        preferences = [],
         facebook_profile,
         instagram_profile,
         linkedin_profile,
         current_city,
+        origin_city,
+        citizenship,
+        current_country,
+        origin_country,
+        blood_group,
+        visa_status,
+        father_occupation,
+        mother_occupation,
+        siblings,
+        family_type,
+        marital_status,
         created_at,
         updated_at,
-        work_experience = [],
         faith_tags = [],
-        looking_for,
     } = profileData;
 
     const age =
@@ -143,7 +161,7 @@ const PublicProfileView = ({
                     <div className="flex items-center gap-3">
                         {compatibility_score != null && !isPreview && (
                             <div className="text-sm font-semibold bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 px-3 py-1 rounded-full dark:text-gray-200">
-                                {Math.round(compatibility_score * 100)}%
+                                {Math.round(compatibility_score)}%
                             </div>
                         )}
 
@@ -214,61 +232,122 @@ const PublicProfileView = ({
                             {/* Faith Tags - Display under photo section */}
                             {faith_tags && faith_tags.length > 0 && (
                                 <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                                    <h3 className="text-xs font-semibold text-gray-900 dark:text-gray-300 mb-2">My Faith</h3>
+                                    <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">My Faith</h3>
                                     <FaithTagsSection selectedTags={faith_tags} isEditing={false} />
                                 </div>
                             )}
 
                             {/* Partner Expectations - Display under Faith Tags */}
                             {looking_for && (
-                                <div className="mt-3">
-                                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Looking For</h3>
-                                    <div className="text-sm text-gray-700 dark:text-gray-300">{looking_for}</div>
-                                </div>
-                            )}
-
-                            {/* Work section (conditionally shown if there's work_experience) */}
-                            {work_experience && work_experience.length > 0 && (
-                                <SectionCard title="Work" icon={<FaBriefcase className="text-gray-700" />}>
-                                    <div className="space-y-3">
-                                        {work_experience.map((w, i) => (
-                                            <div key={i} className="p-3 border dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700/50">
-                                                <div className="text-sm font-semibold text-gray-900 dark:text-white">{w.title || w.company || 'Work'}</div>
-                                                <div className="text-xs text-gray-700 dark:text-gray-300">
-                                                    {w.company ? `${w.company} — ${w.location || ''}` : w.location}
-                                                </div>
-                                                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                                                    {w.start_date ? `${w.start_date} - ${w.end_date || 'Present'}` : ''}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </SectionCard>
-                            )}
-
-                            {!isPreview && (
-                                <div className="text-xs text-gray-600 dark:text-gray-400 text-right space-y-1">
-                                    <div>
-                                        Member since: <strong>{formattedCreated}</strong>
-                                    </div>
-                                    <div>
-                                        Last updated: <strong>{formattedUpdated}</strong>
-                                    </div>
+                                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                                    <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Partner Expectations</h3>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                                        {looking_for}
+                                    </p>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* center/right columns can be added here (e.g., About, Education, Family, Preferences, etc.) */}
+                    {/* right: details */}
                     <div className="lg:col-span-2 space-y-4">
-                        {/* About */}
-                        {about && (
-                            <SectionCard title="About" icon={null}>
-                                <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{about}</div>
-                            </SectionCard>
-                        )}
+                        <SectionCard title="About" icon={<div className="text-indigo-600">•</div>}>
+                            <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{about || 'No description provided.'}</p>
+                            <InfoRow label="Full name" value={name} />
+                            <InfoRow label="Relationship" value={marital_status || '—'} />
+                            <InfoRow label="Religion" value={religion || '—'} />
+                            <InfoRow label="Height" value={height_cm ? `${height_cm} cm` : '—'} />
+                        </SectionCard>
 
-                        {/* Add more sections as needed */}
+                        {/* Basics */}
+                        <SectionCard title="Basics" icon={<div className="text-indigo-600">•</div>}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <InfoRow label="Blood group" value={blood_group || '—'} />
+                            </div>
+                        </SectionCard>
+
+                        {/* Location & Residency */}
+                        <SectionCard title="Location & Residency" icon={<FaMapMarkerAlt className="text-gray-700" />}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <InfoRow label="Current city" value={current_city || '—'} />
+                                <InfoRow label="Current country" value={current_country || '—'} />
+                                <InfoRow label="Origin city" value={origin_city || '—'} />
+                                <InfoRow label="Origin country" value={origin_country || '—'} />
+                                <InfoRow label="Visa status" value={visa_status || '—'} />
+                            </div>
+                        </SectionCard>
+
+                        {/* Family */}
+                        <SectionCard title="Family" icon={<div className="text-indigo-600">•</div>}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <InfoRow label="Father's occupation" value={father_occupation || '—'} />
+                                <InfoRow label="Mother's occupation" value={mother_occupation || '—'} />
+                                <InfoRow label="Siblings" value={siblings || '—'} />
+                                <InfoRow label="Family type" value={family_type || '—'} />
+                            </div>
+                        </SectionCard>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <SectionCard title="Lifestyle" icon={<div className="text-indigo-600">•</div>}>
+                                <InfoRow label="Alcohol" value={alcohol || '—'} />
+                                <InfoRow label="Smoking" value={smoking || '—'} />
+                            </SectionCard>
+
+                            <SectionCard title="Preferences" icon={<FaHeart className="text-red-500" />}>
+                                {preferences && preferences[0] ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {Object.entries(preferences[0]).slice(0, 12).map(([k, v]) => (
+                                            <span key={k} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-sm text-gray-800 dark:text-gray-200">{k.replace(/_/g, ' ')}: {String(v)}</span>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-gray-700 dark:text-gray-400">Not provided</div>
+                                )}
+                            </SectionCard>
+                        </div>
+
+                        <SectionCard title="Education" icon={<FaGraduationCap className="text-gray-700" />}>
+                            {education.length ? (
+                                <div className="space-y-3">
+                                    {education.map((e, i) => (
+                                        <div key={i} className="p-3 border dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700/50">
+                                            <div className="text-sm font-semibold text-gray-900 dark:text-white">{e.institution || e.degree || 'Education'}</div>
+                                            <div className="text-xs text-gray-700 dark:text-gray-300">{e.field_of_study || ''}</div>
+                                            <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">{e.year_from ? `${e.year_from} - ${e.year_to || 'Present'}` : ''}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-sm text-gray-700 dark:text-gray-400">No education listed.</div>
+                            )}
+                        </SectionCard>
+
+                        <SectionCard title="Work" icon={<FaBriefcase className="text-gray-700" />}>
+                            {work_experience.length ? (
+                                <div className="space-y-3">
+                                    {work_experience.map((w, i) => (
+                                        <div key={i} className="p-3 border dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700/50">
+                                            <div className="text-sm font-semibold text-gray-900 dark:text-white">{w.title || w.company || 'Work'}</div>
+                                            <div className="text-xs text-gray-700 dark:text-gray-300">{w.company ? `${w.company} — ${w.location || ''}` : w.location}</div>
+                                            <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">{w.start_date ? `${w.start_date} - ${w.end_date || 'Present'}` : ''}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-sm text-gray-700 dark:text-gray-400">No work experience listed.</div>
+                            )}
+                        </SectionCard>
+
+                        {!isPreview && (
+                            <div className="text-xs text-gray-600 dark:text-gray-400 text-right space-y-1">
+                                <div>
+                                    Member since: <strong>{formattedCreated}</strong>
+                                </div>
+                                <div>
+                                    Last updated: <strong>{formattedUpdated}</strong>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 

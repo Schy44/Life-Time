@@ -95,6 +95,15 @@ INSTALLED_APPS = [
     'storages',
 ]
 
+# Add Django Debug Toolbar only if installed
+if DEBUG:
+    try:
+        import debug_toolbar
+        INSTALLED_APPS.append('debug_toolbar')
+    except ImportError:
+        pass
+
+
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -106,6 +115,15 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# Add Django Debug Toolbar middleware only if installed
+if DEBUG:
+    try:
+        import debug_toolbar
+        MIDDLEWARE.insert(3, 'debug_toolbar.middleware.DebugToolbarMiddleware')
+    except ImportError:
+        pass
+
 
 ROOT_URLCONF = 'life_time.urls'
 
@@ -244,5 +262,12 @@ if SUPABASE_URL and SUPABASE_BUCKET_NAME:
         MEDIA_URL = '/media/'  # Fallback, though this should be caught by SUPABASE_URL check
 else:
     MEDIA_URL = '/media/'  # Fallback for local development or if variables are missing
+
+# Django Debug Toolbar Configuration (Development Only)
+if DEBUG:
+    INTERNAL_IPS = [
+        '127.0.0.1',
+        'localhost',
+    ]
 
 # Reverted temporary logging configuration.

@@ -20,32 +20,23 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.shortcuts import redirect
 
-from django.conf import settings
-
-from django.conf.urls.static import static
-
-from django.shortcuts import redirect
-
-
-
 urlpatterns = [
-
     path('', lambda request: redirect('/api/')),
-
     path('admin/', admin.site.urls),
-
     path('api/', include('api.urls')),
-
 ]
 
-
-
 # Serve media files in development and production (if not using a dedicated media server)
-
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
-
-
 if settings.DEBUG:
-
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    
+    # Django Debug Toolbar (only if installed)
+    try:
+        import debug_toolbar
+        urlpatterns = [
+            path('__debug__/', include(debug_toolbar.urls)),
+        ] + urlpatterns
+    except ImportError:
+        pass
