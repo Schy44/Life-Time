@@ -1,7 +1,7 @@
 // frontend/src/components/NotificationsDropdown.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, Check, EyeOff, ThumbsUp, Mail, Bookmark, User } from 'lucide-react';
+import { Bell, Check, EyeOff, ThumbsUp, Mail, Bookmark, User, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   getNotifications,
@@ -9,41 +9,52 @@ import {
   markAllNotificationsAsRead,
   getUnreadNotificationCount
 } from '../services/api';
-import './NotificationsDropdown.css';
 
 const timeAgo = (date) => {
   const seconds = Math.floor((new Date() - new Date(date)) / 1000);
   let interval = seconds / 31536000;
-  if (interval > 1) return Math.floor(interval) + " years ago";
+  if (interval > 1) return Math.floor(interval) + "y";
   interval = seconds / 2592000;
-  if (interval > 1) return Math.floor(interval) + " months ago";
+  if (interval > 1) return Math.floor(interval) + "mo";
   interval = seconds / 86400;
-  if (interval > 1) return Math.floor(interval) + " days ago";
+  if (interval > 1) return Math.floor(interval) + "d";
   interval = seconds / 3600;
-  if (interval > 1) return Math.floor(interval) + " hours ago";
+  if (interval > 1) return Math.floor(interval) + "h";
   interval = seconds / 60;
-  if (interval > 1) return Math.floor(interval) + " minutes ago";
-  return Math.floor(seconds) + " seconds ago";
+  if (interval > 1) return Math.floor(interval) + "m";
+  return "Just now";
 };
 
 const NotificationIcon = ({ verb }) => {
   const iconMap = {
-    'liked': <ThumbsUp size={20} className="text-blue-500" />,
-    'messaged': <Mail size={20} className="text-green-500" />,
-    'favorited': <Bookmark size={20} className="text-yellow-500" />,
-    'viewed your profile': <User size={20} className="text-gray-500" />,
+    'liked': <ThumbsUp size={14} className="text-white fill-current" />,
+    'messaged': <Mail size={14} className="text-white fill-current" />,
+    'favorited': <Bookmark size={14} className="text-white fill-current" />,
+    'viewed your profile': <User size={14} className="text-white" />,
   };
-  return iconMap[verb] || <Bell size={20} className="text-gray-500" />;
+
+  const bgMap = {
+    'liked': 'bg-blue-500',
+    'messaged': 'bg-green-500',
+    'favorited': 'bg-yellow-500',
+    'viewed your profile': 'bg-purple-500',
+  }
+
+  return (
+    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${bgMap[verb] || 'bg-gray-500'} ring-2 ring-white dark:ring-black`}>
+      {iconMap[verb] || <Bell size={14} className="text-white" />}
+    </div>
+  );
 };
 
 const NotificationsDropdown = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
-  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
 
   const buttonRef = useRef(null);
-  const dropdownRef = useRef(null); // <<--- added for portal dropdown
+  const dropdownRef = useRef(null);
 
   const fetchNotificationData = async () => {
     try {
@@ -64,30 +75,32 @@ const NotificationsDropdown = () => {
     return () => clearInterval(intervalId);
   }, []);
 
-  // Outside click handler — now checks both the bell AND the portal dropdown
   useEffect(() => {
     function handleClickOutside(e) {
       const target = e.target;
       const clickedInsideButton = buttonRef.current && buttonRef.current.contains(target);
       const clickedInsideDropdown = dropdownRef.current && dropdownRef.current.contains(target);
 
-      // if click is inside either bell OR dropdown, do nothing
       if (clickedInsideButton || clickedInsideDropdown) {
         return;
       }
-
-      // otherwise close
       setIsOpen(false);
     }
+    const handleEsc = (e) => { if (e.key === 'Escape') setIsOpen(false); };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEsc);
+    };
   }, []);
 
-  const handleMarkAsRead = async (id) => {
+  const handleMarkAsRead = async (id, e) => {
+    e.stopPropagation();
+    e.preventDefault();
     try {
       await markNotificationAsRead(id);
-      // Either refetch or optimistically update
       await fetchNotificationData();
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
@@ -113,15 +126,16 @@ const NotificationsDropdown = () => {
   useEffect(() => {
     if (isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
+      // Align right edge of dropdown with right edge of button, but shift left slightly
+      // Fixed width of dropdown is w-80 (20rem/320px) or w-96 (24rem/384px)
       setCoords({
-        top: rect.bottom + 8,
-        left: rect.right - 384,
-        width: 384
+        top: rect.bottom + 14, // slightly lower
+        left: rect.right - 384 // align right, width 384px (w-96)
       });
     }
   }, [isOpen]);
 
-  // create portal root if not present
+  // Create portal root if not present
   useEffect(() => {
     if (!document.getElementById('notifications-root')) {
       const el = document.createElement('div');
@@ -132,55 +146,78 @@ const NotificationsDropdown = () => {
 
   const dropdown = (
     <div
-      ref={dropdownRef} /* <-- attach ref so outside-click checks work */
-      className="dropdown-menu-portal"
+      ref={dropdownRef}
+      role="dialog"
+      aria-label="Notifications"
+      className="fixed z-[9999] w-96 bg-white dark:bg-black rounded-lg shadow-2xl border border-black/5 dark:border-white/10 overflow-hidden animate-fade-in-scale"
       style={{
-        position: 'fixed',
         top: coords.top,
         left: coords.left,
-        width: coords.width,
-        zIndex: 9999999
       }}
     >
-      <div className="dropdown-header">
-        <h4 className="dropdown-title">Notifications</h4>
+      <div className="p-4 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-black dark:text-white">Notifications</h4>
         {unreadCount > 0 && (
-          <button onClick={handleMarkAllAsRead} className="mark-all-read">
-            <EyeOff size={16} className="mr-1" /> Mark all as read
+          <button
+            onClick={handleMarkAllAsRead}
+            className="text-xs font-medium text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white transition-colors flex items-center"
+          >
+            <Check size={14} className="mr-1" /> Mark all read
           </button>
         )}
       </div>
 
-      <div className="notifications-list">
+      <div className="max-h-[70vh] overflow-y-auto custom-scrollbar">
         {notifications.length === 0 ? (
-          <p className="no-notifications">No notifications yet.</p>
+          <div className="p-8 text-center">
+            <Bell size={24} className="mx-auto text-black/20 dark:text-white/20 mb-2" />
+            <p className="text-sm text-black/40 dark:text-white/40">No notifications yet.</p>
+          </div>
         ) : (
           notifications.map(n => (
-            <div key={n.id} className={`notification-item ${n.unread ? 'unread' : ''}`}>
-              <Link to={n.actor_profile_url || '#'} className="notification-link">
-                <div className="notification-avatar">
-                  {n.actor_profile_image ? (
-                    <img src={n.actor_profile_image} alt={`${n.actor_name}'s avatar`} />
-                  ) : (
-                    <span>{getInitials(n.actor_name)}</span>
-                  )}
-                  <div className="notification-type-badge">
+            <Link
+              to={n.actor_profile_url || '#'}
+              key={n.id}
+              className={`block px-4 py-3 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors relative group ${n.unread ? 'bg-black/[0.02] dark:bg-white/[0.02]' : ''}`}
+            >
+              <div className="flex items-start space-x-3">
+                <div className="relative flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full overflow-hidden ring-1 ring-black/5 dark:ring-white/10">
+                    {n.actor_profile_image ? (
+                      <img src={n.actor_profile_image} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-black dark:bg-white flex items-center justify-center text-white dark:text-black text-xs font-bold">
+                        {getInitials(n.actor_name)}
+                      </div>
+                    )}
+                  </div>
+                  <div className="absolute -bottom-1 -right-1">
                     <NotificationIcon verb={n.verb} />
                   </div>
                 </div>
 
-                <div className="notification-content">
-                  <p className="notification-text"><strong>{n.actor_name}</strong> {n.verb}</p>
-                  <p className="notification-time">{timeAgo(n.created_at)}</p>
+                <div className="flex-1 min-w-0 pr-6">
+                  <p className="text-sm text-black dark:text-white">
+                    <span className="font-semibold">{n.actor_name}</span>{' '}
+                    <span className="text-black/70 dark:text-white/70">{n.verb}</span>
+                  </p>
+                  <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">{timeAgo(n.created_at)}</p>
                 </div>
-              </Link>
 
-              {n.unread && (
-                <button onClick={() => handleMarkAsRead(n.id)} className="mark-as-read">
-                  <Check size={14} className="mr-1" /> Mark as read
-                </button>
-              )}
-            </div>
+                {n.unread && (
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mb-2"></div>
+                    <button
+                      onClick={(e) => handleMarkAsRead(n.id, e)}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-black/40 hover:text-black dark:text-white/40 dark:hover:text-white transition-all"
+                      title="Mark as read"
+                    >
+                      <Check size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </Link>
           ))
         )}
       </div>
@@ -188,18 +225,24 @@ const NotificationsDropdown = () => {
   );
 
   return (
-    <div className="notifications-dropdown">
+    <>
       <button
         ref={buttonRef}
         onClick={() => setIsOpen(prev => !prev)}
-        className={`notifications-bell ${isOpen ? 'open' : ''}`}
+        className={`relative p-2 rounded-lg transition-all focus:outline-none ${isOpen
+            ? 'bg-black/5 dark:bg-white/10 text-black dark:text-white'
+            : 'text-black/50 hover:text-black dark:text-white/50 dark:hover:text-white hover:bg-black/[0.02] dark:hover:bg-white/[0.02]'
+          }`}
+        aria-label="Notifications"
       >
-        <Bell className="bell-icon" size={24} />
-        {unreadCount > 0 && <span className="unread-count">{unreadCount}</span>}
+        <Bell size={16} /> {/* Matched size with other icons (16px) specifically requested 20->16 */}
+        {unreadCount > 0 && (
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white dark:ring-black"></span>
+        )}
       </button>
 
       {isOpen && createPortal(dropdown, document.getElementById('notifications-root'))}
-    </div>
+    </>
   );
 };
 

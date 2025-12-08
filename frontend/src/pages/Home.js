@@ -9,50 +9,12 @@ import { useAuth } from '../context/AuthContext';
 import { Users, Zap, Heart, Rocket } from 'lucide-react';
 import FaqsPage from '../components/FaqsPage';
 import PricingPage from '../components/PricingPage';
-import Footer from '../components/Footer'; // Import the new Footer component
+import Footer from '../components/Footer';
 import { FlipWords } from '../components/FlipWords';
 import GlobalMap from '../components/GlobalMap';
+import Testimonials from '../components/Testimonials';
 gsap.registerPlugin(ScrollTrigger);
 
-const StoryCard = ({ image, quote, author, index }) => {
-  const imageRef = useRef(null);
-
-  useEffect(() => {
-    let ctx = gsap.context(() => {
-      gsap.to(imageRef.current, {
-        y: '-20%',
-        ease: 'none',
-        scrollTrigger: {
-          trigger: imageRef.current,
-          start: 'top bottom',
-          end: 'bottom top',
-          scrub: true,
-        },
-      });
-    }, imageRef);
-    return () => ctx.revert();
-  }, []);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.8 }}
-      whileInView={{ opacity: 1, scale: 1 }}
-      viewport={{ once: true, amount: 0.5 }}
-      transition={{ delay: index * 0.2 }}
-      className="w-full"
-    >
-      <GlassCard className="flex flex-col h-full overflow-hidden transform hover:scale-105 transition-transform duration-300">
-        <div className="h-48 overflow-hidden">
-          <img ref={imageRef} src={image} alt={author} className="w-full h-full object-cover" />
-        </div>
-        <div className="p-6">
-          <p className="text-lg italic mb-4">"{quote}"</p>
-          <p className="text-right font-semibold text-purple-400">- {author}</p>
-        </div>
-      </GlassCard>
-    </motion.div>
-  );
-};
 
 const RoadmapSection = () => {
   const steps = [
@@ -277,39 +239,10 @@ const Home = () => {
         {/* Roadmap Section */}
         <RoadmapSection />
 
-        {/* Success Stories Section */}
-        <section className="py-20 px-4 bg-white/5">
-          <div className="max-w-6xl mx-auto text-center">
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.5 }}
-              className="text-3xl font-bold mb-12"
-            >
-              Stories from Life-Time
-            </motion.h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              <StoryCard
-                image="https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
-                quote="We connected over our shared love for hiking and haven't stopped exploring since."
-                author="Alex & Sam"
-                index={0}
-              />
-              <StoryCard
-                image="https://images.pexels.com/photos/1499327/pexels-photo-1499327.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
-                quote="I never thought I'd find someone who loved old movies as much as I do. Thank you, Life-Time!"
-                author="Maria"
-                index={1}
-              />
-              <StoryCard
-                image="https://images.pexels.com/photos/1559486/pexels-photo-1559486.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
-                quote="It started with a message about a book and turned into a life-long conversation."
-                author="David"
-                index={2}
-              />
-            </div>
-          </div>
-        </section>
+
+        {/* Testimonials Section */}
+        <Testimonials />
+
 
         <PricingPage id="choose-your-journey" />
 

@@ -1,6 +1,9 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Profile, AdditionalImage, Education, WorkExperience, Preference, VerificationDocument
+from .models import (
+    Profile, AdditionalImage, Education, WorkExperience, Preference, 
+    VerificationDocument, ProfileView, AnalyticsSnapshot
+)
 
 class AdditionalImageInline(admin.TabularInline):
     model = AdditionalImage
@@ -83,3 +86,22 @@ class VerificationDocumentAdmin(admin.ModelAdmin):
                     obj.profile.save()
         
         super().save_model(request, obj, form, change)
+
+
+# Analytics Admin
+@admin.register(ProfileView)
+class ProfileViewAdmin(admin.ModelAdmin):
+    list_display = ('viewer', 'viewed_profile', 'viewed_at', 'source')
+    list_filter = ('viewed_at', 'source')
+    search_fields = ('viewer__user__username', 'viewed_profile__user__username')
+    readonly_fields = ('viewed_at',)
+    date_hierarchy = 'viewed_at'
+
+
+@admin.register(AnalyticsSnapshot)
+class AnalyticsSnapshotAdmin(admin.ModelAdmin):
+    list_display = ('profile', 'date', 'views_count', 'interests_received', 'interests_sent', 'profile_strength')
+    list_filter = ('date',)
+    search_fields = ('profile__user__username',)
+    readonly_fields = ('date',)
+    date_hierarchy = 'date'

@@ -172,7 +172,10 @@ export default function PublicProfilePage() {
     compatibility_score,
     about = '',
     looking_for = '',
+    profile_for,
+    gender,
     height_cm,
+    skin_complexion,
     religion,
     alcohol,
     smoking,
@@ -249,7 +252,7 @@ export default function PublicProfilePage() {
 
     const drawSection = (title, contentCallback) => {
       checkPageBreak(40); // Min space for a section header
-      
+
       // Draw title
       doc.setFontSize(14);
       doc.setFont(undefined, 'bold');
@@ -262,7 +265,7 @@ export default function PublicProfilePage() {
       doc.line(margin, y + 4, margin + 40, y + 4);
 
       y += 25; // Space after header
-      
+
       contentCallback();
 
       y += 20; // Space after section
@@ -309,7 +312,7 @@ export default function PublicProfilePage() {
     const colWidth = (contentWidth - 20) / 2;
     const col2_X = margin + colWidth + 20;
     const initialY = y;
-    
+
     let yLeft = initialY;
     let yRight = initialY;
 
@@ -341,7 +344,7 @@ export default function PublicProfilePage() {
     if (marital_status) drawInfoRow("Status", marital_status, 'left');
     if (height_cm) drawInfoRow("Height", `${height_cm} cm`, 'left');
     if (religion) drawInfoRow("Religion", religion, 'left');
-    
+
     // LOCATION INFO
     y = initialY;
     checkPageBreak(30);
@@ -383,7 +386,7 @@ export default function PublicProfilePage() {
         education.forEach(edu => {
           const title = edu.degree || edu.institution || "N/A";
           const subtitle = `${edu.field_of_study || ''}${edu.year_from ? ` (${edu.year_from} - ${edu.year_to || 'Present'})` : ''}`;
-          
+
           addText(title, margin, y, { isBold: true, color: colors.primary });
           addText(subtitle, margin, y, { fontSize: 10 });
           y += 10; // Add consistent space after each entry
@@ -397,50 +400,50 @@ export default function PublicProfilePage() {
         work_experience.forEach(work => {
           const title = work.title || work.company || "N/A";
           const subtitle = `${work.company ? `${work.company} | ` : ''}${work.start_date ? `${work.start_date} - ${work.end_date || 'Present'}` : ''}`;
-          
+
           addText(title, margin, y, { isBold: true, color: colors.primary });
           addText(subtitle, margin, y, { fontSize: 10 });
           y += 10; // Add consistent space after each entry
         });
       });
     }
-    
+
     // Family
     const familyDetails = [
-        { label: "Father's Occupation", value: father_occupation },
-        { label: "Mother's Occupation", value: mother_occupation },
-        { label: "Siblings", value: siblings },
-        { label: "Family Type", value: family_type },
+      { label: "Father's Occupation", value: father_occupation },
+      { label: "Mother's Occupation", value: mother_occupation },
+      { label: "Siblings", value: siblings },
+      { label: "Family Type", value: family_type },
     ].filter(detail => detail.value);
 
     if (familyDetails.length > 0) {
-        drawSection("Family Details", () => {
-            const col1X = margin;
-            const col2X = margin + contentWidth / 2;
-            const itemWidth = contentWidth / 2 - 10;
-            let yCol1 = y;
-            let yCol2 = y;
+      drawSection("Family Details", () => {
+        const col1X = margin;
+        const col2X = margin + contentWidth / 2;
+        const itemWidth = contentWidth / 2 - 10;
+        let yCol1 = y;
+        let yCol2 = y;
 
-            familyDetails.forEach((detail, index) => {
-                // Alternate between columns
-                if (index % 2 === 0) { // Left column
-                    y = yCol1; // Use left column's Y
-                    addText(`${detail.label}:`, col1X, y, { fontSize: 10, maxWidth: itemWidth });
-                    addText(detail.value, col1X, y, { isBold: true, maxWidth: itemWidth });
-                    yCol1 = y; // Update this column's Y
-                } else { // Right column
-                    y = yCol2; // Use right column's Y
-                    addText(`${detail.label}:`, col2X, y, { fontSize: 9, maxWidth: itemWidth });
-                    addText(detail.value, col2X, y, { isBold: true, maxWidth: itemWidth });
-                    yCol2 = y; // Update this column's Y
-                }
-            });
-
-            // Set the main Y to the bottom of the taller column
-            y = Math.max(yCol1, yCol2);
+        familyDetails.forEach((detail, index) => {
+          // Alternate between columns
+          if (index % 2 === 0) { // Left column
+            y = yCol1; // Use left column's Y
+            addText(`${detail.label}:`, col1X, y, { fontSize: 10, maxWidth: itemWidth });
+            addText(detail.value, col1X, y, { isBold: true, maxWidth: itemWidth });
+            yCol1 = y; // Update this column's Y
+          } else { // Right column
+            y = yCol2; // Use right column's Y
+            addText(`${detail.label}:`, col2X, y, { fontSize: 9, maxWidth: itemWidth });
+            addText(detail.value, col2X, y, { isBold: true, maxWidth: itemWidth });
+            yCol2 = y; // Update this column's Y
+          }
         });
+
+        // Set the main Y to the bottom of the taller column
+        y = Math.max(yCol1, yCol2);
+      });
     }
-    
+
     // Footer
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
@@ -576,9 +579,12 @@ export default function PublicProfilePage() {
                     <SectionCard title="About" icon={<div className="text-indigo-600">•</div>}>
                       <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{about || 'No description provided.'}</p>
                       <InfoRow label="Full name" value={name} />
+                      {profile_for && <InfoRow label="Profile for" value={profile_for.replace('_', ' ')} />}
+                      <InfoRow label="Gender" value={gender || '—'} />
                       <InfoRow label="Relationship" value={marital_status || '—'} />
                       <InfoRow label="Religion" value={religion || '—'} />
                       <InfoRow label="Height" value={height_cm ? `${height_cm} cm` : '—'} />
+                      {skin_complexion && <InfoRow label="Skin complexion" value={skin_complexion} />}
                     </SectionCard>
 
                     {/* NEW: Basics */}
@@ -607,6 +613,30 @@ export default function PublicProfilePage() {
                         <InfoRow label="Siblings" value={siblings || '—'} />
                         <InfoRow label="Family type" value={family_type || '—'} />
                       </div>
+
+                      {/* Siblings Details */}
+                      {profileData.siblings_details && (
+                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                          <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Siblings Details</h4>
+                          <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{profileData.siblings_details}</p>
+                        </div>
+                      )}
+
+                      {/* Paternal Family Details */}
+                      {profileData.paternal_family_details && (
+                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                          <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Paternal Family (Father's Side)</h4>
+                          <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{profileData.paternal_family_details}</p>
+                        </div>
+                      )}
+
+                      {/* Maternal Family Details */}
+                      {profileData.maternal_family_details && (
+                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                          <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Maternal Family (Mother's Side)</h4>
+                          <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{profileData.maternal_family_details}</p>
+                        </div>
+                      )}
                     </SectionCard>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

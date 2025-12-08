@@ -1,271 +1,400 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import AnimatedBackground from '../components/AnimatedBackground';
-import { Shield, Users, Globe, Target, Award, Clock, ArrowRight } from 'lucide-react';
+import Footer from '../components/Footer';
+import { Shield, Eye, Zap, Users, AlertCircle, Search, Target, Rocket } from 'lucide-react';
+
+gsap.registerPlugin(ScrollTrigger);
 
 const AboutPage = () => {
-    const fadeInUp = {
-        hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0 }
-    };
+    const storyRef = useRef(null);
+
+    useEffect(() => {
+        if (storyRef.current) {
+            gsap.to(storyRef.current, {
+                y: -20,
+                scrollTrigger: {
+                    trigger: storyRef.current,
+                    start: 'top bottom',
+                    end: 'bottom top',
+                    scrub: 2,
+                },
+            });
+        }
+    }, []);
 
     return (
         <>
             <AnimatedBackground />
-            <main className="relative min-h-screen bg-gray-50 dark:bg-gray-900">
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+            <main className="relative w-full min-h-screen">
 
-                    {/* Hero Section */}
-                    <motion.div
-                        initial="hidden"
-                        animate="visible"
-                        variants={fadeInUp}
-                        className="text-center mb-20"
-                    >
-                        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-                            About Life-Time
-                        </h1>
+                {/* Hero Section */}
+                <section className="relative min-h-[70vh] flex flex-col justify-center items-center px-6 md:px-12 pt-32 pb-20 bg-gradient-to-b from-purple-50/50 to-white dark:from-gray-900 dark:to-gray-900">
+                    <div className="container mx-auto max-w-6xl text-center">
+                        <motion.h3
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.6 }}
+                            className="text-sm uppercase tracking-wider text-purple-600 dark:text-purple-400 font-semibold mb-4 wow fadeInUp"
+                        >
+                            about us
+                        </motion.h3>
 
-                        <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-                            Connecting hearts across the globe.
-                        </p>
-                    </motion.div>
+                        <motion.h1
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.6, delay: 0.2 }}
+                            className="text-5xl md:text-7xl font-bold mb-8 text-gray-900 dark:text-white leading-tight wow fadeInUp"
+                            data-wow-delay="0.2s"
+                        >
+                            Be Real. Be Seen. <br />
+                            <span className="text-purple-600 dark:text-purple-400">Be Chosen for Who You Are.</span>
+                        </motion.h1>
 
-                    {/* Mission Statement */}
-                    <motion.div
-                        initial="hidden"
-                        whileInView="visible"
-                        viewport={{ once: true, amount: 0.3 }}
-                        variants={fadeInUp}
-                        className="mb-16"
-                    >
-                        <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 md:p-10 shadow-sm border border-gray-200 dark:border-gray-700">
-                            <div className="flex items-start gap-4 mb-4">
-                                <div className="flex-shrink-0 w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
-                                    <Target className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                                </div>
-                                <div>
-                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Our Mission</h2>
-                                </div>
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.6, delay: 0.4 }}
+                            className="flex flex-wrap justify-center gap-6 mt-12 wow fadeInUp"
+                            data-wow-delay="0.4s"
+                        >
+                            <div className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 rounded-full shadow-sm border border-gray-200 dark:border-gray-700 hover:scale-110 hover:shadow-md transition-all duration-300 cursor-pointer">
+                                <Shield className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                                <span className="font-medium text-gray-700 dark:text-gray-300">Trust</span>
                             </div>
-                            <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                                At Life-Time, we believe that everyone deserves to find genuine connections that can last a lifetime.
-                                We've created a platform where educated professionals from around the world can meet, connect, and build
-                                meaningful relationships in a safe, respectful, and authentic environment. Our mission is to bridge distances,
-                                cultures, and hearts by providing a trusted space for people seeking serious, committed relationships.
-                            </p>
+                            <div className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 rounded-full shadow-sm border border-gray-200 dark:border-gray-700 hover:scale-110 hover:shadow-md transition-all duration-300 cursor-pointer">
+                                <Eye className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                                <span className="font-medium text-gray-700 dark:text-gray-300">Transparency</span>
+                            </div>
+                            <div className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 rounded-full shadow-sm border border-gray-200 dark:border-gray-700 hover:scale-110 hover:shadow-md transition-all duration-300 cursor-pointer">
+                                <Zap className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                                <span className="font-medium text-gray-700 dark:text-gray-300">No Fakeness</span>
+                            </div>
+                        </motion.div>
+                    </div>
+                </section>
+
+                {/* Our Story Section - Condensed */}
+                <section className="py-24 px-6 md:px-12 bg-white dark:bg-gray-900">
+                    <div className="container mx-auto max-w-6xl">
+                        <div className="text-center mb-16">
+                            <motion.h3
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                className="text-sm uppercase tracking-wider text-purple-600 dark:text-purple-400 font-semibold mb-4"
+                            >
+                                our story
+                            </motion.h3>
+                            <motion.h2
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: 0.1 }}
+                                className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white"
+                            >
+                                Building a <span className="text-purple-600 dark:text-purple-400">trustworthy</span> path to love
+                            </motion.h2>
                         </div>
-                    </motion.div>
 
-                    {/* Core Values */}
-                    <motion.div
-                        initial="hidden"
-                        whileInView="visible"
-                        viewport={{ once: true, amount: 0.2 }}
-                        transition={{ staggerChildren: 0.1 }}
-                        className="mb-16"
-                    >
-                        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 text-center">
-                            What We Stand For
-                        </h2>
+                        <motion.div
+                            ref={storyRef}
+                            initial={{ opacity: 0, y: 30 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.8 }}
+                            className="max-w-4xl mx-auto"
+                        >
+                            <div className="space-y-8 text-center">
+                                <p className="text-xl text-gray-700 dark:text-gray-300 leading-relaxed">
+                                    As we stepped into adulthood, we all started searching for something real — someone who feels like home. But the path to love quickly became a maze of half-truths, inflated fees, and hidden intentions.
+                                </p>
 
-                        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {[
-                                {
-                                    icon: <Shield className="w-6 h-6" />,
-                                    title: "Privacy & Security",
-                                    description: "Your data is protected with industry-leading security. You control who sees your profile."
-                                },
-                                {
-                                    icon: <Users className="w-6 h-6" />,
-                                    title: "Authentic Connections",
-                                    description: "We foster genuine relationships built on shared values, interests, and mutual respect."
-                                },
-                                {
-                                    icon: <Globe className="w-6 h-6" />,
-                                    title: "Global Community",
-                                    description: "Connect with educated professionals from diverse backgrounds across the world."
-                                },
-                                {
-                                    icon: <Award className="w-6 h-6" />,
-                                    title: "Quality First",
-                                    description: "We prioritize meaningful matches over quantity, focusing on compatibility."
-                                }
-                            ].map((value, index) => (
-                                <motion.div
-                                    key={index}
-                                    variants={fadeInUp}
-                                    className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
-                                >
-                                    <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mb-4">
-                                        <div className="text-purple-600 dark:text-purple-400">
-                                            {value.icon}
-                                        </div>
+                                {/* Highlighted Quote */}
+                                <div className="relative my-12 p-8 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-2xl border-l-4 border-purple-600 dark:border-purple-400 shadow-lg hover:shadow-xl transition-shadow duration-300">
+                                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-purple-600 dark:bg-purple-400 rounded-full flex items-center justify-center shadow-lg">
+                                        <span className="text-white dark:text-gray-900 text-2xl font-bold">"</span>
                                     </div>
-                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                                        {value.title}
+                                    <p className="text-2xl font-bold text-gray-900 dark:text-white italic">
+                                        People weren't struggling to find love… They were struggling to find a trustworthy way to look for it.
+                                    </p>
+                                </div>
+
+                                <p className="text-xl text-gray-700 dark:text-gray-300 leading-relaxed">
+                                    So we built the platform we wished existed — where every profile is real, every process is transparent, and every connection is honest.
+                                </p>
+                            </div>
+                        </motion.div>
+                    </div>
+                </section>
+
+                {/* Mission, Vision, Values Section */}
+                <section className="py-24 px-6 md:px-12 bg-gray-50 dark:bg-gray-800/50">
+                    <div className="container mx-auto max-w-7xl">
+                        <div className="text-center mb-16">
+                            <motion.h3
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                className="text-sm uppercase tracking-wider text-purple-600 dark:text-purple-400 font-semibold mb-4"
+                            >
+                                our approach
+                            </motion.h3>
+                            <motion.h2
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: 0.1 }}
+                                className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white"
+                            >
+                                Guided by <span className="text-purple-600 dark:text-purple-400">purpose</span> and <span className="text-purple-600 dark:text-purple-400">values</span>
+                            </motion.h2>
+                        </div>
+
+                        <div className="grid md:grid-cols-3 gap-8">
+                            {/* Mission Card */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 30 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.6 }}
+                                className="group text-center"
+                            >
+                                <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-xl hover:scale-105 transition-all duration-300 p-8">
+                                    {/* Circular Icon Badge - Black */}
+                                    <div className="mx-auto mb-6 w-24 h-24 rounded-full border-4 border-gray-900 dark:border-white flex items-center justify-center">
+                                        <Rocket className="w-12 h-12 text-gray-900 dark:text-white" strokeWidth={2} />
+                                    </div>
+
+                                    {/* Content */}
+                                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+                                        OUR MISSION
                                     </h3>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                                        {value.description}
-                                    </p>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </motion.div>
-
-                    {/* Our Story & Stats */}
-                    <motion.div
-                        initial="hidden"
-                        whileInView="visible"
-                        viewport={{ once: true, amount: 0.3 }}
-                        variants={fadeInUp}
-                        className="mb-16"
-                    >
-                        <div className="grid md:grid-cols-5 gap-8">
-                            {/* Story */}
-                            <div className="md:col-span-3">
-                                <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Our Story</h2>
-                                <div className="space-y-4 text-gray-600 dark:text-gray-300 leading-relaxed">
-                                    <p>
-                                        Life-Time was born from a simple observation: finding a genuine life partner in today's fast-paced,
-                                        digital world can be overwhelming. Traditional matchmaking felt outdated, while typical dating apps
-                                        focused on casual connections rather than lasting relationships.
-                                    </p>
-                                    <p>
-                                        We envisioned something different — a platform that combines modern technology with traditional values
-                                        of commitment and authenticity. A space where educated professionals could connect based on genuine
-                                        compatibility, shared goals, and mutual respect.
-                                    </p>
-                                    <p>
-                                        Today, Life-Time serves thousands of members worldwide, helping them find meaningful connections that
-                                        transcend borders, backgrounds, and cultures.
+                                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                        To create a transparent platform where authentic connections flourish through trust and honesty.
                                     </p>
                                 </div>
-                            </div>
+                            </motion.div>
 
-                            {/* Stats */}
-                            <div className="md:col-span-2">
-                                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-                                    <div className="space-y-6">
-                                        {[
-                                            { icon: <Users className="w-5 h-5" />, label: "10M+", text: "Verified Profiles" },
-                                            { icon: <Users className="w-5 h-5" />, label: "500K+", text: "Successful Matches" },
-                                            { icon: <Globe className="w-5 h-5" />, label: "150+", text: "Countries" },
-                                            { icon: <Clock className="w-5 h-5" />, label: "24/7", text: "Support Available" }
-                                        ].map((stat, idx) => (
-                                            <motion.div
-                                                key={idx}
-                                                initial={{ opacity: 0, x: 20 }}
-                                                whileInView={{ opacity: 1, x: 0 }}
-                                                transition={{ delay: idx * 0.1 }}
-                                                className="flex items-center gap-3"
-                                            >
-                                                <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center text-purple-600 dark:text-purple-400">
-                                                    {stat.icon}
-                                                </div>
-                                                <div>
-                                                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{stat.label}</div>
-                                                    <div className="text-xs text-gray-500 dark:text-gray-400">{stat.text}</div>
-                                                </div>
-                                            </motion.div>
-                                        ))}
+                            {/* Vision Card */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 30 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.6, delay: 0.2 }}
+                                className="group text-center"
+                            >
+                                <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-xl hover:scale-105 transition-all duration-300 p-8">
+                                    {/* Circular Icon Badge - Black */}
+                                    <div className="mx-auto mb-6 w-24 h-24 rounded-full border-4 border-gray-900 dark:border-white flex items-center justify-center">
+                                        <Eye className="w-12 h-12 text-gray-900 dark:text-white" strokeWidth={2} />
                                     </div>
+
+                                    {/* Content */}
+                                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+                                        OUR VISION
+                                    </h3>
+                                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                        A world where finding love is built on clarity, not confusion — where truth is the foundation of every relationship.
+                                    </p>
                                 </div>
-                            </div>
+                            </motion.div>
+
+                            {/* Values Card */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 30 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.6, delay: 0.4 }}
+                                className="group text-center"
+                            >
+                                <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-xl hover:scale-105 transition-all duration-300 p-8">
+                                    {/* Circular Icon Badge - Black */}
+                                    <div className="mx-auto mb-6 w-24 h-24 rounded-full border-4 border-gray-900 dark:border-white flex items-center justify-center">
+                                        <Shield className="w-12 h-12 text-gray-900 dark:text-white" strokeWidth={2} />
+                                    </div>
+
+                                    {/* Content */}
+                                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+                                        OUR VALUES
+                                    </h3>
+                                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                        Integrity, transparency, authenticity, and respect — the pillars that guide every decision we make.
+                                    </p>
+                                </div>
+                            </motion.div>
                         </div>
-                    </motion.div>
+                    </div>
+                </section>
 
-                    {/* How It Works */}
-                    <motion.div
-                        initial="hidden"
-                        whileInView="visible"
-                        viewport={{ once: true, amount: 0.2 }}
-                        transition={{ staggerChildren: 0.1 }}
-                        className="mb-16"
-                    >
-                        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 text-center">
-                            How It Works
-                        </h2>
+                {/* Problem vs Solution Section */}
+                <section className="py-24 px-6 md:px-12 bg-white dark:bg-gray-900">
+                    <div className="container mx-auto max-w-7xl">
+                        <div className="text-center mb-20">
+                            <motion.h3
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                className="text-sm uppercase tracking-wider text-purple-600 dark:text-purple-400 font-semibold mb-4"
+                            >
+                                the challenge & our answer
+                            </motion.h3>
+                            <motion.h2
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: 0.1 }}
+                                className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6"
+                            >
+                                Understanding the <span className="text-purple-600 dark:text-purple-400">problem</span> helped us build the right <span className="text-purple-600 dark:text-purple-400">solution</span>
+                            </motion.h2>
+                        </div>
 
-                        <div className="grid md:grid-cols-3 gap-6">
+                        <div className="grid lg:grid-cols-2 gap-16">
+                            {/* The Problem */}
+                            <motion.div
+                                initial={{ opacity: 0, x: -30 }}
+                                whileInView={{ opacity: 1, x: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.6 }}
+                            >
+                                <div className="mb-10">
+                                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                                        ⚡ The Problem
+                                    </h3>
+                                    <div className="w-16 h-1 bg-gradient-to-r from-red-500 to-orange-500 rounded-full" />
+                                </div>
+
+                                <div className="space-y-6">
+                                    {[
+                                        { icon: AlertCircle, title: "The Void", desc: "A shortage of meaningful, compatible matches — leaving people unsure where to look." },
+                                        { icon: Search, title: "The Fog", desc: "No clarity, no transparency, and too many unanswered questions." },
+                                        { icon: Zap, title: "The Drain", desc: "Wasted time, wasted money, and energy spent on connections that were never genuine." }
+                                    ].map((item, index) => (
+                                        <motion.div
+                                            key={index}
+                                            initial={{ opacity: 0, y: 20 }}
+                                            whileInView={{ opacity: 1, y: 0 }}
+                                            viewport={{ once: true }}
+                                            transition={{ delay: index * 0.1 }}
+                                            className="group"
+                                        >
+                                            <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-red-300 dark:hover:border-red-800/50 hover:shadow-xl hover:scale-105 transition-all duration-300 transform-gpu">
+                                                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                                                    {item.title}
+                                                </h4>
+                                                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                                                    {item.desc}
+                                                </p>
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            </motion.div>
+
+                            {/* The Solution */}
+                            <motion.div
+                                initial={{ opacity: 0, x: 30 }}
+                                whileInView={{ opacity: 1, x: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.6, delay: 0.2 }}
+                            >
+                                <div className="mb-10">
+                                    <h3 className="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-2">
+                                        ⚡ The Solution
+                                    </h3>
+                                    <div className="w-16 h-1 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full" />
+                                </div>
+
+                                <div className="space-y-6">
+                                    {[
+                                        { icon: Users, title: "Real People, Real Intentions", desc: "Authentic profiles, honest expression — a community built on being true, not perfect." },
+                                        { icon: Eye, title: "Transparent From Day One", desc: "No mystery, no hidden details. Clarity is the default, not a feature." },
+                                        { icon: Target, title: "Precision Discovery", desc: "Powerful filters and thoughtful matching help you explore people who genuinely align with what you want — and who you are." }
+                                    ].map((item, index) => (
+                                        <motion.div
+                                            key={index}
+                                            initial={{ opacity: 0, y: 20 }}
+                                            whileInView={{ opacity: 1, y: 0 }}
+                                            viewport={{ once: true }}
+                                            transition={{ delay: index * 0.1 }}
+                                            className="group"
+                                        >
+                                            <div className="p-6 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-2xl border border-purple-200 dark:border-purple-700/30 hover:border-purple-400 dark:hover:border-purple-600/50 hover:shadow-xl hover:scale-105 transition-all duration-300 transform-gpu">
+                                                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                                                    {item.title}
+                                                </h4>
+                                                <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
+                                                    {item.desc}
+                                                </p>
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            </motion.div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Founders Section */}
+                <section className="py-24 px-6 md:px-12 bg-gray-50 dark:bg-gray-800/50">
+                    <div className="container mx-auto max-w-6xl">
+                        <div className="text-center mb-16">
+                            <motion.h3
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                className="text-sm uppercase tracking-wider text-purple-600 dark:text-purple-400 font-semibold mb-4"
+                            >
+                                our team
+                            </motion.h3>
+                            <motion.h2
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: 0.1 }}
+                                className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white"
+                            >
+                                Meet the <span className="text-purple-600 dark:text-purple-400">Founders</span>
+                            </motion.h2>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-10 max-w-4xl mx-auto">
                             {[
-                                {
-                                    step: "1",
-                                    title: "Create Your Profile",
-                                    description: "Share your story, values, and what you're looking for in a partner."
-                                },
-                                {
-                                    step: "2",
-                                    title: "Discover Matches",
-                                    description: "Browse profiles of compatible matches based on your preferences and values."
-                                },
-                                {
-                                    step: "3",
-                                    title: "Connect & Build",
-                                    description: "Send connection requests and start conversations at your own pace."
-                                }
-                            ].map((item, index) => (
+                                { name: "Alex Johnson", role: "Co-Founder & CEO", desc: "Passionate about building authentic connections and creating transparent platforms that prioritize user trust above all else." },
+                                { name: "Sarah Mitchell", role: "Co-Founder & CTO", desc: "Dedicated to leveraging technology to solve real-world problems and ensure every user has a genuine, secure experience." }
+                            ].map((founder, index) => (
                                 <motion.div
                                     key={index}
-                                    variants={fadeInUp}
-                                    className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700"
+                                    initial={{ opacity: 0, y: 30 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: index * 0.15 }}
+                                    className="group"
                                 >
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <div className="w-8 h-8 bg-purple-600 dark:bg-purple-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">
-                                            {item.step}
-                                        </div>
-                                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                                            {item.title}
+                                    <div className="p-8 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700/50 hover:shadow-xl hover:scale-105 transition-all duration-300">
+                                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                                            {founder.name}
                                         </h3>
+                                        <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 mb-4 uppercase tracking-wide">
+                                            {founder.role}
+                                        </p>
+                                        <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                            {founder.desc}
+                                        </p>
                                     </div>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                                        {item.description}
-                                    </p>
                                 </motion.div>
                             ))}
                         </div>
-                    </motion.div>
+                    </div>
+                </section>
 
-                    {/* CTA Section */}
-                    <motion.div
-                        initial="hidden"
-                        whileInView="visible"
-                        viewport={{ once: true, amount: 0.5 }}
-                        variants={fadeInUp}
-                        className="text-center"
-                    >
-                        <div className="bg-white dark:bg-gray-800 rounded-2xl p-10 shadow-sm border border-gray-200 dark:border-gray-700">
-                            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-                                Ready to Find Your Perfect Match?
-                            </h2>
-                            <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
-                                Join thousands of people who have found meaningful connections on Life-Time.
-                            </p>
-                            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                                <Link to="/register">
-                                    <motion.button
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        className="bg-purple-600 text-white px-8 py-3 rounded-lg font-semibold shadow-sm hover:bg-purple-700 transition-colors flex items-center gap-2"
-                                    >
-                                        Get Started Free
-                                        <ArrowRight className="w-4 h-4" />
-                                    </motion.button>
-                                </Link>
-                                <Link to="/profiles">
-                                    <motion.button
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-8 py-3 rounded-lg font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors border border-gray-300 dark:border-gray-600"
-                                    >
-                                        Browse Profiles
-                                    </motion.button>
-                                </Link>
-                            </div>
-                        </div>
-                    </motion.div>
-                </div>
+                <Footer />
             </main>
         </>
     );

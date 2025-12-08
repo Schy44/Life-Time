@@ -372,3 +372,67 @@ class VerificationDocument(models.Model):
     
     def __str__(self):
         return f"Verification document for {self.profile.name} - {self.status}"
+
+
+# ==================== ANALYTICS MODELS ====================
+
+class ProfileView(models.Model):
+    """Track who viewed whose profile"""
+    viewer = models.ForeignKey(
+        Profile, 
+        on_delete=models.CASCADE, 
+        related_name='views_made',
+        help_text="User who viewed the profile"
+    )
+    viewed_profile = models.ForeignKey(
+        Profile, 
+        on_delete=models.CASCADE, 
+        related_name='views_received',
+        help_text="Profile that was viewed"
+    )
+    viewed_at = models.DateTimeField(auto_now_add=True)
+    source = models.CharField(
+        max_length=50, 
+        blank=True, 
+        null=True,
+        help_text="How they found the profile: search, recommendation, profile_list, etc."
+    )
+    
+    class Meta:
+        ordering = ['-viewed_at']
+        indexes = [
+            models.Index(fields=['viewed_profile', 'viewed_at']),
+            models.Index(fields=['viewer', 'viewed_at']),
+        ]
+        verbose_name = "Profile View"
+        verbose_name_plural = "Profile Views"
+    
+    def __str__(self):
+        return f"{self.viewer.user.username} viewed {self.viewed_profile.user.username}"
+
+
+class AnalyticsSnapshot(models.Model):
+    """Daily analytics snapshot for performance tracking"""
+    profile = models.ForeignKey(
+        Profile, 
+        on_delete=models.CASCADE, 
+        related_name='analytics_snapshots'
+    )
+    date = models.DateField(auto_now_add=True)
+    
+    # Daily metrics
+    views_count = models.PositiveIntegerField(default=0)
+    interests_received = models.PositiveIntegerField(default=0)
+    interests_sent = models.PositiveIntegerField(default=0)
+    
+    # Profile quality
+    profile_strength = models.PositiveSmallIntegerField(default=0, help_text="Score 0-100")
+    
+    class Meta:
+        unique_together = ('profile', 'date')
+        ordering = ['-date']
+        verbose_name = "Analytics Snapshot"
+        verbose_name_plural = "Analytics Snapshots"
+    
+    def __str__(self):
+        return f"{self.profile.user.username} - {self.date}"

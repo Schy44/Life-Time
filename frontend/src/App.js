@@ -16,6 +16,7 @@ const ProfilesListPage = lazy(() => import('./pages/ProfilesListPage'));
 const Home = lazy(() => import('./pages/Home'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const ProfileSuggestionExample = lazy(() => import('./components/ProfileSuggestionExample'));
+const AnalyticsDashboard = lazy(() => import('./pages/AnalyticsDashboard'));
 
 const PrivateRoute = ({ children }) => {
   const { user } = useAuth();
@@ -69,6 +70,15 @@ function App() {
                 element={
                   <PrivateRoute>
                     <PublicProfilePage />
+                  </PrivateRoute>
+                }
+              />
+
+              <Route
+                path="/analytics"
+                element={
+                  <PrivateRoute>
+                    <AnalyticsDashboard />
                   </PrivateRoute>
                 }
               />

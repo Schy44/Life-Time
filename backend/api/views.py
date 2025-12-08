@@ -127,6 +127,15 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
+        # --- Track Profile View (Analytics) ---
+        if request.user.is_authenticated and instance.user != request.user:
+            if hasattr(request.user, 'profile'):
+                from api.services.analytics_service import AnalyticsService
+                AnalyticsService.track_profile_view(
+                    viewer_profile=request.user.profile,
+                    viewed_profile=instance,
+                    source='profile_detail'
+                )
         # --- Create Notification for Profile View ---
         # Ensure users don't get notified for viewing their own profile
         if request.user.is_authenticated and instance.user != request.user:
@@ -427,3 +436,117 @@ class AdminVerificationDocumentViewSet(viewsets.ModelViewSet):
             'document_id': document.id,
             'admin_notes': document.admin_notes
         })
+
+
+# ==================== ANALYTICS ENDPOINTS ====================
+
+from rest_framework.decorators import api_view
+from api.services.analytics_service import AnalyticsService
+
+@api_view(['GET'])
+def get_basic_stats(request):
+    """Get basic profile statistics (FREE for all users)"""
+    if not request.user.is_authenticated:
+        return Response({'error': 'Authentication required'}, status=401)
+    
+    profile = request.user.profile
+    
+    # View counts
+    view_count_7d = AnalyticsService.get_view_count(profile, days=7)
+    view_count_30d = AnalyticsService.get_view_count(profile, days=30)
+    
+    # Profile strength
+    strength = AnalyticsService.calculate_profile_strength(profile)
+    suggestions = AnalyticsService.get_profile_strength_suggestions(profile)
+    
+    # Engagement metrics
+    engagement = AnalyticsService.get_engagement_metrics(profile)
+    
+    return Response({
+        'profile_views_7d': view_count_7d,
+        'profile_views_30d': view_count_30d,
+        'profile_strength': strength,
+        'profile_strength_suggestions': suggestions,
+        'total_profile_views': AnalyticsService.get_total_views(profile),
+        'interests_sent': engagement['interests_sent'],
+        'interests_received': engagement['interests_received'],
+        'interests_accepted': engagement['interests_accepted'],
+        'acceptance_rate': engagement['acceptance_rate']
+    })
+
+
+@api_view(['GET'])
+def who_viewed_me(request):
+    """See who viewed your profile (FREE for now, can be premium later)"""
+    if not request.user.is_authenticated:
+        return Response({'error': 'Authentication required'}, status=401)
+    
+    profile = request.user.profile
+    days = int(request.GET.get('days', 30))
+    
+    # Get viewers
+    views = AnalyticsService.get_profile_views(profile, days=days)
+    
+    # Format response
+    viewers = []
+    for view in views:
+        viewers.append({
+            'profile_id': view.viewer.id,
+            'name': view.viewer.name,
+            'age': view.viewer.age,
+            'city': view.viewer.current_city,
+            'profile_picture': view.viewer.profile_image.url if view.viewer.profile_image else None,
+            'viewed_at': view.viewed_at,
+            'source': view.source
+        })
+    
+    return Response({
+        'total_views': len(viewers),
+        'viewers': viewers
+    })
+
+
+@api_view(['GET'])
+def get_advanced_analytics(request):
+    """Get advanced analytics (FREE for now, can be premium later)"""
+    if not request.user.is_authenticated:
+        return Response({'error': 'Authentication required'}, status=401)
+    
+    profile = request.user.profile
+    days = int(request.GET.get('days', 30))
+    
+    # Daily views for graphing
+    daily_views = AnalyticsService.get_daily_views(profile, days=days)
+    
+    # Demographics
+    demographics = AnalyticsService.get_viewer_demographics(profile, days=days)
+    
+    # Engagement
+    engagement = AnalyticsService.get_engagement_metrics(profile)
+    
+    # Profile strength
+    strength = AnalyticsService.calculate_profile_strength(profile)
+    
+    return Response({
+        'daily_views': daily_views,
+        'demographics': demographics,
+        'engagement': engagement,
+        'profile_strength': strength
+    })
+
+
+@api_view(['GET'])
+def get_profile_strength(request):
+    """Get profile strength score and suggestions (FREE)"""
+    if not request.user.is_authenticated:
+        return Response({'error': 'Authentication required'}, status=401)
+    
+    profile = request.user.profile
+    strength = AnalyticsService.calculate_profile_strength(profile)
+    suggestions = AnalyticsService.get_profile_strength_suggestions(profile)
+    
+    return Response({
+        'strength_score': strength,
+        'suggestions': suggestions,
+        'completion_percentage': strength
+    })

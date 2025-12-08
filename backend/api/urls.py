@@ -4,7 +4,9 @@ from .views import (
     UserView, ProfileViewSet, ProfileDetailView, InterestViewSet, 
     CountryListView, ProfessionListView, NotificationListView, 
     MarkNotificationAsReadView, UnreadNotificationCountView,
-    VerificationDocumentViewSet, AdminVerificationDocumentViewSet
+    VerificationDocumentViewSet, AdminVerificationDocumentViewSet,
+    # Analytics views
+    get_basic_stats, who_viewed_me, get_advanced_analytics, get_profile_strength
 )
 
 router = DefaultRouter()
@@ -22,5 +24,10 @@ urlpatterns = [
     path('notifications/', NotificationListView.as_view(), name='notification-list'),
     path('notifications/mark-read/', MarkNotificationAsReadView.as_view(), name='notification-mark-read'),
     path('notifications/unread-count/', UnreadNotificationCountView.as_view(), name='notification-unread-count'),
+    # Analytics endpoints
+    path('analytics/basic/', get_basic_stats, name='analytics-basic'),
+    path('analytics/who-viewed/', who_viewed_me, name='analytics-who-viewed'),
+    path('analytics/advanced/', get_advanced_analytics, name='analytics-advanced'),
+    path('analytics/strength/', get_profile_strength, name='analytics-strength'),
     path('', include(router.urls)),
 ]
