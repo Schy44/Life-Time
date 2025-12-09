@@ -8,12 +8,15 @@ import { Search, MapPin, Filter, XCircle, Zap, User, Grid, List, Heart, Clock, A
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProfileCardStack from '../components/ProfileCardStack';
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { useDebounce } from 'use-debounce';
 
 const ProfilesListPage = () => {
   const [profiles, setProfiles] = useState([]);
 
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
+  // Debounce search term to avoid triggering API calls on every keystroke
+  const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [ageFilter, setAgeFilter] = useState('');
@@ -51,17 +54,18 @@ const ProfilesListPage = () => {
   const {
     data,
     isLoading,
+    isFetching,
     isError,
     error,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['profiles', { searchTerm, ageFilter, genderFilter, interestFilter }],
+    queryKey: ['profiles', { searchTerm: debouncedSearchTerm, ageFilter, genderFilter, interestFilter }],
     queryFn: async ({ pageParam = 1 }) => {
       const params = {
         page: pageParam,
-        search: searchTerm,
+        search: debouncedSearchTerm,
         age: ageFilter,
         gender: genderFilter,
         interest: interestFilter,
@@ -76,6 +80,8 @@ const ProfilesListPage = () => {
       }
       return undefined;
     },
+    placeholderData: (previousData) => previousData, // Keep previous data while fetching new data
+    staleTime: 30000, // Consider data fresh for 30 seconds
   });
 
   // Flatten all pages into a single list
@@ -221,7 +227,8 @@ const ProfilesListPage = () => {
     visible: { y: 0, opacity: 1 },
   };
 
-  if (isLoading) {
+  // Only show fullscreen loader on initial load (when there's no data yet)
+  if (isLoading && !data) {
     return <LoadingSpinner size="fullscreen" message="Discovering perfect matches..." />;
   }
 
@@ -236,6 +243,12 @@ const ProfilesListPage = () => {
   return (
     <>
       <AnimatedBackground />
+      {/* Subtle loading bar when fetching new data */}
+      {isFetching && (
+        <div className="fixed top-0 left-0 right-0 z-50">
+          <div className="h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 animate-pulse"></div>
+        </div>
+      )}
       <main className="relative min-h-screen p-4 sm:p-6 md:p-8 font-sans bg-gray-50 dark:bg-gray-900">
         <div className="max-w-7xl mx-auto">
           {/* Featured Swipeable Cards Section */}
@@ -344,8 +357,14 @@ const ProfilesListPage = () => {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                {/* Clear Button */}
-                {searchTerm && (
+                {/* Loading indicator when debouncing */}
+                {searchTerm && searchTerm !== debouncedSearchTerm && (
+                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-purple-500 border-t-transparent"></div>
+                  </div>
+                )}
+                {/* Clear Button - only show when not loading */}
+                {searchTerm && searchTerm === debouncedSearchTerm && (
                   <button
                     onClick={() => setSearchTerm('')}
                     className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
@@ -478,7 +497,7 @@ const ProfilesListPage = () => {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}
+            className={`grid gap-6 transition-opacity duration-300 ${isFetching && !isLoading ? 'opacity-60' : 'opacity-100'} ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}
           >
             {sortedProfiles.length > 0 ? (
               sortedProfiles.map((profile) => (
