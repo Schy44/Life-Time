@@ -15,3 +15,6 @@ Pillow
 supabase
 python-dotenv
 django-debug-toolbar
+stripe
+requests
+django-jazzmin==2.6.0

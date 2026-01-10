@@ -1,5 +1,5 @@
 import React from 'react';
-import './LoadingSpinner.css';
+import '../styles/LoadingSpinner.css';
 
 /**
  * Loading spinner for Life-Time platform

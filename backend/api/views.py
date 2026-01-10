@@ -8,10 +8,11 @@ from django.contrib.auth.models import User
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import viewsets
-from .models import Profile, Interest, WorkExperience, Notification, VerificationDocument
+from .models import Profile, Interest, WorkExperience, Notification, VerificationDocument, MatchUnlock
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.pagination import PageNumberPagination
+from .services.matching_service import MatchingService
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from datetime import date, timedelta
@@ -93,14 +94,43 @@ class UserView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response({
-            'username': request.user.username,
-            'email': request.user.email,
-            'name': request.user.first_name
-        })
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
 
 
-class ProfileDetailView(generics.RetrieveAPIView):
+class RecommendedMatchesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            profile = request.user.profile
+            
+            # Use MatchingService to get top matches
+            # The service handles gender filtering, scoring, and ranking
+            limit = int(request.query_params.get('limit', 5))
+            ranked_matches = MatchingService.get_ranked_recommendations(profile, limit=limit)
+            
+            # Serialize profiles using ProfileSerializer to apply privacy/masking logic
+            profiles = [item['profile'] for item in ranked_matches]
+            serializer = ProfileSerializer(
+                profiles, 
+                many=True, 
+                context={'request': request}
+            )
+            
+            # Combine serialized data with their scores
+            data = []
+            for i, item in enumerate(serializer.data):
+                item['compatibility_score'] = ranked_matches[i]['score']
+                data.append(item)
+                
+            return Response(data)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ProfileDetailView(generics.RetrieveUpdateAPIView):
+    queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
 
@@ -487,17 +517,64 @@ def who_viewed_me(request):
     # Get viewers
     views = AnalyticsService.get_profile_views(profile, days=days)
     
+    # Import MatchingService for compatibility scores
+    from api.services.matching_service import MatchingService
+    
     # Format response
     viewers = []
     for view in views:
+        visitor = view.viewer
+        # Calculate match score
+        match_score = MatchingService.calculate_compatibility_score(profile, visitor)
+        
+        # Consistent Name Masking (Match Discover page logic)
+        full_name = visitor.name or "Member"
+        common_surnames = [
+            'Chowdhury', 'Syed', 'Khan', 'Ali', 'Zaman', 'Haque', 'Ahmed', 
+            'Hussain', 'Majumder', 'Talukdar', 'Bhuiyan', 'Rahman', 'Islam', 'Uddin',
+            'Siddique', 'Miah', 'Sheikh', 'Ghosh', 'Das', 'Roy'
+        ]
+        
+        words = full_name.split()
+        masked_name = "Member"
+        
+        if words:
+            found_surname = None
+            for word in words:
+                clean_word = "".join(filter(str.isalpha, word))
+                if clean_word.capitalize() in common_surnames:
+                    found_surname = clean_word.capitalize()
+                    break
+            
+            if found_surname:
+                masked_name = found_surname
+            else:
+                first_word = words[0]
+                masked_name = f"{first_word[0].upper()}. {'*' * 5}"
+        
+        # Get profession
+        profession = None
+        if visitor.work_experience.exists():
+            latest_work = visitor.work_experience.first()
+            profession = latest_work.title if latest_work else None
+        
+        # Get absolute image URL
+        profile_picture = None
+        if visitor.profile_image:
+            profile_picture = request.build_absolute_uri(visitor.profile_image.url)
+        
         viewers.append({
-            'profile_id': view.viewer.id,
-            'name': view.viewer.name,
-            'age': view.viewer.age,
-            'city': view.viewer.current_city,
-            'profile_picture': view.viewer.profile_image.url if view.viewer.profile_image else None,
+            'profile_id': visitor.id,
+            'name': masked_name,  # Masked name for privacy
+            'age': visitor.age,
+            'height': visitor.height,
+            'profession': profession,
+            'city': visitor.current_city,
+            'profile_picture': profile_picture,
+            'is_verified': visitor.is_verified,
             'viewed_at': view.viewed_at,
-            'source': view.source
+            'source': view.source,
+            'match_score': match_score
         })
     
     return Response({
@@ -527,11 +604,29 @@ def get_advanced_analytics(request):
     # Profile strength
     strength = AnalyticsService.calculate_profile_strength(profile)
     
+    # Search appearances
+    search_appearances = AnalyticsService.get_search_appearances(profile, days=days)
+    
+    # Top keywords
+    top_keywords = AnalyticsService.get_top_profile_keywords(profile, days=days)
+    
+    # Platform averages
+    avg_views = AnalyticsService.get_average_user_views(days=days)
+    
+    # Trends
+    view_trend = AnalyticsService.get_view_trend(profile, days=days)
+    interest_trend = AnalyticsService.get_interest_trend(profile, days=days)
+    
     return Response({
         'daily_views': daily_views,
         'demographics': demographics,
         'engagement': engagement,
-        'profile_strength': strength
+        'profile_strength': strength,
+        'search_appearances': search_appearances,
+        'top_keywords': top_keywords,
+        'platform_avg_views': avg_views,
+        'view_trend': view_trend,
+        'interest_trend': interest_trend
     })
 
 
@@ -549,4 +644,59 @@ def get_profile_strength(request):
         'strength_score': strength,
         'suggestions': suggestions,
         'completion_percentage': strength
+    })
+@api_view(['POST'])
+def unlock_profile(request):
+    """
+    Unlock a profile by spending credits.
+    Requires mutual interest approval.
+    """
+    if not request.user.is_authenticated:
+        return Response({'error': 'Authentication required'}, status=401)
+        
+    target_profile_id = request.data.get('profile_id')
+    if not target_profile_id:
+        return Response({'error': 'Profile ID required'}, status=400)
+    
+    target_profile = get_object_or_404(Profile, id=target_profile_id)
+    user_profile = request.user.profile
+    
+    # Check if already unlocked
+    if MatchUnlock.objects.filter(user=request.user, target_profile=target_profile).exists():
+        return Response({'message': 'Profile already unlocked'}, status=200)
+    
+    # Check for mutual interest approval
+    interest = Interest.objects.filter(
+        (Q(sender=user_profile, receiver=target_profile) | 
+         Q(sender=target_profile, receiver=user_profile)),
+        status='accepted'
+    ).first()
+    
+    if not interest:
+        return Response({'error': 'Mutual interest approval required before unlocking.'}, status=400)
+    
+    # Check credits
+    unlock_cost = 10 # Hardcoded for now, can be dynamic
+    
+    from subscription.models import CreditWallet
+    wallet, created = CreditWallet.objects.get_or_create(user=request.user)
+    
+    if wallet.balance < unlock_cost:
+        return Response({'error': f'Insufficient credits. Need {unlock_cost} credits to unlock.'}, status=400)
+    
+    # Process unlock
+    wallet.deduct_credits(unlock_cost)
+    MatchUnlock.objects.create(user=request.user, target_profile=target_profile)
+    
+    # Notify target user (optional but good for engagement)
+    Notification.objects.create(
+        recipient=target_profile.user,
+        actor_profile=user_profile,
+        verb="unlocked your full profile!",
+    )
+    
+    return Response({
+        'message': 'Profile unlocked successfully', 
+        'new_balance': wallet.balance,
+        'unlocked': True
     })

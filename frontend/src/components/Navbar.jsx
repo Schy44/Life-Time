@@ -9,7 +9,7 @@ import {
   LogOut, Crown, ArrowUpRight, Heart
 } from 'lucide-react';
 import NotificationsDropdown from './NotificationsDropdown';
-import './Navbar.css';
+import '../styles/Navbar.css';
 
 const UserDropdown = ({ user, logout, closeMenu }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -46,7 +46,7 @@ const UserDropdown = ({ user, logout, closeMenu }) => {
   // Logic to determine display name and image
   const displayImage = user?.profile_image || user?.user_metadata?.avatar_url;
   const displayName = user?.name || user?.first_name || user?.user_metadata?.full_name || user?.username || 'User';
-  const displayCredits = user?.credits ?? 100;
+  const displayCredits = user?.credits ?? 0;
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -168,7 +168,7 @@ const Navbar = () => {
   });
 
   const displayUser = profile ? { ...user, ...profile } : user;
-  const displayCredits = displayUser?.credits ?? 100;
+  const displayCredits = displayUser?.credits ?? 0;
 
   useEffect(() => {
     const handleScroll = () => {

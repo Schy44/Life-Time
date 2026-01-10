@@ -57,6 +57,17 @@ class Profile(models.Model):
         ('A+','A+'),('A-','A-'),('B+','B+'),('B-','B-'),
         ('AB+','AB+'),('AB-','AB-'),('O+','O+'),('O-','O-'),
     ]
+    RELOCATE_CHOICES = [
+        ('yes', 'Yes'),
+        ('no', 'No'),
+        ('it_depends', 'It Depends'),
+    ]
+    LIFESTYLE_CHOICES = [
+        ('liberal', 'Liberal'),
+        ('moderate', 'Moderate'),
+        ('conservative', 'Conservative'),
+        ('strictly_religious', 'Strictly Religious'),
+    ]
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     profile_for = models.CharField(max_length=20, choices=PROFILE_FOR_CHOICES, default='self')
@@ -109,6 +120,9 @@ class Profile(models.Model):
     paternal_family_details = models.TextField(blank=True, null=True, help_text="Uncles, Aunts, Grandparents from Father's side")
     maternal_family_details = models.TextField(blank=True, null=True, help_text="Uncles, Aunts, Grandparents from Mother's side")
 
+    # Personal Match details from survey
+    willing_to_relocate = models.CharField(max_length=20, choices=RELOCATE_CHOICES, blank=True, null=True)
+    lifestyle_priority = models.CharField(max_length=20, choices=LIFESTYLE_CHOICES, blank=True, null=True)
 
     # About & contact
     about = models.TextField(blank=True, null=True)
@@ -126,6 +140,8 @@ class Profile(models.Model):
 
     # Verification (keep minimal here; move to separate table if you need auditing)
     is_verified = models.BooleanField(default=False)
+    is_premium = models.BooleanField(default=False) # Gold/Platinum status
+    subscription_plan = models.CharField(max_length=50, blank=True, null=True) # e.g. 'gold', 'platinum'
 
     # Privacy
     profile_image_privacy = models.CharField(max_length=20, choices=PRIVACY_CHOICES, default='public')
@@ -154,6 +170,15 @@ class Profile(models.Model):
             return None
         t, d = date.today(), self.date_of_birth
         return t.year - d.year - ((t.month, t.day) < (d.month, d.day))
+    
+    @property
+    def height(self):
+        """Convert height_inches to feet'inches\" format"""
+        if not self.height_inches:
+            return None
+        feet = self.height_inches // 12
+        inches = self.height_inches % 12
+        return f"{feet}'{inches}\""
 
     def save(self, *args, **kwargs):
         self.birth_year = self.date_of_birth.year if self.date_of_birth else None
@@ -185,7 +210,12 @@ class Preference(models.Model):
     religion = models.CharField(max_length=20, choices=Religion.choices, blank=True, null=True)
     marital_statuses = models.JSONField(default=list, blank=True, null=True)    # e.g., ['never_married']
     country = models.CharField(max_length=2, blank=True, null=True)
-    profession = models.CharField(max_length=100, blank=True, null=True)
+    profession = models.JSONField(default=list, blank=True, null=True)
+
+    # New survey fields
+    looking_for_gender = models.CharField(max_length=10, choices=[('bride', 'Bride'), ('groom', 'Groom'), ('any', 'Any')], blank=True, null=True)
+    location_preference = models.CharField(max_length=20, choices=[('near_me', 'Near me'), ('abroad', 'Abroad'), ('any', 'Any')], blank=True, null=True)
+    min_education = models.CharField(max_length=20, choices=[('bachelors', 'Bachelors'), ('masters', 'Masters'), ('phd', 'PhD'), ('any', 'Any')], blank=True, null=True)
 
 
 
@@ -236,6 +266,20 @@ class Interest(models.Model):
 
     def __str__(self):
         return f"{self.sender.name} -> {self.receiver.name} ({self.status})"
+
+class MatchUnlock(models.Model):
+    """
+    Tracks which user has paid credits to fully view another profile.
+    """
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='unlocked_profiles')
+    target_profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='unlocked_by_users')
+    unlocked_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'target_profile')
+
+    def __str__(self):
+        return f"{self.user.username} unlocked {self.target_profile.name}"
 
 class Notification(models.Model):
     """

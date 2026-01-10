@@ -10,8 +10,6 @@ body,
   padding: 0;
 }
 
-
-
 body {
   margin: 0;
   padding-top: 80px;
@@ -23,13 +21,54 @@ body {
 }
 
 html.light {
-  background-color: #f0f2f5;
-  /* Light mode background */
+  background-color: #f8fafc;
+  /* Softer light background */
 }
 
 html.dark {
-  background-color: #000;
-  /* Dark mode background */
+  background-color: #020617;
+  /* Deep slate dark background */
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+/* --- Premium Blur Overlay --- */
+.profile-image-blurred {
+  filter: blur(20px) brightness(0.9) grayscale(0.2) !important;
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transform: scale(1.05);
+  /* Subtle zoom for "hidden" effect */
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.dark .glass {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Card Glow Effect */
+.match-card-glow {
+  position: relative;
+}
+
+.match-card-glow::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(45deg, transparent, rgba(99, 102, 241, 0.1), transparent);
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.match-card-glow:hover::after {
+  opacity: 1;
+}

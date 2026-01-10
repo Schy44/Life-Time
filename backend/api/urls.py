@@ -5,9 +5,11 @@ from .views import (
     CountryListView, ProfessionListView, NotificationListView, 
     MarkNotificationAsReadView, UnreadNotificationCountView,
     VerificationDocumentViewSet, AdminVerificationDocumentViewSet,
+    RecommendedMatchesView, unlock_profile,
     # Analytics views
     get_basic_stats, who_viewed_me, get_advanced_analytics, get_profile_strength
 )
+from .views_analytics import AdminDashboardAnalyticsView
 
 router = DefaultRouter()
 router.register('profiles', ProfileViewSet, basename='profile')
@@ -21,6 +23,7 @@ urlpatterns = [
     path('profile/', ProfileDetailView.as_view(), name='profile-detail'),
     path('countries/', CountryListView.as_view(), name='country-list'),
     path('professions/', ProfessionListView.as_view(), name='profession-list'),
+    path('profiles/recommendations/', RecommendedMatchesView.as_view(), name='profile-recommendations'),
     path('notifications/', NotificationListView.as_view(), name='notification-list'),
     path('notifications/mark-read/', MarkNotificationAsReadView.as_view(), name='notification-mark-read'),
     path('notifications/unread-count/', UnreadNotificationCountView.as_view(), name='notification-unread-count'),
@@ -29,5 +32,7 @@ urlpatterns = [
     path('analytics/who-viewed/', who_viewed_me, name='analytics-who-viewed'),
     path('analytics/advanced/', get_advanced_analytics, name='analytics-advanced'),
     path('analytics/strength/', get_profile_strength, name='analytics-strength'),
+    path('analytics/admin/', AdminDashboardAnalyticsView.as_view(), name='admin-analytics'),
+    path('profiles/unlock/', unlock_profile, name='profile-unlock'),
     path('', include(router.urls)),
 ]

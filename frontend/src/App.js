@@ -16,7 +16,12 @@ const ProfilesListPage = lazy(() => import('./pages/ProfilesListPage'));
 const Home = lazy(() => import('./pages/Home'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const ProfileSuggestionExample = lazy(() => import('./components/ProfileSuggestionExample'));
+const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'));
+const PaymentFailPage = lazy(() => import('./pages/PaymentFailPage'));
+const PricingPage = lazy(() => import('./components/PricingPage')); // Assuming PricingPage is in components
 const AnalyticsDashboard = lazy(() => import('./pages/AnalyticsDashboard'));
+const SurveyPage = lazy(() => import('./pages/SurveyPage'));
+const MatchPreviewPage = lazy(() => import('./pages/MatchPreviewPage'));
 
 const PrivateRoute = ({ children }) => {
   const { user } = useAuth();
@@ -82,6 +87,35 @@ function App() {
                   </PrivateRoute>
                 }
               />
+              <Route
+                path="/survey"
+                element={
+                  <PrivateRoute>
+                    <SurveyPage />
+                  </PrivateRoute>
+                }
+              />
+
+              <Route
+                path="/match-preview"
+                element={
+                  <PrivateRoute>
+                    <MatchPreviewPage />
+                  </PrivateRoute>
+                }
+              />
+
+              <Route
+                path="/upgrade"
+                element={
+                  <PrivateRoute>
+                    <PricingPage />
+                  </PrivateRoute>
+                }
+              />
+
+              <Route path="/payment/success" element={<PaymentSuccessPage />} />
+              <Route path="/payment/fail" element={<PaymentFailPage />} />
 
               {/* Demo Route for Profile Suggestion Modal */}
               <Route path="/demo/profile-modal" element={<ProfileSuggestionExample />} />

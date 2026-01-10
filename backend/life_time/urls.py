@@ -24,6 +24,7 @@ urlpatterns = [
     path('', lambda request: redirect('/api/')),
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
+    path('api/subscription/', include('subscription.urls')),
 ]
 
 # Serve media files in development and production (if not using a dedicated media server)

@@ -1,8 +1,10 @@
 import json
+from datetime import date
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.db import models
-from .models import Profile, AdditionalImage, Education, WorkExperience, Preference, Interest, Notification, VerificationDocument
+from .models import Profile, AdditionalImage, Education, WorkExperience, Preference, Interest, Notification, VerificationDocument, MatchUnlock
+from .services.matching_service import MatchingService
 
 
 
@@ -66,7 +68,8 @@ class PreferenceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Preference
         fields = ('id', 'min_age', 'max_age', 'min_height_inches', 'religion', 'marital_statuses',
-                  'country', 'profession')
+                  'country', 'profession', 'looking_for_gender', 'location_preference',
+                  'min_education')
 
 
 class NestedProfileSerializer(serializers.ModelSerializer):
@@ -89,10 +92,12 @@ class ProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     compatibility_score = serializers.SerializerMethodField()
     interest = serializers.SerializerMethodField()
+    credits = serializers.SerializerMethodField()
     additional_images = AdditionalImageSerializer(many=True, read_only=True)
     education = EducationSerializer(many=True, required=False)
     work_experience = WorkExperienceSerializer(many=True, required=False)
     preference = PreferenceSerializer(required=False)
+    age = serializers.SerializerMethodField()
 
     # Write-only fields for handling file uploads and nested updates
     uploaded_images = serializers.ListField(
@@ -107,19 +112,26 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = (
-            'id', 'user', 'profile_for', 'name', 'date_of_birth', 'birth_year', 'gender',
+            'id', 'user', 'profile_for', 'name', 'age', 'date_of_birth', 'birth_year', 'gender',
             'profile_image', 'additional_images', 'height_inches', 'skin_complexion', 'blood_group', 'religion',
             'current_city', 'current_country', 'origin_city', 'origin_country', 'visa_status', 'citizenship',
             'father_occupation', 'mother_occupation', 'siblings', 'family_type', 'marital_status',
             'siblings_details', 'paternal_family_details', 'maternal_family_details',
+            'willing_to_relocate', 'lifestyle_priority',
             'about', 'looking_for', 'email', 'phone',
             'facebook_profile', 'instagram_profile', 'linkedin_profile', 'is_verified',
             'profile_image_privacy', 'additional_images_privacy', 'is_deleted', 'created_at', 'updated_at',
             'education', 'work_experience', 'preference', 'uploaded_images', 'additional_images_to_keep',
-            'compatibility_score', 'interest', 'faith_tags', 'clear_profile_image'
+            'compatibility_score', 'interest', 'faith_tags', 'clear_profile_image', 'credits'
         )
         read_only_fields = ('user', 'is_verified', 'birth_year',
-                            'additional_images', 'created_at', 'updated_at', 'interest')
+                            'additional_images', 'created_at', 'updated_at', 'interest', 'credits')
+
+    def get_credits(self, obj):
+        try:
+            return obj.user.wallet.balance
+        except:
+            return 0
 
     def to_internal_value(self, data):
         # Let the parent class handle initial parsing. This correctly handles files.
@@ -293,6 +305,14 @@ class ProfileSerializer(serializers.ModelSerializer):
 
         return instance
 
+    def get_age(self, obj):
+        if obj.date_of_birth:
+            today = date.today()
+            return today.year - obj.date_of_birth.year - ((today.month, today.day) < (obj.date_of_birth.month, obj.date_of_birth.day))
+        elif obj.birth_year:
+            return date.today().year - obj.birth_year
+        return None
+
     def get_compatibility_score(self, obj):
         """
         Calculate compatibility score between authenticated user and profile.
@@ -312,113 +332,8 @@ class ProfileSerializer(serializers.ModelSerializer):
         user_profile = request.user.profile
         other_profile = obj
         
-        # Don't show compatibility for same gender
-        if user_profile.gender == other_profile.gender:
-            return None
-        
-        # Calculate scores in both directions (mutual compatibility)
-        my_score = self._calculate_one_way_compatibility(user_profile, other_profile)
-        their_score = self._calculate_one_way_compatibility(other_profile, user_profile)
-        
-        # Return average (mutual compatibility)
-        if my_score is None and their_score is None:
-            return None
-        elif my_score is None:
-            return their_score
-        elif their_score is None:
-            return my_score
-        else:
-            return int((my_score + their_score) / 2)
+        return MatchingService.calculate_compatibility_score(user_profile, other_profile)
     
-    def _calculate_one_way_compatibility(self, viewer_profile, viewed_profile):
-        """
-        Calculate how well viewed_profile matches viewer_profile's preferences.
-        Returns score 0-100 or None if no preferences set.
-        """
-        if not hasattr(viewer_profile, 'preference'):
-            return None
-        
-        prefs = viewer_profile.preference
-        score = 0
-        max_score = 0
-        
-        # 1. AGE (Weight: 25) - Sliding scale with grace range
-        if prefs.min_age and prefs.max_age and viewed_profile.age:
-            max_score += 25
-            age = viewed_profile.age
-            
-            if prefs.min_age <= age <= prefs.max_age:
-                # Perfect match
-                score += 25
-            elif prefs.min_age - 2 <= age <= prefs.max_age + 2:
-                # Within grace range (±2 years)
-                score += 15
-            elif prefs.min_age - 5 <= age <= prefs.max_age + 5:
-                # Close but not ideal (±5 years)
-                score += 5
-        
-        # 2. RELIGION (Weight: 25) - Critical factor
-        if prefs.religion and viewed_profile.religion:
-            max_score += 25
-            if viewed_profile.religion == prefs.religion:
-                score += 25
-        
-        # 3. COUNTRY (Weight: 20) - Fixed array matching
-        if prefs.country and viewed_profile.current_country:
-            max_score += 20
-            # prefs.country is an array, check if current_country is in it
-            if viewed_profile.current_country in prefs.country:
-                score += 20
-        
-        # 4. MARITAL STATUS (Weight: 15) - Array matching
-        if prefs.marital_statuses and viewed_profile.marital_status:
-            max_score += 15
-            if viewed_profile.marital_status in prefs.marital_statuses:
-                score += 15
-        
-        # 5. PROFESSION (Weight: 10) - Fixed array comparison
-        if prefs.profession and viewed_profile.work_experience.exists():
-            max_score += 10
-            viewed_professions = [work.title.lower() for work in viewed_profile.work_experience.all()]
-            # prefs.profession is an array, check if any matches
-            if any(pref_prof.lower() in ' '.join(viewed_professions) for pref_prof in prefs.profession):
-                score += 10
-        
-        # 6. HEIGHT (Weight: 10) - Sliding scale
-        if prefs.min_height_inches and viewed_profile.height_inches:
-            max_score += 10
-            if viewed_profile.height_inches >= prefs.min_height_inches:
-                # Above preferred minimum
-                score += 10
-            elif viewed_profile.height_inches >= prefs.min_height_inches - 2:
-                # Within 2 inches below preferred
-                score += 5
-        
-        # 7. LIFESTYLE (Weight: 10) - Faith Tags Check
-        # Check for "Non-Smoker" and "Non-Drinker" tags if required
-        # Note: This assumes specific tag names. Adjust if tag names differ.
-        lifestyle_score = 0
-        lifestyle_max = 0
-        
-        # Example logic: If preference requires non-smoker/drinker, check faith_tags
-        # Since we removed specific boolean flags from Preference model, we might need to 
-        # re-evaluate how lifestyle preferences are stored. 
-        # For now, let's skip lifestyle scoring or base it on matching faith tags if implemented.
-        
-        # Alternative: If you added specific tags to Preference model, use them.
-        # If not, we can remove this section or use a placeholder.
-        # Let's remove the old logic for now to fix the error.
-        
-        if lifestyle_max > 0:
-            max_score += 10
-            # Normalize lifestyle score to 10 points
-            score += int((lifestyle_score / lifestyle_max) * 10)
-        
-        # Calculate final percentage
-        if max_score == 0:
-            return None
-        
-        return int((score / max_score) * 100)
 
     def get_interest(self, obj):
         request = self.context.get('request')
@@ -446,20 +361,75 @@ class ProfileSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
 
 
-        if request and request.user.is_authenticated and request.user.profile != instance:
-            requesting_user_profile = request.user.profile
-            profile_owner = instance
+        representation['is_unlocked'] = False
+        is_owner = False
+        is_unlocked = False
+        has_accepted_interest = False
 
+        if request and request.user.is_authenticated:
+            is_owner = (request.user.profile == instance)
+            is_unlocked = MatchUnlock.objects.filter(
+                user=request.user, 
+                target_profile=instance
+            ).exists()
             has_accepted_interest = self._has_accepted_interest(
-                requesting_user_profile, profile_owner)
+                request.user.profile, instance
+            )
+            representation['is_unlocked'] = is_unlocked or is_owner
+
+        # Use a "show_full_details" flag for clarity
+        show_full_details = is_owner or is_unlocked
+
+        if not show_full_details:
+             # Handle Name Privacy (Hybrid: Common Surnames + Initial Fallback)
+            if not is_unlocked:
+                full_name = representation.get('name', '')
+                common_surnames = [
+                    'Chowdhury', 'Syed', 'Khan', 'Ali', 'Zaman', 'Haque', 'Ahmed', 
+                    'Hussain', 'Majumder', 'Talukdar', 'Bhuiyan', 'Rahman', 'Islam', 'Uddin',
+                    'Siddique', 'Miah', 'Sheikh', 'Ghosh', 'Das', 'Roy'
+                ]
+                
+                words = full_name.split()
+                found_surname = None
+                for word in words:
+                    # Clean punctuation from word
+                    clean_word = "".join(filter(str.isalpha, word))
+                    if clean_word.capitalize() in common_surnames:
+                        found_surname = clean_word.capitalize()
+                        break
+                
+                if found_surname:
+                    representation['name'] = found_surname
+                elif words:
+                    first_word = words[0]
+                    representation['name'] = f"{first_word[0].upper()}. {'*' * 5}"
+                else:
+                    representation['name'] = "Member"
 
             # Handle profile_image privacy
-            if instance.profile_image_privacy == 'matches' and not has_accepted_interest:
+            # If match exists AND is accepted, OR if explicitly unlocked -> show image
+            # BUT if it's 'matches' only, and not a match yet, we might still show it blurred on frontend
+            # To allow "Blurry Previews", we only set to None if it's EXPLICITLY requested by model
+            # and we are not even a match yet.
+            if instance.profile_image_privacy == 'matches' and not (has_accepted_interest or show_full_details):
+                # If we want a truly "private" (hidden) experience, return None. 
+                # If we want a "blurry" experience, we let it pass but frontend blurs.
+                # The user said "make extra photos private", so we'll hide them unless unlocked/matched.
                 representation['profile_image'] = None
 
             # Handle additional_images privacy
-            if instance.additional_images_privacy == 'matches' and not has_accepted_interest:
+            if instance.additional_images_privacy == 'matches' and not (has_accepted_interest or show_full_details):
                 representation['additional_images'] = []
+            
+            # Mask Social Links but indicate presence
+            social_fields = ['facebook_profile', 'instagram_profile', 'linkedin_profile']
+            for field in social_fields:
+                if representation.get(field) and not show_full_details:
+                    representation[field] = "LOCKED"
+            
+            # Record that it's a locked view for the frontend
+            representation['is_unlocked'] = show_full_details
 
         return representation
 

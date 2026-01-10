@@ -1,6 +1,6 @@
 import React from 'react';
 import GlassCard from './GlassCard';
-import './Components.css';
+import '../styles/Components.css';
 
 const PreferencesCard = ({ preferencesData }) => {
   if (!preferencesData) {

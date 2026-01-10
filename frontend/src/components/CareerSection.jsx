@@ -1,6 +1,6 @@
 import React from 'react';
 import GlassCard from './GlassCard';
-import './Components.css';
+import '../styles/Components.css';
 
 const CareerSection = ({ careerData, onEdit }) => {
   const currentJob = careerData?.find(job => job.currently_working);

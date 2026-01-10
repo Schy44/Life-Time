@@ -1,58 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import GlassCard from './GlassCard';
-import { CheckCircle, XCircle, Star } from 'lucide-react';
-
-const plans = [
-  {
-    title: 'Free Plan',
-    subtitle: 'No Membership Required',
-    icon: '🆓',
-    description: 'Perfect for beginners exploring the platform.',
-    price: '$5',
-    price_detail: 'per request',
-    features: [
-      { text: 'No membership fee', included: true },
-      { text: 'Send connection requests', included: true },
-      { text: 'Admin verification badge', included: false },
-      { text: 'Basic profile visibility', included: true },
-    ],
-    cta: 'Start for Free',
-    featured: false,
-  },
-  {
-    title: 'Regular Plan',
-    subtitle: 'Verified Member',
-    icon: '💼',
-    description: 'Ideal for users seeking verified, genuine connections.',
-    price: '$35',
-    price_detail: 'for 10 requests',
-    features: [
-      { text: 'Membership with Admin Verification Badge', included: true },
-      { text: 'Send up to 10 connection requests', included: true },
-      { text: 'Verified profile increases trust', included: true },
-      { text: 'Priority support from the admin team', included: true },
-    ],
-    cta: 'Choose Regular',
-    featured: false,
-  },
-  {
-    title: 'Premium Plan',
-    subtitle: 'Unlimited Access (3 Months)',
-    icon: '👑',
-    description: 'For serious members who want maximum exposure.',
-    price: '$99',
-    price_detail: 'for 3 months',
-    features: [
-      { text: 'Full membership with Admin Verification Badge', included: true },
-      { text: 'Unlimited connection requests', included: true },
-      { text: 'Premium profile visibility', included: true },
-      { text: 'Dedicated support & faster approvals', included: true },
-    ],
-    cta: 'Go Premium',
-    featured: true,
-  },
-];
+import { CheckCircle, XCircle, Star, Zap, Loader2 } from 'lucide-react';
+import axios from 'axios';
+import PaymentMethodModal from './PaymentMethodModal';
 
 const Feature = ({ included, text }) => (
   <li className="flex items-center space-x-3 text-gray-700 dark:text-gray-300">
@@ -65,19 +16,77 @@ const Feature = ({ included, text }) => (
   </li>
 );
 
-const PricingCard = ({ plan, index, selectedPlan, setSelectedPlan }) => {
-  const isSelected = selectedPlan === index;
+const PricingCard = ({ plan, selectedPlan, onSelect }) => {
+  const isSelected = selectedPlan === plan.slug;
+  const isFeatured = plan.slug === 'yearly' || plan.slug === 'platinum'; // Logic for featured
 
   const cardVariants = {
     hidden: { opacity: 0, y: 50 },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
-      transition: { delay: index * 0.1, duration: 0.5, ease: "easeOut" } 
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.5, ease: "easeOut" }
     },
     hover: { scale: 1.03, boxShadow: "0 10px 20px rgba(0,0,0,0.2)" },
     tap: { scale: 0.98 },
   };
+
+  // Parse features if JSON string or object
+  // Parse features using FEATURE_MAPPING
+  let featuresList = [];
+  if (plan.features) {
+    if (typeof plan.features === 'object') {
+      featuresList = Object.entries(plan.features)
+        .map(([key, value]) => {
+          // Skip internal feature flags if we want, or map all
+          const mapping = FEATURE_MAPPING[key];
+          if (mapping) {
+            // If boolean false, skip? Or show as "Not Included" (X)?
+            // Feature component handles `included`.
+            const text = mapping.format ? `${mapping.label}: ${mapping.format(value)}` : `${mapping.label}`;
+            // Special case for Booleans where we want simple "Verified Badge" vs "No Verified Badge"
+            // Actually `Feature` component takes `text` and `included`.
+            // If value is boolean false, we might want to say "Verified Badge" but set included=false
+
+            let displayText = mapping.label;
+            let isIncluded = true;
+
+            if (typeof value === 'boolean') {
+              isIncluded = value;
+            } else if (value === 0 || value === 'Standard') {
+              // Maybe mark 'Standard' visibility as not 'included' in the 'premium' sense?
+              // Or just show it.
+              displayText = `${mapping.label}: ${value}`;
+            } else {
+              displayText = `${mapping.label}: ${value}`;
+            }
+
+            // Override for specific clean display in card vs table
+            if (key === 'verified_badge') displayText = 'Verified Badge';
+            if (key === 'connection_requests') displayText = `${value === 'Unlimited' ? 'Unlimited' : value} Connection Requests`;
+            if (key === 'profile_visibility') displayText = `${value} Visibility`;
+            if (key === 'see_who_viewed_me') displayText = 'See Who Viewed Me';
+            if (key === 'ad_free') displayText = 'Ad-Free';
+
+            return { text: displayText, included: isIncluded };
+          }
+          // Fallback for unmapped
+          return { text: key.replace(/_/g, ' '), included: !!value };
+        })
+        // Sort by importance?
+        .sort((a, b) => b.included - a.included); // Show checked items first
+    }
+  }
+
+  // Backup Manual Features if none from DB (for safety)
+  if (featuresList.length === 0) {
+    featuresList = [
+      { text: 'Access to Profile Listings', included: true },
+      { text: `${plan.credit_amount} Credits included`, included: plan.credit_amount > 0 },
+      { text: 'Verified Badge', included: plan.slug !== 'free' },
+      { text: 'Priority Support', included: plan.slug === 'yearly' },
+    ];
+  }
 
   return (
     <motion.div
@@ -89,35 +98,43 @@ const PricingCard = ({ plan, index, selectedPlan, setSelectedPlan }) => {
       viewport={{ once: true, amount: 0.3 }}
       className={`h-full w-full relative`}
     >
-      {plan.featured && (
-        <motion.div 
+      {isFeatured && (
+        <motion.div
           className="absolute -top-4 -right-4 p-2 bg-purple-600 rounded-full shadow-lg"
-          animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1]}}
+          animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }}
           transition={{ repeat: Infinity, duration: 3 }}
         >
           <Star className="text-white w-6 h-6" />
         </motion.div>
       )}
       <GlassCard className={`flex flex-col h-full p-6 rounded-2xl border-2 
-        ${plan.featured ? 'border-purple-500' : 'border-gray-300 dark:border-white/20'}
+        ${isFeatured ? 'border-purple-500' : 'border-gray-300 dark:border-white/20'}
         ${isSelected ? 'ring-4 ring-purple-500' : ''}
       `}>
         <div className="mb-4 text-center">
-          <h3 className="text-3xl font-bold mb-2 text-gray-800 dark:text-white">
-            {plan.title}
+          <h3 className="text-2xl font-bold mb-2 text-gray-800 dark:text-white">
+            {plan.name}
           </h3>
-          <p className="text-md text-gray-600 dark:text-gray-300">{plan.subtitle}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300 h-10">{plan.description}</p>
         </div>
 
-        <p className="text-gray-700 dark:text-gray-300 text-center mb-6 h-20">{plan.description}</p>
-        
         <div className="mb-8 text-center">
-          <span className="text-5xl font-extrabold text-gray-800 dark:text-white">{plan.price}</span>
-          <span className="text-lg font-medium text-gray-600 dark:text-gray-300">/{plan.price_detail}</span>
+          <span className="text-5xl font-extrabold text-gray-800 dark:text-white">${plan.price_usd}</span>
+          <span className="text-lg font-medium text-gray-600 dark:text-gray-300">
+            {plan.duration_days > 0 ? ` / ${plan.duration_days} days` : ''}
+          </span>
         </div>
+
+        {plan.credit_amount > 0 && (
+          <div className="mb-6 bg-purple-100 dark:bg-purple-900/30 rounded-lg p-3 text-center">
+            <p className="text-purple-700 dark:text-purple-300 font-bold flex items-center justify-center gap-2">
+              <Zap size={16} /> +{plan.credit_amount} Credits Included
+            </p>
+          </div>
+        )}
 
         <ul className="space-y-3 mb-10 text-left flex-grow">
-          {plan.features.map((feature, i) => (
+          {featuresList.map((feature, i) => (
             <Feature key={i} {...feature} />
           ))}
         </ul>
@@ -125,60 +142,251 @@ const PricingCard = ({ plan, index, selectedPlan, setSelectedPlan }) => {
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => setSelectedPlan(index)}
+          onClick={() => onSelect(plan)}
           className={`w-full mt-auto font-bold py-3 px-6 rounded-lg transition-colors duration-300 ease-in-out
-            ${isSelected
-              ? 'bg-purple-700 text-white shadow-lg'
-              : plan.featured
+            ${isFeatured
               ? 'bg-purple-600 text-white hover:bg-purple-700 shadow-lg'
               : 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-white/20 dark:text-white dark:hover:bg-white/30'
             }`}
         >
-          {plan.cta}
+          {plan.slug === 'free' ? 'Current Plan' : 'Choose Plan'}
         </motion.button>
       </GlassCard>
     </motion.div>
   );
 };
 
+const FEATURE_MAPPING = {
+  verified_badge: { label: 'Verified Badge', format: (val) => val ? 'Included' : 'No' },
+  connection_requests: { label: 'Connection Requests', format: (val) => val === 'Unlimited' ? 'Unlimited' : `${val}/mo` },
+  profile_visibility: { label: 'Profile Visibility', format: (val) => val },
+  see_who_viewed_me: { label: 'See Who Viewed Me', format: (val) => val ? 'Included' : 'No' },
+  support: { label: 'Support', format: (val) => val },
+  ad_free: { label: 'Ad-Free Experience', format: (val) => val ? 'Yes' : 'No' },
+  can_initiate_chat: { label: 'Initiate Chat', format: (val) => val ? 'Yes' : 'No' },
+  profile_spotlight: { label: 'Profile Spotlight', format: (val) => val }
+};
+
+const ComparisonTable = ({ plans }) => {
+  // Define features to compare order
+  const featuresOrder = [
+    'connection_requests', 'profile_visibility', 'verified_badge',
+    'see_who_viewed_me', 'ad_free', 'support'
+  ];
+
+  return (
+    <div className="mt-20 overflow-x-auto">
+      <h3 className="text-3xl font-bold text-gray-800 dark:text-white mb-8 text-center">Compare Features</h3>
+      <table className="w-full min-w-[600px] text-left border-collapse">
+        <thead>
+          <tr>
+            <th className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 rounded-tl-xl text-gray-500 font-medium">Feature</th>
+            {plans.map(plan => (
+              <th key={plan.slug} className="p-4 border-b border-gray-200 dark:border-gray-700 text-center font-bold text-gray-900 dark:text-white">
+                {plan.name}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {featuresOrder.map(key => (
+            <tr key={key} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+              <td className="p-4 border-b border-gray-200 dark:border-gray-700 font-medium text-gray-700 dark:text-gray-300">
+                {FEATURE_MAPPING[key]?.label || key.replace(/_/g, ' ')}
+              </td>
+              {plans.map(plan => {
+                const val = plan.features[key];
+                return (
+                  <td key={`${plan.slug}-${key}`} className="p-4 border-b border-gray-200 dark:border-gray-700 text-center text-gray-600 dark:text-gray-400">
+                    {FEATURE_MAPPING[key]?.format ? FEATURE_MAPPING[key].format(val) : (val ? 'Yes' : '-')}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+          {/* Credit Amount Row */}
+          <tr className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+            <td className="p-4 border-b border-gray-200 dark:border-gray-700 font-medium text-gray-700 dark:text-gray-300">
+              Monthly Credits
+            </td>
+            {plans.map(plan => (
+              <td key={`${plan.slug}-credits`} className="p-4 border-b border-gray-200 dark:border-gray-700 text-center text-gray-600 dark:text-gray-400">
+                {plan.credit_amount > 0 ? plan.credit_amount : '-'}
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+const CreditBundleCard = ({ title, credits, price, benefit, popular, onSelect }) => (
+  <motion.div
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
+    onClick={() => onSelect(credits)}
+    className={`cursor-pointer relative flex flex-col h-full`}
+  >
+    {popular && (
+      <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm z-10">
+        BEST VALUE
+      </span>
+    )}
+    <GlassCard className={`p-6 rounded-xl border-2 transition-all h-full flex flex-col items-center text-center
+        ${popular ? 'border-amber-500 dark:border-amber-400 bg-amber-50/10' : 'border-gray-200 dark:border-white/10 hover:border-purple-500'}
+    `}>
+      <div className="mb-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-full text-yellow-600 dark:text-yellow-400">
+        <Zap size={28} fill="currentColor" />
+      </div>
+      <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-1">{title}</h4>
+      <p className="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">${price}</p>
+
+      <div className="py-3 px-4 bg-black/5 dark:bg-white/5 rounded-lg w-full mb-4">
+        <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">{credits}</span>
+        <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">Credits</span>
+      </div>
+
+      <p className="text-sm text-gray-600 dark:text-gray-300 mt-auto">{benefit}</p>
+    </GlassCard>
+  </motion.div>
+);
+
 const PricingPage = () => {
+  const [plans, setPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState(null);
+
+  const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState(null);
+  const [planToBuy, setPlanToBuy] = useState(null);
+  const [creditToBuy, setCreditToBuy] = useState(null);
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const response = await axios.get('http://127.0.0.1:8000/api/subscription/plans/');
+        // Sort: Free -> Monthly -> Yearly
+        const sorted = response.data.sort((a, b) => a.price_usd - b.price_usd);
+        setPlans(sorted);
+      } catch (error) {
+        console.error("Failed to fetch plans", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPlans();
+  }, []);
+
+  const handlePlanSelect = (plan) => {
+    setSelectedPlan(plan.slug);
+    setPlanToBuy(plan);
+    setCreditToBuy(null);
+    setModalType('plan');
+    setShowModal(true);
+  };
+
+  const handleCreditSelect = (amount) => {
+    setCreditToBuy(amount);
+    setPlanToBuy(null);
+    setModalType('credit');
+    setShowModal(true);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-10 h-10 text-purple-600 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <section className="py-20 px-4 bg-transparent">
-      <div className="max-w-6xl mx-auto text-center">
-        <motion.h2
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.5 }}
-          className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-800 dark:text-white mb-4"
-        >
-          Choose Your Journey
-        </motion.h2>
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.5 }}
-          transition={{ delay: 0.2 }}
-          className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-12"
-        >
-          Select a plan that aligns with your aspirations and unlock a world of meaningful connections.
-        </motion.p>
+      {showModal && (
+        <PaymentMethodModal
+          plan={planToBuy}
+          creditAmount={creditToBuy}
+          onClose={() => setShowModal(false)}
+        />
+      )}
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-16">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.5 }}
+            className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-800 dark:text-white mb-4"
+          >
+            Choose Your Journey
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.5 }}
+            transition={{ delay: 0.2 }}
+            className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto"
+          >
+            Select a plan that aligns with your aspirations and unlock a world of meaningful connections.
+          </motion.p>
+        </div>
+
+        {/* Subscription Plans */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch mb-24 max-w-6xl mx-auto">
           {plans.map((plan, index) => (
-            <PricingCard 
-              key={index} 
-              plan={plan} 
-              index={index} 
+            <PricingCard
+              key={plan.slug}
+              plan={plan}
               selectedPlan={selectedPlan}
-              setSelectedPlan={setSelectedPlan}
+              onSelect={handlePlanSelect}
             />
           ))}
         </div>
+
+        {/* Comparison Table */}
+        <div className="mb-24 max-w-5xl mx-auto">
+          <ComparisonTable plans={plans} />
+        </div>
+
+        {/* Credit Bundles */}
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h3 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Need More Power?</h3>
+            <p className="text-gray-600 dark:text-gray-400">Top-up credits instantly to send more connection requests.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <CreditBundleCard
+              title="Starter Stash"
+              credits={100}
+              price={10}
+              benefit="Perfect for sending ~10 extra connection requests."
+              onSelect={handleCreditSelect}
+            />
+            <CreditBundleCard
+              title="Connector's Bag"
+              credits={550}
+              price={50}
+              popular={true}
+              benefit="Best Value! Get 10% Bonus Credits. Approx 55 requests."
+              onSelect={handleCreditSelect}
+            />
+            <CreditBundleCard
+              title="Socialite's Chest"
+              credits={1200}
+              price={100}
+              benefit="Maximum Power! 20% Bonus Credits. Dominate the search."
+              onSelect={handleCreditSelect}
+            />
+          </div>
+        </div>
+
       </div>
     </section>
   );
 };
+
+
 
 export default PricingPage;

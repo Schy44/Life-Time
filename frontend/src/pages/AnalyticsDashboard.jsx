@@ -1,358 +1,509 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Eye, Users, Heart, TrendingUp, Award, Target,
-    Calendar, MapPin, User, Loader
+    Eye, Heart, ShieldCheck, Sparkles, MapPin,
+    Briefcase, ChevronRight, TrendingUp, Search,
+    Lock, Star, Zap, User, Loader
 } from 'lucide-react';
-import { getBasicStats, whoViewedMe, getAdvancedAnalytics } from '../services/analyticsService';
+import {
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend
+} from 'recharts';
+import { motion } from 'framer-motion';
+import { getDashboardAnalytics } from '../services/analyticsService';
+import { useAuth } from '../context/AuthContext';
+
+// --- 1. PRE-DEFINED SUB-COMPONENTS (Hoisting Safety) ---
+
+const BentoGrid = ({ children, className = "" }) => (
+    <div className={`grid grid-cols-1 md:grid-cols-12 gap-6 max-w-7xl mx-auto ${className}`}>
+        {children}
+    </div>
+);
+
+const BentoCard = ({ children, className = "", colSpan = "md:col-span-4" }) => (
+    <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className={`bg-white rounded-3xl p-6 border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] overflow-hidden relative flex flex-col ${colSpan} ${className}`}
+    >
+        {children}
+    </motion.div>
+);
+
+const MetricBadge = ({ label, value, trend, trendUp }) => (
+    <div className="flex flex-col">
+        <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">{label}</span>
+        <div className="flex items-end gap-2 mt-1">
+            <span className="text-2xl font-bold text-slate-800">{value}</span>
+            {trend !== null && trend !== undefined && (
+                <span className={`text-xs font-bold mb-1 px-1.5 py-0.5 rounded ${trendUp ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                    {trendUp ? '+' : ''}{trend}%
+                </span>
+            )}
+        </div>
+    </div>
+);
+
+// --- 2. MAIN COMPONENT ---
 
 const AnalyticsDashboard = () => {
+    const { user } = useAuth();
+    const [timeRange, setTimeRange] = useState('30d');
     const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState(null);
-    const [viewers, setViewers] = useState(null);
-    const [advanced, setAdvanced] = useState(null);
-    const [timeRange, setTimeRange] = useState(30);
+    const [error, setError] = useState(null);
+    const [analyticsData, setAnalyticsData] = useState(null);
 
+    // Convert time range to days
+    const getDaysFromRange = (range) => {
+        const rangeMap = { '7d': 7, '30d': 30, '90d': 90 };
+        return rangeMap[range] || 30;
+    };
+
+    // Fetch analytics data
     useEffect(() => {
-        loadAnalytics();
+        const fetchAnalytics = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const days = getDaysFromRange(timeRange);
+                const data = await getDashboardAnalytics(days);
+                setAnalyticsData(data);
+            } catch (err) {
+                console.error('Error fetching analytics:', err);
+                setError('Failed to load analytics data. Please try again later.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchAnalytics();
     }, [timeRange]);
 
-    const loadAnalytics = async () => {
-        setLoading(true);
-        try {
-            const [basicStats, viewersData, advancedData] = await Promise.all([
-                getBasicStats(),
-                whoViewedMe(timeRange),
-                getAdvancedAnalytics(timeRange)
-            ]);
+    // Format chart data for views
+    const formatViewsData = () => {
+        if (!analyticsData?.advancedAnalytics?.daily_views) return [];
 
-            setStats(basicStats);
-            setViewers(viewersData);
-            setAdvanced(advancedData);
-        } catch (error) {
-            console.error('Error loading analytics:', error);
-        } finally {
-            setLoading(false);
+        const dailyViews = analyticsData.advancedAnalytics.daily_views;
+        const avgViews = analyticsData.advancedAnalytics.platform_avg_views || 0;
+
+        return dailyViews.map(item => ({
+            date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            views: item.count,
+            avg: avgViews
+        }));
+    };
+
+    // Format radar chart data for profile health
+    const formatHealthData = () => {
+        if (!analyticsData?.basicStats?.profile_strength_suggestions) return [];
+
+        const suggestions = analyticsData.basicStats.profile_strength_suggestions;
+        const strength = analyticsData.basicStats.profile_strength || 0;
+
+        // Calculate scores for each category
+        const categories = {
+            'Photos': 100,
+            'Bio': 100,
+            'Family': 100,
+            'Career': 100,
+            'Partner Pref': 100
+        };
+
+        // Reduce scores based on suggestions
+        suggestions.forEach(suggestion => {
+            if (suggestion.message.toLowerCase().includes('photo')) {
+                categories['Photos'] = Math.max(0, 100 - suggestion.points);
+            }
+            if (suggestion.message.toLowerCase().includes('bio')) {
+                categories['Bio'] = Math.max(0, 100 - suggestion.points);
+            }
+            if (suggestion.message.toLowerCase().includes('family')) {
+                categories['Family'] = Math.max(0, 100 - suggestion.points);
+            }
+            if (suggestion.message.toLowerCase().includes('work') || suggestion.message.toLowerCase().includes('education')) {
+                categories['Career'] = Math.max(0, 100 - suggestion.points);
+            }
+        });
+
+        return Object.entries(categories).map(([subject, score]) => ({
+            subject,
+            A: score,
+            fullMark: 100
+        }));
+    };
+
+    // Get weakest section
+    const getWeakestSection = () => {
+        if (!analyticsData?.basicStats?.profile_strength_suggestions) return null;
+
+        const suggestions = analyticsData.basicStats.profile_strength_suggestions;
+        if (suggestions.length === 0) return null;
+
+        // Find the most critical suggestion
+        const critical = suggestions.find(s => s.type === 'critical');
+        if (critical) {
+            if (critical.message.toLowerCase().includes('photo')) return 'Photos';
+            if (critical.message.toLowerCase().includes('bio')) return 'Bio';
         }
+
+        const important = suggestions.find(s => s.type === 'important');
+        if (important) {
+            if (important.message.toLowerCase().includes('photo')) return 'Photos';
+            if (important.message.toLowerCase().includes('bio')) return 'Bio';
+            if (important.message.toLowerCase().includes('family')) return 'Family';
+        }
+
+        return null;
+    };
+
+    // Format time ago
+    const formatTimeAgo = (dateString) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffInMs = now - date;
+        const diffInMinutes = Math.floor(diffInMs / 60000);
+        const diffInHours = Math.floor(diffInMinutes / 60);
+        const diffInDays = Math.floor(diffInHours / 24);
+
+        if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+        if (diffInHours < 24) return `${diffInHours}h ago`;
+        if (diffInDays < 7) return `${diffInDays}d ago`;
+        return date.toLocaleDateString();
     };
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Loader className="w-8 h-8 animate-spin text-purple-600" />
+            <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+                <div className="text-center">
+                    <Loader className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
+                    <p className="text-slate-600">Loading analytics...</p>
+                </div>
             </div>
         );
     }
 
+    if (error) {
+        return (
+            <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+                <div className="text-center">
+                    <p className="text-red-600 mb-4">{error}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                    >
+                        Retry
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    const { basicStats, advancedAnalytics, viewers } = analyticsData;
+    const viewsData = formatViewsData();
+    const healthData = formatHealthData();
+    const topKeywords = advancedAnalytics?.top_keywords || [];
+    const weakestSection = getWeakestSection();
+
     return (
-        <div className="min-h-screen bg-gray-50 py-8 px-4">
-            <div className="max-w-7xl mx-auto">
-                {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Analytics Dashboard</h1>
-                    <p className="text-gray-600">Track your profile performance and engagement</p>
+        <div className="min-h-screen bg-[#F8FAFC] py-10 px-4 md:px-8 font-sans text-slate-900">
+
+            {/* Header Section */}
+            <div className="max-w-7xl mx-auto mb-10 flex flex-col md:flex-row justify-between items-end">
+                <div>
+                    <div className="flex items-center gap-3 mb-2">
+                        <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
+                        {user?.profile?.subscription_plan && (
+                            <span className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
+                                {user.profile.subscription_plan} Plan
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-slate-500">
+                        Welcome back, <strong>{user?.profile?.name?.split(' ')[0] || 'User'}</strong>.
+                        {advancedAnalytics?.view_trend > 0 ? ' Your profile is trending up this week.' : ' Keep your profile updated for better visibility.'}
+                    </p>
                 </div>
 
-                {/* Time Range Selector */}
-                <div className="mb-6 flex gap-2">
-                    {[7, 30, 90].map((days) => (
+                <div className="bg-white border border-slate-200 p-1 rounded-xl flex gap-1 shadow-sm mt-4 md:mt-0">
+                    {['7d', '30d', '90d'].map((t) => (
                         <button
-                            key={days}
-                            onClick={() => setTimeRange(days)}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${timeRange === days
-                                ? 'bg-purple-600 text-white'
-                                : 'bg-white text-gray-700 hover:bg-gray-100'
+                            key={t}
+                            onClick={() => setTimeRange(t)}
+                            className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${timeRange === t
+                                ? 'bg-slate-900 text-white shadow-md'
+                                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                                 }`}
                         >
-                            {days} Days
+                            {t}
                         </button>
                     ))}
                 </div>
-
-                {/* Stats Cards */}
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <StatCard
-                        icon={<Eye className="w-6 h-6" />}
-                        title="Profile Views"
-                        value={timeRange === 7 ? stats?.profile_views_7d : stats?.profile_views_30d}
-                        subtitle={`Last ${timeRange} days`}
-                        color="purple"
-                    />
-                    <StatCard
-                        icon={<Heart className="w-6 h-6" />}
-                        title="Interests Received"
-                        value={stats?.interests_received}
-                        subtitle="Total interests"
-                        color="pink"
-                    />
-                    <StatCard
-                        icon={<TrendingUp className="w-6 h-6" />}
-                        title="Acceptance Rate"
-                        value={`${stats?.acceptance_rate}%`}
-                        subtitle="Interest success"
-                        color="green"
-                    />
-                    <StatCard
-                        icon={<Award className="w-6 h-6" />}
-                        title="Profile Strength"
-                        value={`${stats?.profile_strength}%`}
-                        subtitle="Completion score"
-                        color="blue"
-                    />
-                </div>
-
-                {/* Main Content Grid */}
-                <div className="grid lg:grid-cols-3 gap-6">
-                    {/* Left Column - Profile Strength */}
-                    <div className="lg:col-span-1">
-                        <ProfileStrengthCard
-                            strength={stats?.profile_strength}
-                            suggestions={stats?.profile_strength_suggestions}
-                        />
-                    </div>
-
-                    {/* Right Column - Charts and Lists */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Daily Views Chart */}
-                        <DailyViewsChart data={advanced?.daily_views} />
-
-                        {/* Who Viewed Me */}
-                        <WhoViewedMeCard viewers={viewers?.viewers} />
-
-                        {/* Demographics */}
-                        <DemographicsCard demographics={advanced?.demographics} />
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// Stat Card Component
-const StatCard = ({ icon, title, value, subtitle, color }) => {
-    const colorClasses = {
-        purple: 'bg-purple-100 text-purple-600',
-        pink: 'bg-pink-100 text-pink-600',
-        green: 'bg-green-100 text-green-600',
-        blue: 'bg-blue-100 text-blue-600',
-    };
-
-    return (
-        <div className="bg-white rounded-xl p-6 shadow-sm">
-            <div className={`w-12 h-12 rounded-lg ${colorClasses[color]} flex items-center justify-center mb-4`}>
-                {icon}
-            </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">{value || 0}</div>
-            <div className="text-sm font-medium text-gray-900 mb-1">{title}</div>
-            <div className="text-xs text-gray-500">{subtitle}</div>
-        </div>
-    );
-};
-
-// Profile Strength Card
-const ProfileStrengthCard = ({ strength, suggestions }) => {
-    return (
-        <div className="bg-white rounded-xl p-6 shadow-sm">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Profile Strength</h3>
-
-            {/* Circular Progress */}
-            <div className="flex justify-center mb-6">
-                <div className="relative w-32 h-32">
-                    <svg className="w-32 h-32 transform -rotate-90">
-                        <circle
-                            cx="64"
-                            cy="64"
-                            r="56"
-                            stroke="#e5e7eb"
-                            strokeWidth="8"
-                            fill="none"
-                        />
-                        <circle
-                            cx="64"
-                            cy="64"
-                            r="56"
-                            stroke="#9333ea"
-                            strokeWidth="8"
-                            fill="none"
-                            strokeDasharray={`${2 * Math.PI * 56}`}
-                            strokeDashoffset={`${2 * Math.PI * 56 * (1 - (strength || 0) / 100)}`}
-                            strokeLinecap="round"
-                        />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-3xl font-bold text-gray-900">{strength || 0}%</span>
-                    </div>
-                </div>
             </div>
 
-            {/* Suggestions */}
-            <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-gray-700">Suggestions to Improve:</h4>
-                {suggestions && suggestions.length > 0 ? (
-                    suggestions.map((suggestion, index) => (
-                        <div key={index} className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
-                            <Target className={`w-4 h-4 mt-0.5 flex-shrink-0 ${suggestion.type === 'critical' ? 'text-red-500' :
-                                suggestion.type === 'important' ? 'text-orange-500' :
-                                    'text-blue-500'
-                                }`} />
-                            <div className="flex-1">
-                                <p className="text-sm text-gray-900">{suggestion.message}</p>
-                                <span className="text-xs text-gray-500">+{suggestion.points} points</span>
+            <BentoGrid>
+
+                {/* --- ROW 1: High Level Metrics --- */}
+
+                {/* 1. Main Stats Strip */}
+                <BentoCard colSpan="md:col-span-8" className="justify-center">
+                    <div className="flex flex-col md:flex-row justify-between divide-y md:divide-y-0 md:divide-x divide-slate-100 gap-6 md:gap-0">
+                        <div className="px-4 flex items-center gap-4">
+                            <div className="p-3 bg-purple-50 rounded-2xl text-purple-600">
+                                <Search className="w-6 h-6" />
                             </div>
+                            <MetricBadge
+                                label="Search Appearances"
+                                value={advancedAnalytics?.search_appearances?.toLocaleString() || '0'}
+                                trend={null}
+                                trendUp={true}
+                            />
                         </div>
-                    ))
-                ) : (
-                    <p className="text-sm text-gray-500">Your profile is complete! 🎉</p>
-                )}
-            </div>
-        </div>
-    );
-};
-
-// Daily Views Chart
-const DailyViewsChart = ({ data }) => {
-    if (!data || data.length === 0) {
-        return (
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Daily Profile Views</h3>
-                <p className="text-gray-500 text-center py-8">No view data available yet</p>
-            </div>
-        );
-    }
-
-    const maxViews = Math.max(...data.map(d => d.count), 1);
-
-    return (
-        <div className="bg-white rounded-xl p-6 shadow-sm">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Daily Profile Views</h3>
-
-            <div className="flex items-end justify-between gap-2 h-48">
-                {data.map((item, index) => (
-                    <div key={index} className="flex-1 flex flex-col items-center">
-                        <div
-                            className="w-full bg-gradient-to-t from-purple-600 to-purple-400 rounded-t-lg transition-all hover:opacity-80"
-                            style={{ height: `${(item.count / maxViews) * 100}%` }}
-                            title={`${item.count} views`}
-                        />
-                        <span className="text-xs text-gray-500 mt-2">
-                            {new Date(item.date).getDate()}
-                        </span>
+                        <div className="px-4 flex items-center gap-4">
+                            <div className="p-3 bg-blue-50 rounded-2xl text-blue-600">
+                                <Eye className="w-6 h-6" />
+                            </div>
+                            <MetricBadge
+                                label="Profile Views"
+                                value={basicStats?.profile_views_30d?.toLocaleString() || '0'}
+                                trend={advancedAnalytics?.view_trend}
+                                trendUp={advancedAnalytics?.view_trend >= 0}
+                            />
+                        </div>
+                        <div className="px-4 flex items-center gap-4">
+                            <div className="p-3 bg-pink-50 rounded-2xl text-pink-600">
+                                <Heart className="w-6 h-6" />
+                            </div>
+                            <MetricBadge
+                                label="Interests Recvd"
+                                value={basicStats?.interests_received?.toLocaleString() || '0'}
+                                trend={advancedAnalytics?.interest_trend}
+                                trendUp={advancedAnalytics?.interest_trend >= 0}
+                            />
+                        </div>
                     </div>
-                ))}
-            </div>
-        </div>
-    );
-};
+                </BentoCard>
 
-// Who Viewed Me Card
-const WhoViewedMeCard = ({ viewers }) => {
-    return (
-        <div className="bg-white rounded-xl p-6 shadow-sm">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Who Viewed Your Profile</h3>
+                {/* 2. Trust Score (Gamified) */}
+                <BentoCard colSpan="md:col-span-4" className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-none">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h3 className="font-bold text-lg opacity-90">Trust Score</h3>
+                            <p className="text-emerald-100 text-xs mt-1">
+                                {user?.profile?.is_verified ? 'Verified profile' : 'Get verified for 3x matches'}
+                            </p>
+                        </div>
+                        <ShieldCheck className="w-6 h-6 text-emerald-100" />
+                    </div>
+                    <div className="mt-auto">
+                        <div className="flex items-end gap-2 mb-2">
+                            <span className="text-4xl font-bold">{basicStats?.profile_strength || 0}</span>
+                            <span className="text-lg opacity-80 mb-1">/ 100</span>
+                        </div>
+                        <div className="w-full bg-black/20 h-2 rounded-full overflow-hidden">
+                            <div
+                                className="bg-white h-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"
+                                style={{ width: `${basicStats?.profile_strength || 0}%` }}
+                            ></div>
+                        </div>
+                    </div>
+                </BentoCard>
 
-            {viewers && viewers.length > 0 ? (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {viewers.slice(0, 10).map((viewer, index) => (
-                        <div key={index} className="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                            <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
-                                {viewer.profile_picture ? (
-                                    <img
-                                        src={viewer.profile_picture}
-                                        alt={viewer.name}
-                                        className="w-full h-full object-cover"
+
+                {/* --- ROW 2: Deep Dive Analytics --- */}
+
+                {/* 3. Activity Chart (Comparison) */}
+                <BentoCard colSpan="md:col-span-8">
+                    <div className="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 className="font-bold text-lg text-slate-800">Profile Engagement</h3>
+                            <p className="text-sm text-slate-400">Your views vs. Average user</p>
+                        </div>
+                    </div>
+                    <div className="h-64 w-full">
+                        {viewsData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={viewsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.2} />
+                                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.1)' }}
                                     />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-purple-100">
-                                        <User className="w-6 h-6 text-purple-600" />
-                                    </div>
-                                )}
+                                    <Area type="monotone" dataKey="views" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorViews)" name="You" />
+                                    <Area type="monotone" dataKey="avg" stroke="#cbd5e1" strokeWidth={2} strokeDasharray="5 5" fill="none" name="Avg. User" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-slate-400">
+                                No data available for this period
                             </div>
+                        )}
+                    </div>
+                </BentoCard>
 
-                            <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-900 truncate">{viewer.name}</p>
-                                <div className="flex items-center gap-2 text-sm text-gray-500">
-                                    <span>{viewer.age} years</span>
-                                    {viewer.city && (
-                                        <>
-                                            <span>•</span>
-                                            <span className="flex items-center gap-1">
-                                                <MapPin className="w-3 h-3" />
-                                                {viewer.city}
-                                            </span>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="text-right">
-                                <p className="text-xs text-gray-500">
-                                    {new Date(viewer.viewed_at).toLocaleDateString()}
-                                </p>
-                                <p className="text-xs text-gray-400">
-                                    {new Date(viewer.viewed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </p>
-                            </div>
+                {/* 4. Profile Radar (Health Check) */}
+                <BentoCard colSpan="md:col-span-4">
+                    <div className="flex justify-between items-center mb-2">
+                        <h3 className="font-bold text-lg text-slate-800">Biodata Quality</h3>
+                        <div className="p-1.5 bg-orange-50 text-orange-600 rounded-lg">
+                            <Zap className="w-4 h-4" />
                         </div>
-                    ))}
-                </div>
-            ) : (
-                <p className="text-gray-500 text-center py-8">No profile views yet</p>
-            )}
-        </div>
-    );
-};
-
-// Demographics Card
-const DemographicsCard = ({ demographics }) => {
-    if (!demographics) {
-        return null;
-    }
-
-    const { age_distribution, religion_distribution, location_distribution } = demographics;
-
-    return (
-        <div className="bg-white rounded-xl p-6 shadow-sm">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Viewer Demographics</h3>
-
-            <div className="grid md:grid-cols-3 gap-6">
-                {/* Age Distribution */}
-                <div>
-                    <h4 className="text-sm font-semibold text-gray-700 mb-3">Age Groups</h4>
-                    <div className="space-y-2">
-                        {Object.entries(age_distribution || {}).map(([range, count]) => (
-                            <div key={range} className="flex items-center justify-between">
-                                <span className="text-sm text-gray-600">{range}</span>
-                                <span className="text-sm font-medium text-gray-900">{count}</span>
-                            </div>
-                        ))}
                     </div>
-                </div>
+                    <p className="text-xs text-slate-500 mb-4">Balance your profile to rank higher.</p>
 
-                {/* Religion Distribution */}
-                <div>
-                    <h4 className="text-sm font-semibold text-gray-700 mb-3">Religion</h4>
-                    <div className="space-y-2">
-                        {Object.entries(religion_distribution || {}).slice(0, 5).map(([religion, count]) => (
-                            <div key={religion} className="flex items-center justify-between">
-                                <span className="text-sm text-gray-600 capitalize">{religion}</span>
-                                <span className="text-sm font-medium text-gray-900">{count}</span>
+                    <div className="h-48 w-full relative">
+                        {healthData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={healthData}>
+                                    <PolarGrid stroke="#e2e8f0" />
+                                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }} />
+                                    <Radar
+                                        name="Score"
+                                        dataKey="A"
+                                        stroke="#8b5cf6"
+                                        strokeWidth={2}
+                                        fill="#8b5cf6"
+                                        fillOpacity={0.3}
+                                    />
+                                </RadarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-slate-400">
+                                Profile analysis unavailable
                             </div>
-                        ))}
+                        )}
+                        {/* Overlay Insight */}
+                        {weakestSection && (
+                            <div className="absolute bottom-0 right-0 bg-red-50 text-red-600 text-[10px] font-bold px-2 py-1 rounded-full border border-red-100">
+                                Fix "{weakestSection}" Section
+                            </div>
+                        )}
                     </div>
-                </div>
+                </BentoCard>
 
-                {/* Location Distribution */}
-                <div>
-                    <h4 className="text-sm font-semibold text-gray-700 mb-3">Top Locations</h4>
-                    <div className="space-y-2">
-                        {Object.entries(location_distribution || {}).slice(0, 5).map(([city, count]) => (
-                            <div key={city} className="flex items-center justify-between">
-                                <span className="text-sm text-gray-600">{city}</span>
-                                <span className="text-sm font-medium text-gray-900">{count}</span>
-                            </div>
-                        ))}
+
+                {/* --- ROW 3: Actionable Insights --- */}
+
+                {/* 5. Search Keywords (SEO) */}
+                <BentoCard colSpan="md:col-span-4" className="bg-slate-900 text-white">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Sparkles className="w-5 h-5 text-purple-400" />
+                        <h3 className="font-bold text-lg">How they found you</h3>
                     </div>
-                </div>
-            </div>
+                    <p className="text-slate-400 text-sm mb-6">These keywords in your profile triggered the most views.</p>
+
+                    <div className="flex flex-wrap gap-2 content-start">
+                        {topKeywords.length > 0 ? (
+                            topKeywords.map((k, i) => (
+                                <div key={i} className="flex items-center justify-between w-full group cursor-pointer hover:bg-white/5 p-2 rounded-lg transition-colors">
+                                    <span className="text-sm font-medium text-slate-200 group-hover:text-white">{k.word}</span>
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-1.5 w-16 bg-white/10 rounded-full overflow-hidden">
+                                            <div className="h-full bg-purple-500" style={{ width: `${Math.min(100, (k.count / Math.max(...topKeywords.map(kw => kw.count))) * 100)}%` }}></div>
+                                        </div>
+                                        <span className="text-xs text-slate-400">{k.count}</span>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-slate-400 text-sm">Complete your profile to see keywords</p>
+                        )}
+                    </div>
+                </BentoCard>
+
+                {/* 6. Recent Visitor Cards (Detailed) */}
+                <BentoCard colSpan="md:col-span-8">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="font-bold text-lg text-slate-800">Recent Visitors</h3>
+                        <button className="text-sm text-purple-600 font-bold hover:underline">View All History</button>
+                    </div>
+
+                    <div className="space-y-4">
+                        {viewers && viewers.length > 0 ? (
+                            viewers.slice(0, 3).map((visitor, i) => (
+                                <div key={i} className="group flex items-center gap-4 p-4 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:shadow-md transition-all cursor-pointer">
+                                    {/* Avatar with Match Score */}
+                                    <div className="relative flex-shrink-0">
+                                        <div className="w-14 h-14 rounded-full bg-slate-200 overflow-hidden border-2 border-white shadow-sm transition-transform group-hover:scale-105">
+                                            {visitor.profile_picture ? (
+                                                <img
+                                                    src={visitor.profile_picture}
+                                                    alt="User"
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        e.target.onerror = null;
+                                                        e.target.style.display = 'none';
+                                                        e.target.parentElement.classList.add('bg-gradient-to-br', 'from-purple-400', 'to-indigo-500');
+                                                        e.target.parentElement.innerHTML = `<span class="text-white font-bold text-xl">${visitor.name?.[0] || 'U'}</span>`;
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-400 to-indigo-500 text-white font-bold text-xl">
+                                                    {visitor.name?.[0] || 'U'}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="absolute -bottom-1 -right-1 bg-slate-900 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm border border-white">
+                                            {visitor.match_score || 0}%
+                                        </div>
+                                    </div>
+
+                                    {/* Details */}
+                                    <div className="flex-1 min-w-0 ml-1">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h4 className="font-bold text-slate-900 text-base group-hover:text-purple-600 transition-colors flex items-center gap-1.5">
+                                                    {visitor.name || 'Anonymous'}
+                                                    {visitor.is_verified && (
+                                                        <span className="ml-2 inline-flex items-center text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full font-medium align-middle">
+                                                            <ShieldCheck className="w-3 h-3 mr-0.5" /> Verified
+                                                        </span>
+                                                    )}
+                                                </h4>
+                                                <p className="text-sm text-slate-500 mt-0.5">
+                                                    {visitor.age ? `${visitor.age} yrs` : ''}
+                                                    {visitor.age && visitor.height ? ' • ' : ''}
+                                                    {visitor.height || ''}
+                                                    {(visitor.age || visitor.height) && visitor.profession ? ' • ' : ''}
+                                                    {visitor.profession || ''}
+                                                </p>
+                                            </div>
+                                            <span className="text-xs text-slate-400 font-medium">{formatTimeAgo(visitor.viewed_at)}</span>
+                                        </div>
+
+                                        {/* Quick Info Tags */}
+                                        {visitor.city && (
+                                            <div className="flex gap-2 mt-2">
+                                                <span className="text-xs text-slate-500 flex items-center bg-white px-2 py-1 rounded-md border border-slate-100">
+                                                    <MapPin className="w-3 h-3 mr-1" /> {visitor.city}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Action */}
+                                    <div className="p-2 rounded-full text-slate-300 hover:text-purple-600 hover:bg-purple-50 transition-colors">
+                                        <ChevronRight className="w-6 h-6" />
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-8 text-slate-400">
+                                <Eye className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                                <p>No recent visitors yet</p>
+                            </div>
+                        )}
+                    </div>
+                </BentoCard>
+
+            </BentoGrid>
         </div>
     );
 };

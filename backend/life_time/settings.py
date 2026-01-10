@@ -81,7 +81,10 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Application definition
 
+# Application definition
+
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -93,6 +96,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'corsheaders',
     'storages',
+    'subscription',
 ]
 
 # Add Django Debug Toolbar only if installed
@@ -114,6 +118,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'subscription.middleware.SubscriptionMiddleware',
 ]
 
 # Add Django Debug Toolbar middleware only if installed
@@ -130,7 +135,7 @@ ROOT_URLCONF = 'life_time.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'], # Added templates directory
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -141,6 +146,40 @@ TEMPLATES = [
         },
     },
 ]
+
+# JAZZMIN CONFIGURATION
+JAZZMIN_SETTINGS = {
+    "site_title": "Life-Time Admin",
+    "site_header": "Life-Time",
+    "site_brand": "Life-Time Admin",
+    "welcome_sign": "Welcome to Life-Time HQ",
+    "copyright": "Life-Time Inc",
+    "search_model": ["auth.User", "api.Profile"],
+    "topmenu_links": [
+        {"name": "Home",  "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"name": "View Site", "url": "/"},
+    ],
+    "show_sidebar": True,
+    "navigation_expanded": True,
+    "icons": {
+        "auth": "fas fa-users-cog",
+        "auth.user": "fas fa-user",
+        "api.Profile": "fas fa-id-card",
+        "subscription.Transaction": "fas fa-money-bill-wave",
+        "subscription.SubscriptionPlan": "fas fa-list-alt",
+        "subscription.UserSubscription": "fas fa-user-tag",
+        "subscription.CreditWallet": "fas fa-wallet",
+    },
+    "default_icon_parents": "fas fa-chevron-circle-right",
+    "default_icon_children": "fas fa-circle",
+    "changeform_format": "horizontal_tabs",
+    "override_admin_index": True, # Allow us to inject charts
+}
+
+JAZZMIN_UI_TWEAKS = {
+    "theme": "flatly",
+    "navbar": "navbar-dark",
+}
 
 WSGI_APPLICATION = 'life_time.wsgi.application'
 
@@ -206,6 +245,13 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+
+# Payment Gateway Configuration
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
+SSLCOMMERZ_STORE_ID = os.environ.get('SSLCOMMERZ_STORE_ID')
+SSLCOMMERZ_STORE_PASS = os.environ.get('SSLCOMMERZ_STORE_PASS')
+SSLCOMMERZ_IS_SANDBOX = os.environ.get('SSLCOMMERZ_IS_SANDBOX', 'True') == 'True'
 
 # Tell Django to serve static files using WhiteNoise
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"

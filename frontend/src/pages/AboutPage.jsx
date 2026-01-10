@@ -232,112 +232,190 @@ const AboutPage = () => {
                     </div>
                 </section>
 
-                {/* Problem vs Solution Section */}
-                <section className="py-24 px-6 md:px-12 bg-white dark:bg-gray-900">
+                {/* Problem vs Solution Section - Editorial Style */}
+                <section className="py-20 px-6 md:px-12 bg-white dark:bg-gray-900">
                     <div className="container mx-auto max-w-7xl">
+                        {/* Header */}
                         <div className="text-center mb-20">
                             <motion.h3
                                 initial={{ opacity: 0, y: 20 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
-                                className="text-sm uppercase tracking-wider text-purple-600 dark:text-purple-400 font-semibold mb-4"
+                                className="text-xs uppercase tracking-[0.3em] text-gray-500 dark:text-gray-400 font-light mb-6"
                             >
-                                the challenge & our answer
+                                The Challenge & Our Answer
                             </motion.h3>
                             <motion.h2
-                                initial={{ opacity: 0, y: 20 }}
+                                initial={{ opacity: 0, y: 30 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
-                                transition={{ delay: 0.1 }}
-                                className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6"
+                                transition={{ delay: 0.2 }}
+                                className="text-5xl md:text-7xl font-bold text-gray-900 dark:text-white mb-8 leading-tight"
                             >
-                                Understanding the <span className="text-purple-600 dark:text-purple-400">problem</span> helped us build the right <span className="text-purple-600 dark:text-purple-400">solution</span>
+                                Understanding the problem<br />helped us build the<br />right solution
                             </motion.h2>
                         </div>
 
-                        <div className="grid lg:grid-cols-2 gap-16">
-                            {/* The Problem */}
-                            <motion.div
-                                initial={{ opacity: 0, x: -30 }}
-                                whileInView={{ opacity: 1, x: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.6 }}
-                            >
-                                <div className="mb-10">
-                                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                                        ⚡ The Problem
+                        {/* Problem-Solution Pairs */}
+                        <div className="space-y-24">
+                            {/* Section Labels - Show once at top */}
+                            <div className="grid lg:grid-cols-2 gap-12 mb-8">
+                                <div className="flex items-center gap-4">
+                                    <div className="inline-block px-4 py-2 bg-red-100 dark:bg-red-900/20 rounded-full">
+                                        <span className="text-xs uppercase tracking-widest text-red-600 dark:text-red-400 font-medium">Problem</span>
+                                    </div>
+                                    <div className="flex-1 h-px bg-gray-300 dark:bg-gray-700" />
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <div className="inline-block px-4 py-2 bg-purple-100 dark:bg-purple-900/20 rounded-full">
+                                        <span className="text-xs uppercase tracking-widest text-purple-600 dark:text-purple-400 font-medium">Solution</span>
+                                    </div>
+                                    <div className="flex-1 h-px bg-gray-300 dark:bg-gray-700" />
+                                </div>
+                            </div>
+
+                            {/* Pair 1: The Void → Real People */}
+                            <div className="grid lg:grid-cols-2 gap-12 items-center">
+                                {/* Problem */}
+                                <motion.div
+                                    initial={{ opacity: 0, x: -50 }}
+                                    whileInView={{ opacity: 1, x: 0 }}
+                                    viewport={{ once: true, margin: "-100px" }}
+                                    transition={{ duration: 0.8 }}
+                                    className="space-y-6"
+                                >
+                                    <h3 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white leading-tight">
+                                        The Void
                                     </h3>
-                                    <div className="w-16 h-1 bg-gradient-to-r from-red-500 to-orange-500 rounded-full" />
-                                </div>
+                                    <div className="w-20 h-px bg-gray-300 dark:bg-gray-700" />
+                                    <p className="text-xl text-gray-600 dark:text-gray-400 leading-relaxed">
+                                        A shortage of meaningful, compatible matches — leaving people unsure where to look.
+                                    </p>
+                                </motion.div>
 
-                                <div className="space-y-6">
-                                    {[
-                                        { icon: AlertCircle, title: "The Void", desc: "A shortage of meaningful, compatible matches — leaving people unsure where to look." },
-                                        { icon: Search, title: "The Fog", desc: "No clarity, no transparency, and too many unanswered questions." },
-                                        { icon: Zap, title: "The Drain", desc: "Wasted time, wasted money, and energy spent on connections that were never genuine." }
-                                    ].map((item, index) => (
-                                        <motion.div
-                                            key={index}
-                                            initial={{ opacity: 0, y: 20 }}
-                                            whileInView={{ opacity: 1, y: 0 }}
-                                            viewport={{ once: true }}
-                                            transition={{ delay: index * 0.1 }}
-                                            className="group"
-                                        >
-                                            <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-red-300 dark:hover:border-red-800/50 hover:shadow-xl hover:scale-105 transition-all duration-300 transform-gpu">
-                                                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                                                    {item.title}
-                                                </h4>
-                                                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                                                    {item.desc}
-                                                </p>
-                                            </div>
-                                        </motion.div>
-                                    ))}
-                                </div>
-                            </motion.div>
-
-                            {/* The Solution */}
-                            <motion.div
-                                initial={{ opacity: 0, x: 30 }}
-                                whileInView={{ opacity: 1, x: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.6, delay: 0.2 }}
-                            >
-                                <div className="mb-10">
-                                    <h3 className="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-2">
-                                        ⚡ The Solution
+                                {/* Solution */}
+                                <motion.div
+                                    initial={{ opacity: 0, x: 50 }}
+                                    whileInView={{ opacity: 1, x: 0 }}
+                                    viewport={{ once: true, margin: "-100px" }}
+                                    transition={{ duration: 0.8, delay: 0.2 }}
+                                    className="space-y-6 solution-text"
+                                >
+                                    <h3 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white leading-tight">
+                                        Real People,<br />Real Intentions
                                     </h3>
-                                    <div className="w-16 h-1 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full" />
-                                </div>
+                                    <div className="w-20 h-px bg-gray-300 dark:bg-gray-700" />
+                                    <p className="text-xl text-gray-600 dark:text-gray-400 leading-relaxed">
+                                        Authentic profiles, honest expression — a community built on being true, not perfect.
+                                    </p>
+                                </motion.div>
+                            </div>
 
-                                <div className="space-y-6">
-                                    {[
-                                        { icon: Users, title: "Real People, Real Intentions", desc: "Authentic profiles, honest expression — a community built on being true, not perfect." },
-                                        { icon: Eye, title: "Transparent From Day One", desc: "No mystery, no hidden details. Clarity is the default, not a feature." },
-                                        { icon: Target, title: "Precision Discovery", desc: "Powerful filters and thoughtful matching help you explore people who genuinely align with what you want — and who you are." }
-                                    ].map((item, index) => (
-                                        <motion.div
-                                            key={index}
-                                            initial={{ opacity: 0, y: 20 }}
-                                            whileInView={{ opacity: 1, y: 0 }}
-                                            viewport={{ once: true }}
-                                            transition={{ delay: index * 0.1 }}
-                                            className="group"
-                                        >
-                                            <div className="p-6 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-2xl border border-purple-200 dark:border-purple-700/30 hover:border-purple-400 dark:hover:border-purple-600/50 hover:shadow-xl hover:scale-105 transition-all duration-300 transform-gpu">
-                                                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                                                    {item.title}
-                                                </h4>
-                                                <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
-                                                    {item.desc}
-                                                </p>
-                                            </div>
-                                        </motion.div>
-                                    ))}
-                                </div>
-                            </motion.div>
+                            {/* Divider */}
+                            <motion.div
+                                initial={{ scaleX: 0 }}
+                                whileInView={{ scaleX: 1 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 1 }}
+                                className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-700 to-transparent"
+                            />
+
+                            {/* Pair 2: The Fog → Transparent */}
+                            <div className="grid lg:grid-cols-2 gap-12 items-center">
+                                {/* Problem */}
+                                <motion.div
+                                    initial={{ opacity: 0, x: -50 }}
+                                    whileInView={{ opacity: 1, x: 0 }}
+                                    viewport={{ once: true, margin: "-100px" }}
+                                    transition={{ duration: 0.8 }}
+                                    className="space-y-6 problem-text"
+                                >
+                                    <h3 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white leading-tight">
+                                        The Fog
+                                    </h3>
+                                    <div className="w-20 h-px bg-gray-300 dark:bg-gray-700" />
+                                    <p className="text-xl text-gray-600 dark:text-gray-400 leading-relaxed">
+                                        No clarity, no transparency, and too many unanswered questions.
+                                    </p>
+                                </motion.div>
+
+                                {/* Solution */}
+                                <motion.div
+                                    initial={{ opacity: 0, x: 50 }}
+                                    whileInView={{ opacity: 1, x: 0 }}
+                                    viewport={{ once: true, margin: "-100px" }}
+                                    transition={{ duration: 0.8, delay: 0.2 }}
+                                    className="space-y-6 solution-text"
+                                >
+                                    <h3 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white leading-tight">
+                                        Transparent<br />From Day One
+                                    </h3>
+                                    <div className="w-20 h-px bg-gray-300 dark:bg-gray-700" />
+                                    <p className="text-xl text-gray-600 dark:text-gray-400 leading-relaxed">
+                                        No mystery, no hidden details. Clarity is the default, not a feature.
+                                    </p>
+                                </motion.div>
+                            </div>
+
+                            {/* Divider */}
+                            <motion.div
+                                initial={{ scaleX: 0 }}
+                                whileInView={{ scaleX: 1 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 1 }}
+                                className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-700 to-transparent"
+                            />
+
+                            {/* Pair 3: The Drain → Precision Discovery */}
+                            <div className="grid lg:grid-cols-2 gap-12 items-center">
+                                {/* Problem */}
+                                <motion.div
+                                    initial={{ opacity: 0, x: -50 }}
+                                    whileInView={{ opacity: 1, x: 0 }}
+                                    viewport={{ once: true, margin: "-100px" }}
+                                    transition={{ duration: 0.8 }}
+                                    className="space-y-6 problem-text"
+                                >
+                                    <h3 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white leading-tight">
+                                        The Drain
+                                    </h3>
+                                    <div className="w-20 h-px bg-gray-300 dark:bg-gray-700" />
+                                    <p className="text-xl text-gray-600 dark:text-gray-400 leading-relaxed">
+                                        Wasted time, wasted money, and energy spent on connections that were never genuine.
+                                    </p>
+                                </motion.div>
+
+                                {/* Solution */}
+                                <motion.div
+                                    initial={{ opacity: 0, x: 50 }}
+                                    whileInView={{ opacity: 1, x: 0 }}
+                                    viewport={{ once: true, margin: "-100px" }}
+                                    transition={{ duration: 0.8, delay: 0.2 }}
+                                    className="space-y-6"
+                                >
+                                    <h3 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white leading-tight">
+                                        Precision<br />Discovery
+                                    </h3>
+                                    <div className="w-20 h-px bg-gray-300 dark:bg-gray-700" />
+                                    <p className="text-xl text-gray-600 dark:text-gray-400 leading-relaxed">
+                                        Powerful filters and thoughtful matching help you explore people who genuinely align with what you want — and who you are.
+                                    </p>
+                                </motion.div>
+                            </div>
                         </div>
+
+                        {/* Closing Statement */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 30 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.8 }}
+                            className="text-center mt-24"
+                        >
+                            <p className="text-2xl md:text-3xl font-bold text-gray-600 dark:text-gray-400 italic max-w-3xl mx-auto leading-relaxed">
+                                "Every challenge we identified became a blueprint for the solution we built."
+                            </p>
+                        </motion.div>
                     </div>
                 </section>
 
@@ -392,10 +470,10 @@ const AboutPage = () => {
                             ))}
                         </div>
                     </div>
-                </section>
+                </section >
 
                 <Footer />
-            </main>
+            </main >
         </>
     );
 };

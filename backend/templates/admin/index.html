@@ -1,0 +1,143 @@
+{% extends "admin/index.html" %}
+{% load static %}
+
+{% block content %}
+<div class="row" style="margin-bottom: 30px;">
+    <!-- Stats Cards -->
+    <div class="col-md-4 col-sm-12">
+        <div class="card text-white bg-info mb-3">
+            <div class="card-header">Total Users</div>
+            <div class="card-body">
+                <h2 class="card-title" id="total-users-display">Loading...</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-sm-12">
+        <div class="card text-white bg-success mb-3">
+            <div class="card-header">Total Revenue</div>
+            <div class="card-body">
+                <h2 class="card-title" id="revenue-display">Loading...</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-sm-12">
+        <div class="card text-white bg-warning mb-3">
+            <div class="card-header">Active Subscriptions</div>
+            <div class="card-body">
+                <h2 class="card-title">Check Subscriptions App</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- User Growth Chart -->
+    <div class="col-lg-8" style="margin-bottom: 30px;">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>New User Growth</strong>
+                <select id="timeRangeSelector" class="custom-select custom-select-sm" style="width: auto;">
+                    <option value="7">Last 7 Days</option>
+                    <option value="30">Last 30 Days</option>
+                    <option value="90">Last 3 Months</option>
+                    <option value="all">All Time</option>
+                </select>
+            </div>
+            <div class="card-body">
+                <canvas id="userGrowthChart" style="max-height: 400px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <strong>Recent Transactions</strong>
+            </div>
+            <ul class="list-group list-group-flush" id="recent-transactions-list">
+                <li class="list-group-item">Loading...</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Render the default App List below -->
+{{ block.super }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        let chartInstance = null;
+
+        function fetchAnalytics(range = '7') {
+            fetch(`/api/analytics/admin/?range=${range}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update Stats (only need once really, but updating allows "revenue in this period" later if we want)
+                    document.getElementById('total-users-display').textContent = data.stats.total_users;
+                    document.getElementById('revenue-display').textContent = '$' + data.stats.revenue;
+
+                    // Update Chart
+                    const ctx = document.getElementById('userGrowthChart').getContext('2d');
+
+                    if (chartInstance) {
+                        chartInstance.destroy();
+                    }
+
+                    chartInstance = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: data.growth.labels,
+                            datasets: [{
+                                label: 'New Users',
+                                data: data.growth.data,
+                                borderColor: 'rgb(75, 192, 192)',
+                                tension: 0.1,
+                                fill: true,
+                                backgroundColor: 'rgba(75, 192, 192, 0.2)'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        stepSize: 1
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    // Update Transactions
+                    const list = document.getElementById('recent-transactions-list');
+                    list.innerHTML = '';
+                    if (data.recent_transactions.length === 0) {
+                        list.innerHTML = '<li class="list-group-item">No recent transactions</li>';
+                    } else {
+                        data.recent_transactions.forEach(txn => {
+                            const li = document.createElement('li');
+                            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                            li.innerHTML = `
+                                <span>${txn.user__username}</span>
+                                <span class="badge badge-primary badge-pill">$${txn.amount}</span>
+                            `;
+                            list.appendChild(li);
+                        });
+                    }
+                })
+                .catch(err => console.error('Error fetching admin analytics:', err));
+        }
+
+        // Initial Load
+        fetchAnalytics('7');
+
+        // Listener
+        document.getElementById('timeRangeSelector').addEventListener('change', (e) => {
+            fetchAnalytics(e.target.value);
+        });
+    });
+</script>
+{% endblock %}

@@ -8,6 +8,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ProfileForm from '../components/ProfileForm';
 import PreviewModal from '../components/PreviewModal';
 import FaithTagsSection from '../components/FaithTagsSection';
+import SubscriptionTransfer from '../components/SubscriptionTransfer';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -346,6 +347,14 @@ const ProfilePage = () => {
                         </div>
                       </motion.div>
                     )}
+
+                    {/* Subscription Transfer - Only visible if has paid plan */}
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
+                      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 p-4">
+                        <SubscriptionTransfer />
+                      </div>
+                    </motion.div>
+
                   </div>
 
                   {/* Right Column */}

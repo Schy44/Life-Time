@@ -5,6 +5,7 @@ import L from 'leaflet';
 import { getProfiles } from '../services/api';
 import { getCityCoordinates } from '../lib/cityCoordinates';
 import LoadingSpinner from './LoadingSpinner';
+import MapLockedState from './MapLockedState';
 import 'leaflet/dist/leaflet.css';
 import { useQuery } from '@tanstack/react-query';
 
@@ -166,6 +167,12 @@ const GlobalMap = ({ onProfilesLoaded }) => {
     };
 
     if (isLoading) return <div className="w-full h-[400px] md:h-[500px] bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center"><LoadingSpinner message="Loading global map..." /></div>;
+
+    // Handle 403 Forbidden Error (Guest View)
+    if (isError && (error?.response?.status === 403 || error?.status === 403)) {
+        return <MapLockedState />;
+    }
+
     if (isError) return <div className="w-full h-[400px] bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center"><p className="text-gray-600 dark:text-gray-400">{error?.message || 'Failed to load map'}</p></div>;
 
     const locationGroups = getLocationGroups();

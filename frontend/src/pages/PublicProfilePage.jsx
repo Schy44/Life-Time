@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import api from '../lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Socials from '../components/Socials';
@@ -7,6 +8,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import SectionCard from '../components/SectionCard';
 import InfoRow from '../components/InfoRow';
 import FaithTagsSection from '../components/FaithTagsSection';
+import { Lock } from 'lucide-react';
 import {
   getProfileById,
   getProfile,
@@ -135,6 +137,19 @@ export default function PublicProfilePage() {
   const handleAccept = async () => { try { await acceptInterest(interestStatus.id); setInterestStatus(prev => ({ ...prev, status: 'accepted' })); safeAlert('Interest accepted'); } catch (err) { console.error(err); safeAlert('Failed to accept'); } };
   const handleReject = async () => { try { await rejectInterest(interestStatus.id); setInterestStatus(prev => ({ ...prev, status: 'rejected' })); safeAlert('Interest rejected'); } catch (err) { console.error(err); safeAlert('Failed to reject'); } };
   const handleCancelInterest = async () => { try { await cancelInterest(interestStatus.id); setInterestStatus(null); safeAlert('Interest cancelled'); } catch (err) { console.error(err); safeAlert('Failed to cancel'); } };
+  const handleUnlockProfile = async () => {
+    if (!profileData) return;
+    try {
+      const res = await api.post('/profiles/unlock/', { profile_id: profileData.id });
+      if (res.data.unlocked) {
+        safeAlert('Profile unlocked successfully!');
+        window.location.reload(); // Refresh to get full data
+      }
+    } catch (err) {
+      console.error(err);
+      safeAlert(err.response?.data?.error || 'Failed to unlock profile');
+    }
+  };
 
   const renderInterestControls = () => {
     if (!user || !currentUserProfile || !profileData) return null;
@@ -201,6 +216,7 @@ export default function PublicProfilePage() {
     created_at,
     updated_at,
     faith_tags = [],
+    is_unlocked = false,
   } = profileData;
 
   const age = date_of_birth ? new Date().getFullYear() - new Date(date_of_birth).getFullYear() : '—';
@@ -493,7 +509,11 @@ export default function PublicProfilePage() {
 
                     <button
                       onClick={handleDownloadBiodata}
-                      className="ml-2 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600"
+                      disabled={!is_unlocked}
+                      className={`ml-2 px-3 py-1 rounded-full text-xs font-semibold border ${!is_unlocked
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600 border-gray-200 dark:border-gray-600'
+                        }`}
                     >
                       Download Biodata
                     </button>
@@ -511,14 +531,24 @@ export default function PublicProfilePage() {
 
                       <img
                         role="button"
-                        onClick={() => setViewerOpen(true)}
+                        onClick={() => is_unlocked && setViewerOpen(true)}
                         key={activeImageIndex}
                         src={images[activeImageIndex] || '/placeholder-profile.png'}
                         alt={`Profile image ${activeImageIndex + 1}`}
-                        className="w-full h-72 object-cover rounded-xl"
+                        className={`w-full h-72 object-cover rounded-xl transition-all duration-500 ${!is_unlocked ? 'profile-image-blurred scale-105' : ''}`}
                         loading="lazy"
-                        style={noBlurStyle}
+                        style={is_unlocked ? noBlurStyle : {}}
                       />
+
+                      {!is_unlocked && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-black/10 backdrop-blur-[2px]">
+                          <div className="bg-white/90 dark:bg-gray-800/90 p-4 rounded-2xl shadow-xl max-w-[200px]">
+                            <FaHeart className="mx-auto text-red-500 mb-2" size={24} />
+                            <p className="text-[10px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider mb-2">Private Profile</p>
+                            <p className="text-[9px] text-gray-500 dark:text-gray-400 leading-tight">Connect and unlock to see full photos</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-4 gap-2">
@@ -526,12 +556,22 @@ export default function PublicProfilePage() {
                         images.map((src, idx) => (
                           <button
                             key={idx}
-                            onClick={() => setActiveImageIndex(idx)}
+                            onClick={() => is_unlocked && setActiveImageIndex(idx)}
                             aria-label={`Thumbnail ${idx + 1}`}
-                            className={`h-20 rounded-md overflow-hidden border ${idx === activeImageIndex ? 'ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-600'} focus:outline-none`}
-                            style={noBlurStyle}
+                            className={`h-20 rounded-md overflow-hidden border relative group/thumb ${idx === activeImageIndex ? 'ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-600'} focus:outline-none ${!is_unlocked ? 'cursor-not-allowed' : ''}`}
                           >
-                            <img src={src} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" style={noBlurStyle} />
+                            <img
+                              src={src}
+                              alt={`Thumb ${idx + 1}`}
+                              className={`w-full h-full object-cover transition-all duration-300 ${!is_unlocked ? 'profile-image-blurred scale-125' : ''}`}
+                              loading="lazy"
+                              style={is_unlocked ? noBlurStyle : {}}
+                            />
+                            {!is_unlocked && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/thumb:bg-black/10 transition-colors">
+                                <Lock size={12} className="text-white/80" />
+                              </div>
+                            )}
                           </button>
                         ))
                       ) : (
@@ -551,7 +591,16 @@ export default function PublicProfilePage() {
                           ].filter(Boolean)} />
                         </div>
 
-                        <div>{renderInterestControls()}</div>
+                        <div>
+                          {!is_unlocked && interestStatus?.status === 'accepted' ? (
+                            <button
+                              onClick={handleUnlockProfile}
+                              className="px-6 py-2.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs shadow-lg hover:shadow-orange-200 transition-all flex items-center gap-2"
+                            >
+                              Unlock Full Access (10 Credits)
+                            </button>
+                          ) : renderInterestControls()}
+                        </div>
                       </div>
 
                       {/* Faith Tags - Display under photo section */}
@@ -606,7 +655,7 @@ export default function PublicProfilePage() {
                     </SectionCard>
 
                     {/* NEW: Family */}
-                    <SectionCard title="Family" icon={<div className="text-indigo-600">•</div>}>
+                    <SectionCard title="Family" icon={<div className="text-indigo-600">•</div>} isLocked={!is_unlocked}>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <InfoRow label="Father's occupation" value={father_occupation || '—'} />
                         <InfoRow label="Mother's occupation" value={mother_occupation || '—'} />
@@ -640,12 +689,12 @@ export default function PublicProfilePage() {
                     </SectionCard>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <SectionCard title="Lifestyle" icon={<div className="text-indigo-600">•</div>}>
+                      <SectionCard title="Lifestyle" icon={<div className="text-indigo-600">•</div>} isLocked={!is_unlocked}>
                         <InfoRow label="Alcohol" value={alcohol || '—'} />
                         <InfoRow label="Smoking" value={smoking || '—'} />
                       </SectionCard>
 
-                      <SectionCard title="Preferences" icon={<FaHeart className="text-red-500" />}>
+                      <SectionCard title="Preferences" icon={<FaHeart className="text-red-500" />} isLocked={!is_unlocked}>
                         {preferences && preferences[0] ? (
                           <div className="flex flex-wrap gap-2">
                             {Object.entries(preferences[0]).slice(0, 12).map(([k, v]) => (

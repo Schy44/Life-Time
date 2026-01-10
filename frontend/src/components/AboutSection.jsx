@@ -1,7 +1,7 @@
 import React from 'react';
 import SectionCard from './SectionCard';
 import InfoRow from './InfoRow';
-import './Components.css';
+import '../styles/Components.css';
 import {
   ArrowUpRight,
   Heart,
