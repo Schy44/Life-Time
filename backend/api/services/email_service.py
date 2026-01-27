@@ -127,6 +127,88 @@ class EmailService:
             logger.error(f"Failed to send email to {to_email}: {str(e)}")
 
     @staticmethod
+    def send_interest_accepted_email(interest):
+        """
+        Sends an email to the sender when their interest request is accepted.
+        """
+        sender = interest.sender
+        receiver = interest.receiver
+        
+        # Determine context variables based on share type
+        is_full = interest.share_type == 'full'
+        receiver_phone = receiver.phone if receiver.phone else "Not specified"
+        
+        context = EmailService.get_base_context()
+        profile_link = f"{context['frontend_url']}/profiles/{receiver.id}"
+
+        
+        # Extended Profile Details
+        age = receiver.age if receiver.age else "N/A"
+        religion = receiver.religion.title() if receiver.religion else "Not specified"
+        
+        # Location
+        location_parts = []
+        if receiver.current_city: location_parts.append(receiver.current_city)
+        if receiver.current_country:
+            from ..utils.country_utils import get_country_name
+            location_parts.append(get_country_name(receiver.current_country))
+        location = ", ".join(location_parts) if location_parts else "Unknown Location"
+        
+        # Profession (Try simpler field first, then work experience)
+        profession = "Not specified"
+        # Since profession is complex in model (WorkExperience vs Preference), we'll try to get the latest job title
+        latest_job = receiver.work_experience.filter(currently_working=True).first()
+        if not latest_job:
+            latest_job = receiver.work_experience.first()
+        
+        if latest_job:
+            profession = latest_job.title
+        
+        # Profile Image
+        profile_image_url = None
+        if is_full and receiver.profile_image:
+             # Ensure absolute URL
+             profile_image_url = receiver.profile_image.url
+        
+        # WhatsApp Link (Basic sanitization)
+        whatsapp_link = None
+        if receiver.phone:
+            # Remove non-numeric characters for the link
+            clean_number = "".join(filter(str.isdigit, receiver.phone))
+            if clean_number:
+                whatsapp_link = f"https://wa.me/{clean_number}"
+
+        context.update({
+            'sender_name': sender.name,
+            'receiver_name': receiver.name,
+            'receiver_phone': receiver_phone,
+            'receiver_age': age,
+            'receiver_religion': religion,
+            'receiver_location': location,
+            'receiver_profession': profession,
+            'profile_image_url': profile_image_url,
+            'whatsapp_link': whatsapp_link,
+            'is_full': is_full,
+            'profile_link': profile_link,
+        })
+        
+        html_content = render_to_string('emails/interest_accepted.html', context)
+        text_content = strip_tags(html_content)
+        
+        subject = f"Good News! {receiver.name} accepted your interest request"
+        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@yourdomain.com')
+        to_email = sender.user.email
+        
+        msg = EmailMultiAlternatives(subject, text_content, from_email, [to_email])
+        msg.attach_alternative(html_content, "text/html")
+        
+        try:
+            msg.send()
+            logger.info(f"Interest accepted email sent to {to_email}")
+        except Exception as e:
+            logger.error(f"Failed to send acceptance email to {to_email}: {str(e)}")
+
+    @staticmethod
     def generate_response_url(interest_id, choice):
         """
         Generates a secure signed URL for responding to an interest.

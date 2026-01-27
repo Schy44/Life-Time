@@ -406,6 +406,14 @@ def create_interest_notification(sender, instance, created, **kwargs):
                 verb="accepted your interest request",
                 target_profile=instance.sender # The profile that was accepted
             )
+            
+            # Send email notification to the original sender
+            try:
+                from .services.email_service import EmailService
+                EmailService.send_interest_accepted_email(instance)
+            except Exception as e:
+                # Log error but don't fail the transaction
+                print(f"Error sending acceptance email: {e}")
 
 
 class VerificationDocument(models.Model):
