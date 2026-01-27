@@ -12,7 +12,7 @@ import SubscriptionTransfer from '../components/SubscriptionTransfer';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FaEdit, FaEye, FaTimes, FaSave } from 'react-icons/fa';
+import { FaEdit, FaEye, FaTimes } from 'react-icons/fa';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getProfile, getCountries } from '../services/api'; // Import getCountries
 import apiClient from '../lib/api';
@@ -20,7 +20,7 @@ import apiClient from '../lib/api';
 const ProfilePage = () => {
   const [profileData, setProfileData] = useState(null);
   const [interests, setInterests] = useState([]);
-  const [loading, setLoading] = useState(false); // only used for explicit manual refreshes
+  const [, setLoading] = useState(false); // only used for explicit manual refreshes
   const [error, setError] = useState(null);
   const [editSection, setEditSection] = useState(null); // null, 'about', 'education', 'career', 'all'
   const [showPreview, setShowPreview] = useState(false);
@@ -81,6 +81,7 @@ const ProfilePage = () => {
       const normalized = normalizeProfile(queryProfile);
       setProfileData(normalized);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryProfile]);
 
   const fetchAllData = async (isBackground = false) => {

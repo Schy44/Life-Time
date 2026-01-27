@@ -2,18 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Users,
     Heart,
-    MapPin,
     Globe,
     Briefcase,
     GraduationCap,
     MessageCircle,
     Shield,
-    CheckCircle2,
     Monitor,
-    Zap,
-    ChevronRight,
     ArrowRight,
     Sparkles,
     Ruler,
@@ -27,7 +22,7 @@ const SurveyPage = () => {
     const [step, setStep] = useState(1);
     const [direction, setDirection] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [profile, setProfile] = useState(null);
+    const [, setProfile] = useState(null);
     const [countries, setCountries] = useState([]);
     const [professions, setProfessions] = useState([]);
 
