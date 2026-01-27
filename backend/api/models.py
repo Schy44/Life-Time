@@ -100,9 +100,9 @@ class Profile(models.Model):
 
     # Location (use ISO-3166 alpha-2 codes)
     current_city = models.CharField(max_length=100, blank=True, null=True)
-    current_country = models.CharField(max_length=2, blank=True, null=True)  # e.g., 'BD', 'US'
+    current_country = models.CharField(max_length=100, blank=True, null=True)
     origin_city = models.CharField(max_length=100, blank=True, null=True)
-    origin_country = models.CharField(max_length=2, blank=True, null=True)
+    origin_country = models.CharField(max_length=100, blank=True, null=True)
 
     # Immigration (keep simple text now; can normalize later)
     visa_status = models.CharField(max_length=100, blank=True, null=True)
@@ -140,7 +140,8 @@ class Profile(models.Model):
 
     # Verification (keep minimal here; move to separate table if you need auditing)
     is_verified = models.BooleanField(default=False)
-    is_premium = models.BooleanField(default=False) # Gold/Platinum status
+    is_activated = models.BooleanField(default=False, help_text="User has paid the activation fee")
+    is_premium = models.BooleanField(default=False) # Gold/Platinum status (legacy)
     subscription_plan = models.CharField(max_length=50, blank=True, null=True) # e.g. 'gold', 'platinum'
 
     # Privacy
@@ -209,7 +210,7 @@ class Preference(models.Model):
     min_height_inches = models.PositiveSmallIntegerField(blank=True, null=True)
     religion = models.CharField(max_length=20, choices=Religion.choices, blank=True, null=True)
     marital_statuses = models.JSONField(default=list, blank=True, null=True)    # e.g., ['never_married']
-    country = models.CharField(max_length=2, blank=True, null=True)
+    country = models.JSONField(default=list, blank=True, null=True)
     profession = models.JSONField(default=list, blank=True, null=True)
 
     # New survey fields
@@ -252,34 +253,79 @@ class Interest(models.Model):
         ('sent', 'Sent'),
         ('accepted', 'Accepted'),
         ('rejected', 'Rejected'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    REFUND_STATUS_CHOICES = [
+        ('none', 'No Refund'),
+        ('eligible', 'Refund Eligible'),
+        ('processed', 'Refund Processed'),
+    ]
+
+    SHARE_TYPE_CHOICES = [
+        ('none', 'None'),
+        ('bio_only', 'Bio Data Only'),
+        ('full', 'Full Bio Data (with Image)'),
     ]
 
     sender = models.ForeignKey(Profile, related_name='sent_interests', on_delete=models.CASCADE)
     receiver = models.ForeignKey(Profile, related_name='received_interests', on_delete=models.CASCADE)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='sent')
+    share_type = models.CharField(max_length=20, choices=SHARE_TYPE_CHOICES, default='none')
+    
+    # Refund tracking
+    refund_status = models.CharField(max_length=20, choices=REFUND_STATUS_CHOICES, default='none')
+    refund_processed_at = models.DateTimeField(null=True, blank=True)
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ('sender', 'receiver')
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['refund_status']),
+        ]
 
     def __str__(self):
         return f"{self.sender.name} -> {self.receiver.name} ({self.status})"
 
-class MatchUnlock(models.Model):
-    """
-    Tracks which user has paid credits to fully view another profile.
-    """
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='unlocked_profiles')
-    target_profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='unlocked_by_users')
-    unlocked_at = models.DateTimeField(auto_now_add=True)
+    def process_refund(self):
+        """
+        Process the refund of 1 credit to the sender.
+        """
+        from subscription.models import CreditWallet, Transaction
+        from django.utils import timezone
+        
+        if self.refund_status == 'processed':
+            return False
+            
+        wallet, created = CreditWallet.objects.get_or_create(user=self.sender.user)
+        refund_amount = 1
+        
+        wallet.add_credits(refund_amount)
+        
+        Transaction.objects.create(
+            user=self.sender.user,
+            amount=refund_amount,
+            currency='CREDITS',
+            gateway='admin',
+            status='completed',
+            purpose='chat_unlock', # Reusing same purpose or descriptive one
+            metadata={
+                'action': 'interest_refund',
+                'interest_id': self.id,
+                'receiver_name': self.receiver.name,
+                'reason': 'cancelled_or_timeout'
+            }
+        )
+        
+        self.refund_status = 'processed'
+        self.refund_processed_at = timezone.now()
+        self.save()
+        return True
 
-    class Meta:
-        unique_together = ('user', 'target_profile')
-
-    def __str__(self):
-        return f"{self.user.username} unlocked {self.target_profile.name}"
 
 class Notification(models.Model):
     """
@@ -478,5 +524,48 @@ class AnalyticsSnapshot(models.Model):
         verbose_name = "Analytics Snapshot"
         verbose_name_plural = "Analytics Snapshots"
     
+    
     def __str__(self):
         return f"{self.profile.user.username} - {self.date}"
+
+
+# ==================== MESSAGING SYSTEM MODELS ====================
+
+class AppConfig(models.Model):
+    """
+    Dynamic application configuration stored in database.
+    Allows admin to change settings without code deployment.
+    """
+    key = models.CharField(max_length=100, primary_key=True)
+    value = models.JSONField(help_text="Configuration value (can be string, number, object, etc.)")
+    description = models.TextField(blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "App Configuration"
+        verbose_name_plural = "App Configurations"
+    
+    def __str__(self):
+        return f"{self.key}: {self.value}"
+    
+    @classmethod
+    def get_value(cls, key, default=None):
+        """Get configuration value by key"""
+        try:
+            config = cls.objects.get(key=key)
+            return config.value
+        except cls.DoesNotExist:
+            return default
+    
+    @classmethod
+    def set_value(cls, key, value, description=None):
+        """Set or update configuration value"""
+        config, created = cls.objects.update_or_create(
+            key=key,
+            defaults={'value': value, 'description': description}
+        )
+        return config
+
+
+
+

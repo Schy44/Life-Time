@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import AnimatedBackground from '../components/AnimatedBackground';
@@ -8,7 +8,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import SectionCard from '../components/SectionCard';
 import InfoRow from '../components/InfoRow';
 import FaithTagsSection from '../components/FaithTagsSection';
-import { Lock } from 'lucide-react';
+import { Lock, Phone } from 'lucide-react';
 import {
   getProfileById,
   getProfile,
@@ -16,6 +16,7 @@ import {
   acceptInterest,
   rejectInterest,
   cancelInterest,
+  getCountries, // Import getCountries
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { FaCheckCircle, FaMapMarkerAlt, FaGraduationCap, FaBriefcase, FaHeart, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
@@ -23,6 +24,12 @@ import { useQuery } from '@tanstack/react-query';
 import { jsPDF } from 'jspdf';
 
 // InfoRow and SectionCard components now imported from separate files
+
+// Helper for formatting strings
+const formatString = (str) => {
+  if (typeof str !== 'string') return str;
+  return str.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+};
 
 const Skeleton = ({ className = '' }) => (
   <div className={`animate-pulse bg-gray-200 rounded ${className}`} />
@@ -88,6 +95,7 @@ function ImageViewer({ images, startIndex, onClose }) {
 export default function PublicProfilePage() {
   const { id } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Explicit no-blur style override: applied inline to elements that previously could be blurred
   const noBlurStyle = {
@@ -110,6 +118,20 @@ export default function PublicProfilePage() {
     queryFn: () => getProfileById(id),
   });
 
+  // Fetch countries for mapping
+  const { data: countries = [] } = useQuery({
+    queryKey: ['countries'],
+    queryFn: getCountries,
+    staleTime: Infinity,
+  });
+
+  // Helper to get country name
+  const getCountryName = (code) => {
+    if (!code) return '—';
+    const country = countries.find(c => c.code === code || c.value === code);
+    return country ? country.name : code;
+  };
+
   const {
     data: currentUserProfile,
   } = useQuery({
@@ -131,43 +153,128 @@ export default function PublicProfilePage() {
     }
   }, [profileData]);
 
-  // interest handlers (same as before)
   const safeAlert = msg => alert(msg);
-  const handleSendInterest = async () => { if (!profileData || !currentUserProfile) return; try { const res = await sendInterest(profileData.id); setInterestStatus(res); safeAlert('Interest sent'); } catch (err) { console.error(err); safeAlert('Failed to send interest'); } };
-  const handleAccept = async () => { try { await acceptInterest(interestStatus.id); setInterestStatus(prev => ({ ...prev, status: 'accepted' })); safeAlert('Interest accepted'); } catch (err) { console.error(err); safeAlert('Failed to accept'); } };
-  const handleReject = async () => { try { await rejectInterest(interestStatus.id); setInterestStatus(prev => ({ ...prev, status: 'rejected' })); safeAlert('Interest rejected'); } catch (err) { console.error(err); safeAlert('Failed to reject'); } };
-  const handleCancelInterest = async () => { try { await cancelInterest(interestStatus.id); setInterestStatus(null); safeAlert('Interest cancelled'); } catch (err) { console.error(err); safeAlert('Failed to cancel'); } };
+  const handleSendInterest = async () => {
+    if (!profileData || !currentUserProfile) return;
+    try {
+      const res = await sendInterest(profileData.id);
+      setInterestStatus(res);
+      // No alert for smoother flow
+    } catch (err) {
+      console.error(err);
+      // Handle insufficient credits error (HTTP 402)
+      if (err.response?.status === 402) {
+        const errorData = err.response.data;
+        const message = errorData.message || 'Insufficient credits to send interest request.';
+        if (window.confirm(`${message}\n\nWould you like to buy more credits?`)) {
+          navigate('/upgrade');
+        }
+      } else {
+        safeAlert(err.response?.data?.error || 'Failed to send interest');
+      }
+    }
+  };
+  const handleAccept = async () => { try { await acceptInterest(interestStatus.id); setInterestStatus(prev => ({ ...prev, status: 'accepted' })); } catch (err) { console.error(err); safeAlert('Failed to accept'); } };
+  const handleReject = async () => { try { await rejectInterest(interestStatus.id); setInterestStatus(prev => ({ ...prev, status: 'rejected' })); } catch (err) { console.error(err); safeAlert('Failed to reject'); } };
+  const handleCancelInterest = async () => { try { await cancelInterest(interestStatus.id); setInterestStatus(null); } catch (err) { console.error(err); safeAlert('Failed to cancel'); } };
   const handleUnlockProfile = async () => {
     if (!profileData) return;
     try {
       const res = await api.post('/profiles/unlock/', { profile_id: profileData.id });
       if (res.data.unlocked) {
         safeAlert('Profile unlocked successfully!');
-        window.location.reload(); // Refresh to get full data
+        window.location.reload();
       }
     } catch (err) {
       console.error(err);
-      safeAlert(err.response?.data?.error || 'Failed to unlock profile');
+      if (err.response?.status === 400 && err.response?.data?.error?.includes('credits')) {
+        if (window.confirm('Insufficient credits. Would you like to buy more?')) {
+          navigate('/upgrade');
+        }
+      } else {
+        safeAlert(err.response?.data?.error || 'Failed to unlock profile');
+      }
     }
   };
 
+
   const renderInterestControls = () => {
-    if (!user || !currentUserProfile || !profileData) return null;
-    if (currentUserProfile.id === profileData.id) return null;
-    if (!interestStatus) return <button onClick={handleSendInterest} className="px-4 py-2 rounded-md bg-indigo-600 text-white font-medium focus:outline-none focus:ring-2 focus:ring-indigo-300">Get Connected </button>;
-    const isSender = interestStatus.sender?.id === currentUserProfile.id;
-    const isReceiver = interestStatus.receiver?.id === currentUserProfile.id;
-    if (isSender) {
-      if (interestStatus.status === 'sent') return <button onClick={handleCancelInterest} className="px-4 py-2 rounded-md bg-gray-200">Cancel</button>;
-      if (interestStatus.status === 'accepted') return <button className="px-4 py-2 rounded-md bg-green-600 text-white">Accepted</button>;
-      if (interestStatus.status === 'rejected') return <button onClick={handleSendInterest} className="px-4 py-2 rounded-md bg-indigo-600 text-white">Send Again</button>;
+    if (!user || !profileData) return null;
+    if (!currentUserProfile) return <div className="animate-pulse h-10 w-32 bg-gray-200 rounded-md"></div>;
+
+    const currentUserId = String(currentUserProfile.id);
+    const profileId = String(profileData.id);
+
+    // Don't show controls on your own profile
+    if (currentUserId === profileId) return null;
+
+    // Determine current status (handle null or cancelled/rejected)
+    const status = interestStatus?.status;
+    const isSender = interestStatus && String(interestStatus.sender?.id || interestStatus.sender) === currentUserId;
+    const isReceiver = interestStatus && String(interestStatus.receiver?.id || interestStatus.receiver) === currentUserId;
+
+    // Case 1: No active/pending interest or it was cancelled/rejected
+    if (!interestStatus || status === 'cancelled' || status === 'rejected') {
+      return (
+        <button
+          onClick={handleSendInterest}
+          className="px-6 py-2.5 rounded-full bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95"
+        >
+          Get Connected
+        </button>
+      );
     }
-    if (isReceiver) {
-      if (interestStatus.status === 'sent') return (<div className="flex gap-2"><button onClick={handleAccept} className="px-3 py-2 rounded-md bg-green-600 text-white">Accept</button><button onClick={handleReject} className="px-3 py-2 rounded-md bg-gray-200">Reject</button></div>);
-      if (interestStatus.status === 'accepted') return <button className="px-4 py-2 rounded-md bg-green-600 text-white">Accepted</button>;
-      if (interestStatus.status === 'rejected') return <button onClick={handleSendInterest} className="px-4 py-2 rounded-md bg-indigo-600 text-white">Send Interest</button>;
+
+    // Case 2: Interest is Sent (Pending)
+    if (status === 'sent') {
+      if (isSender) {
+        return (
+          <button
+            onClick={handleCancelInterest}
+            className="px-6 py-2.5 rounded-full bg-gray-100 text-gray-500 font-black text-xs uppercase tracking-widest border border-gray-200 hover:bg-gray-200 transition-all active:scale-95"
+          >
+            Cancel Request
+          </button>
+        );
+      }
+      if (isReceiver) {
+        return (
+          <div className="flex gap-2">
+            <button
+              onClick={handleAccept}
+              className="px-6 py-2.5 bg-emerald-500 text-white font-black text-xs uppercase tracking-widest rounded-full shadow-lg shadow-emerald-200 hover:bg-emerald-600 transition-all active:scale-95"
+            >
+              Accept
+            </button>
+            <button
+              onClick={handleReject}
+              className="px-6 py-2.5 bg-gray-100 text-gray-600 font-black text-xs uppercase tracking-widest rounded-full border border-gray-200 hover:bg-gray-200 transition-all active:scale-95"
+            >
+              Reject
+            </button>
+          </div>
+        );
+      }
     }
-    return null;
+
+    // Case 3: Interest is Accepted (Connected)
+    if (status === 'accepted') {
+      return (
+        <div className="flex items-center gap-2 px-6 py-2.5 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 font-black text-xs uppercase tracking-widest">
+          <FaCheckCircle size={14} /> Connected
+        </div>
+      );
+    }
+
+    // Default fallback
+    return (
+      <button
+        onClick={handleSendInterest}
+        className="px-6 py-2.5 rounded-full bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95"
+      >
+        Get Connected
+      </button>
+    );
   };
 
   if (isLoading) {
@@ -189,7 +296,7 @@ export default function PublicProfilePage() {
     looking_for = '',
     profile_for,
     gender,
-    height_cm,
+    height_inches,
     skin_complexion,
     religion,
     alcohol,
@@ -220,7 +327,8 @@ export default function PublicProfilePage() {
   } = profileData;
 
   const age = date_of_birth ? new Date().getFullYear() - new Date(date_of_birth).getFullYear() : '—';
-  const images = [profile_image, ...additional_images.map(a => a.image_url)].filter(Boolean);
+  const additionalUrls = (additional_images || []).map(a => (typeof a === 'string' ? a : a.image_url || a.url)).filter(Boolean);
+  const images = [profile_image, ...additionalUrls];
 
   const formattedUpdated = updated_at ? new Date(updated_at).toLocaleDateString() : '—';
   const formattedCreated = created_at ? new Date(created_at).toLocaleDateString() : '—';
@@ -358,8 +466,9 @@ export default function PublicProfilePage() {
     yLeft = y;
     drawInfoRow("Age", age || '—', 'left');
     if (marital_status) drawInfoRow("Status", marital_status, 'left');
-    if (height_cm) drawInfoRow("Height", `${height_cm} cm`, 'left');
+    if (height_inches) drawInfoRow("Height", `${Math.floor(height_inches / 12)}'${height_inches % 12}"`, 'left');
     if (religion) drawInfoRow("Religion", religion, 'left');
+    if (is_unlocked && profileData.phone) drawInfoRow("Contact", profileData.phone, 'left');
 
     // LOCATION INFO
     y = initialY;
@@ -371,10 +480,10 @@ export default function PublicProfilePage() {
     y += 20;
     yRight = y;
 
-    if (current_city && current_country) drawInfoRow("Current", `${current_city}, ${current_country}`, 'right');
+    if (current_city && current_country) drawInfoRow("Current", `${current_city}, ${getCountryName(current_country)}`, 'right');
     else if (current_city) drawInfoRow("Current", current_city, 'right');
 
-    if (origin_city && origin_country) drawInfoRow("Origin", `${origin_city}, ${origin_country}`, 'right');
+    if (origin_city && origin_country) drawInfoRow("Origin", `${origin_city}, ${getCountryName(origin_country)}`, 'right');
     else if (origin_city) drawInfoRow("Origin", origin_city, 'right');
 
     if (citizenship) drawInfoRow("Citizenship", citizenship, 'right');
@@ -477,11 +586,11 @@ export default function PublicProfilePage() {
     <>
       <AnimatedBackground />
 
-      <main className="min-h-screen p-0 bg-gray-50 dark:bg-gray-900">
+      <main className="min-h-screen p-0 bg-transparent">
         <div className="w-full flex justify-center">
           <div className="w-full max-w-screen-xl px-6">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md overflow-hidden" style={{ transformStyle: 'preserve-3d', ...noBlurStyle }}>
-              <div className="p-6">
+            <div className="bg-transparent overflow-hidden" style={{ transformStyle: 'preserve-3d', ...noBlurStyle }}>
+              <div className="pt-6">
                 {/* header */}
                 <div className="flex flex-col md:flex-row items-start justify-between gap-4 md:gap-0 mb-6">
                   <div>
@@ -529,51 +638,71 @@ export default function PublicProfilePage() {
                         <div className="absolute top-3 right-3 bg-white/90 dark:bg-gray-800/90 px-3 py-1 rounded-full text-xs font-semibold text-gray-800 dark:text-white z-10 shadow">{images.length} Photos</div>
                       )}
 
-                      <img
-                        role="button"
-                        onClick={() => is_unlocked && setViewerOpen(true)}
-                        key={activeImageIndex}
-                        src={images[activeImageIndex] || '/placeholder-profile.png'}
-                        alt={`Profile image ${activeImageIndex + 1}`}
-                        className={`w-full h-72 object-cover rounded-xl transition-all duration-500 ${!is_unlocked ? 'profile-image-blurred scale-105' : ''}`}
-                        loading="lazy"
-                        style={is_unlocked ? noBlurStyle : {}}
-                      />
+                      {/* Helper to check if images should be unblurred:
+                          If back-end returns the URL, it means the user has permission to see it (public OR matched).
+                          If back-end returns null/empty, it's private and we show a blurred placeholder.
+                      */}
+                      {(() => {
+                        const canSeeProfileImage = !!profile_image || is_unlocked;
+                        const canSeeAdditionalImages = (additional_images && additional_images.length > 0) || is_unlocked;
 
-                      {!is_unlocked && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-black/10 backdrop-blur-[2px]">
-                          <div className="bg-white/90 dark:bg-gray-800/90 p-4 rounded-2xl shadow-xl max-w-[200px]">
-                            <FaHeart className="mx-auto text-red-500 mb-2" size={24} />
-                            <p className="text-[10px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider mb-2">Private Profile</p>
-                            <p className="text-[9px] text-gray-500 dark:text-gray-400 leading-tight">Connect and unlock to see full photos</p>
-                          </div>
-                        </div>
-                      )}
+                        return (
+                          <>
+                            <img
+                              role="button"
+                              onClick={() => canSeeProfileImage && setViewerOpen(true)}
+                              key={activeImageIndex}
+                              src={images[activeImageIndex] || '/placeholder-profile.png'}
+                              alt={`Profile image ${activeImageIndex + 1}`}
+                              className={`w-full h-72 object-cover rounded-xl transition-all duration-500 ${!canSeeProfileImage ? 'profile-image-blurred scale-105' : ''}`}
+                              loading="lazy"
+                              style={canSeeProfileImage ? noBlurStyle : {}}
+                            />
+
+                            {!canSeeProfileImage && (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-black/10 backdrop-blur-[2px]">
+                                <div className="bg-white/90 dark:bg-gray-800/90 p-4 rounded-2xl shadow-xl max-w-[200px]">
+                                  <FaHeart className="mx-auto text-red-500 mb-2" size={24} />
+                                  <p className="text-[10px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider mb-2">Private Profile</p>
+                                  <p className="text-[9px] text-gray-500 dark:text-gray-400 leading-tight">Connect and unlock to see full photos</p>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
 
                     <div className="grid grid-cols-4 gap-2">
                       {images.length ? (
-                        images.map((src, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => is_unlocked && setActiveImageIndex(idx)}
-                            aria-label={`Thumbnail ${idx + 1}`}
-                            className={`h-20 rounded-md overflow-hidden border relative group/thumb ${idx === activeImageIndex ? 'ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-600'} focus:outline-none ${!is_unlocked ? 'cursor-not-allowed' : ''}`}
-                          >
-                            <img
-                              src={src}
-                              alt={`Thumb ${idx + 1}`}
-                              className={`w-full h-full object-cover transition-all duration-300 ${!is_unlocked ? 'profile-image-blurred scale-125' : ''}`}
-                              loading="lazy"
-                              style={is_unlocked ? noBlurStyle : {}}
-                            />
-                            {!is_unlocked && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/thumb:bg-black/10 transition-colors">
-                                <Lock size={12} className="text-white/80" />
-                              </div>
-                            )}
-                          </button>
-                        ))
+                        images.map((src, idx) => {
+                          const isMainImage = idx === 0;
+                          const canSeeThisImage = isMainImage
+                            ? (!!profile_image || is_unlocked)
+                            : ((additional_images && additional_images.length > 0) || is_unlocked);
+
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => canSeeThisImage && setActiveImageIndex(idx)}
+                              aria-label={`Thumbnail ${idx + 1}`}
+                              className={`h-20 rounded-md overflow-hidden border relative group/thumb ${idx === activeImageIndex ? 'ring-2 ring-indigo-400' : 'border-gray-200 dark:border-gray-600'} focus:outline-none ${!canSeeThisImage ? 'cursor-not-allowed' : ''}`}
+                            >
+                              <img
+                                src={src}
+                                alt={`Thumb ${idx + 1}`}
+                                className={`w-full h-full object-cover transition-all duration-300 ${!canSeeThisImage ? 'profile-image-blurred scale-125' : ''}`}
+                                loading="lazy"
+                                style={canSeeThisImage ? noBlurStyle : {}}
+                              />
+                              {!canSeeThisImage && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/thumb:bg-black/10 transition-colors">
+                                  <Lock size={12} className="text-white/80" />
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })
                       ) : (
                         <div className="col-span-4 text-center text-gray-500">No photos</div>
                       )}
@@ -591,35 +720,74 @@ export default function PublicProfilePage() {
                           ].filter(Boolean)} />
                         </div>
 
-                        <div>
-                          {!is_unlocked && interestStatus?.status === 'accepted' ? (
+                        <div className="flex flex-col gap-2">
+
+                          {!is_unlocked && interestStatus?.status === 'accepted' && (
                             <button
                               onClick={handleUnlockProfile}
-                              className="px-6 py-2.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs shadow-lg hover:shadow-orange-200 transition-all flex items-center gap-2"
+                              className="px-6 py-2.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs shadow-lg hover:shadow-orange-200 transition-all flex items-center justify-center gap-2"
                             >
+                              <Lock size={12} />
                               Unlock Full Access (10 Credits)
                             </button>
-                          ) : renderInterestControls()}
+                          )}
+
+                          {interestStatus?.status !== 'accepted' && renderInterestControls()}
+
+                          {interestStatus?.status === 'accepted' && !is_unlocked && (
+                            <Link
+                              to="/upgrade"
+                              className="text-[10px] text-indigo-600 hover:underline text-center font-medium mt-1"
+                            >
+                              Need more credits? Buy here
+                            </Link>
+                          )}
                         </div>
                       </div>
 
-                      {/* Faith Tags - Display under photo section */}
+                      {/* Faith Tags */}
                       {faith_tags && faith_tags.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">My Faith</h3>
+                        <div className="mt-4">
                           <FaithTagsSection selectedTags={faith_tags} isEditing={false} />
                         </div>
                       )}
 
-                      {/* Partner Expectations - Display under Faith Tags */}
-                      {looking_for && (
-                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Partner Expectations</h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                            {looking_for}
+                      {/* Looking For Section (Red Mark in User Screenshot) */}
+                      <div className="mt-4">
+                        <SectionCard
+                          title="Looking For"
+                          icon={<FaHeart className="text-red-500" size={14} />}
+                          className="!bg-rose-50/30 !border-rose-100"
+                        >
+                          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed italic">
+                            {looking_for ? `"${looking_for}"` : "No special requirements specified yet."}
                           </p>
-                        </div>
-                      )}
+                        </SectionCard>
+                      </div>
+
+                      {/* Contact Number Section (Green Mark in User Screenshot) */}
+                      <div className="mt-4">
+                        <SectionCard
+                          title="Contact Number"
+                          icon={<Phone className="text-emerald-500" size={14} />}
+                          className="!bg-emerald-50/30 !border-emerald-100"
+                          isLocked={!is_unlocked}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
+                              <Phone size={16} />
+                            </div>
+                            <div>
+                              <p className="text-sm font-black text-gray-900 dark:text-white">
+                                {is_unlocked ? (profileData.phone || 'Not provided') : 'XXXXXXXXXX'}
+                              </p>
+                              {!is_unlocked && (
+                                <p className="text-[10px] text-gray-400 font-medium">Connect to view contact</p>
+                              )}
+                            </div>
+                          </div>
+                        </SectionCard>
+                      </div>
                     </div>
                   </div>
 
@@ -627,30 +795,41 @@ export default function PublicProfilePage() {
                   <div className="lg:col-span-2 space-y-4">
                     <SectionCard title="About" icon={<div className="text-indigo-600">•</div>}>
                       <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{about || 'No description provided.'}</p>
-                      <InfoRow label="Full name" value={name} />
-                      {profile_for && <InfoRow label="Profile for" value={profile_for.replace('_', ' ')} />}
-                      <InfoRow label="Gender" value={gender || '—'} />
-                      <InfoRow label="Relationship" value={marital_status || '—'} />
-                      <InfoRow label="Religion" value={religion || '—'} />
-                      <InfoRow label="Height" value={height_cm ? `${height_cm} cm` : '—'} />
-                      {skin_complexion && <InfoRow label="Skin complexion" value={skin_complexion} />}
                     </SectionCard>
 
-                    {/* NEW: Basics */}
-                    <SectionCard title="Basics" icon={<div className="text-indigo-600">•</div>}>
+                    {/* Basic Information */}
+                    <SectionCard title="Basic Information" icon={<FaHeart size={20} className="text-indigo-600" />}>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <InfoRow label="Blood group" value={blood_group || '—'} />
+                        {profile_for && <InfoRow label="Profile created by" value={profile_for === 'self' || profile_for === 'Self' ? 'Self' : `Parent/Relative (${profile_for})`} />}
+                        {gender && <InfoRow label="Gender" value={formatString(gender)} />}
+                        {height_inches && <InfoRow label="Height" value={`${Math.floor(height_inches / 12)}'${height_inches % 12}"`} />}
+                        {skin_complexion && <InfoRow label="Skin Complexion" value={formatString(skin_complexion)} />}
+                        {marital_status && <InfoRow label="Relationship" value={formatString(marital_status)} />}
+                        {religion && <InfoRow label="Religion" value={formatString(religion)} />}
+                        {blood_group && <InfoRow label="Blood group" value={blood_group} />}
                       </div>
                     </SectionCard>
 
-                    {/* NEW: Location & Residency */}
+                    {/* Basics */}
+                    {/* Removed Basics Card as per request, moved content to Basic Information */}
+
+                    {/* Location & Residency */}
                     <SectionCard title="Location & Residency" icon={<FaMapMarkerAlt className="text-gray-700" />}>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <InfoRow label="Current city" value={current_city || '—'} />
-                        <InfoRow label="Current country" value={current_country || '—'} />
-                        <InfoRow label="Origin city" value={origin_city || '—'} />
-                        <InfoRow label="Origin country" value={origin_country || '—'} />
-                        <InfoRow label="Visa status" value={visa_status || '—'} />
+                        {citizenship && <InfoRow label="Citizenship" value={formatString(citizenship)} />}
+                        {(current_city || current_country) && (
+                          <InfoRow
+                            label="Current Location"
+                            value={[current_city, getCountryName(current_country)].filter(Boolean).join(', ')}
+                          />
+                        )}
+                        {(origin_city || origin_country) && (
+                          <InfoRow
+                            label="Origin"
+                            value={[origin_city, getCountryName(origin_country)].filter(Boolean).join(', ')}
+                          />
+                        )}
+                        {visa_status && <InfoRow label="Visa status" value={formatString(visa_status)} />}
                       </div>
                     </SectionCard>
 
@@ -688,24 +867,7 @@ export default function PublicProfilePage() {
                       )}
                     </SectionCard>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <SectionCard title="Lifestyle" icon={<div className="text-indigo-600">•</div>} isLocked={!is_unlocked}>
-                        <InfoRow label="Alcohol" value={alcohol || '—'} />
-                        <InfoRow label="Smoking" value={smoking || '—'} />
-                      </SectionCard>
 
-                      <SectionCard title="Preferences" icon={<FaHeart className="text-red-500" />} isLocked={!is_unlocked}>
-                        {preferences && preferences[0] ? (
-                          <div className="flex flex-wrap gap-2">
-                            {Object.entries(preferences[0]).slice(0, 12).map(([k, v]) => (
-                              <span key={k} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-sm text-gray-800 dark:text-gray-200">{k.replace(/_/g, ' ')}: {String(v)}</span>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-sm text-gray-700 dark:text-gray-400">Not provided</div>
-                        )}
-                      </SectionCard>
-                    </div>
 
                     <SectionCard title="Education" icon={<FaGraduationCap className="text-gray-700" />}>
                       {education.length ? (

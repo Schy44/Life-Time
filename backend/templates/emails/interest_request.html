@@ -1,0 +1,36 @@
+{% extends 'emails/base_email.html' %}
+
+{% block content %}
+<h1>New Interest Request</h1>
+
+<p>Hello <span class="highlight">{{ receiver_name }}</span>,</p>
+
+<p><span class="highlight">{{ sender_name }}</span> from <span class="highlight">{{ sender_location }}</span> is
+    interested in your profile and wants to see your full bio-data.</p>
+
+<p>How would you like to respond?</p>
+
+<div style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+    <a href="{{ full_accept_url }}" class="button" style="background-color: #4f46e5; color: white;">
+        Share Full Bio-data (including Image)
+    </a>
+
+    <br>
+
+    <a href="{{ bio_only_url }}" class="button"
+        style="background-color: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; box-shadow: none;">
+        Share Full Bio-data (without Image)
+    </a>
+
+    <div style="margin-top: 20px;">
+        <a href="{{ reject_url }}" style="color: #ef4444; text-decoration: none; font-size: 14px; font-weight: 500;">
+            Wait, I'm not interested
+        </a>
+    </div>
+</div>
+
+<p style="margin-top: 40px; font-size: 14px; color: #64748b;">
+    You can also view their profile by <a href="{{ frontend_url }}" style="color: #4f46e5;">logging into your
+        account</a>.
+</p>
+{% endblock %}

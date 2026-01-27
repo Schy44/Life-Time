@@ -12,25 +12,25 @@ const PreviewModal = ({ profileData, onClose }) => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="relative w-full max-w-6xl bg-gray-50 rounded-2xl shadow-2xl my-8"
+                className="relative w-full max-w-6xl bg-transparent my-8"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Close button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 z-10 bg-white rounded-full p-3 shadow-lg hover:bg-gray-100 transition"
+                    className="absolute top-4 right-4 z-10 bg-white dark:bg-gray-700/50 rounded-full p-3 shadow-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition"
                     aria-label="Close preview"
                 >
-                    <FaTimes className="text-gray-700" />
+                    <FaTimes className="text-gray-700 dark:text-gray-200" />
                 </button>
 
                 {/* Header */}
-                <div className="bg-white dark:bg-gray-800 text-gray-800 dark:text-white p-6 rounded-t-2xl border-b border-gray-200 dark:border-gray-700">
+                <div className="bg-transparent text-gray-800 dark:text-white p-6 pb-0">
                     <h2 className="text-2xl font-bold">Preview</h2>
                 </div>
 
                 {/* Content - using actual PublicProfileView component */}
-                <div className="p-6 max-h-[80vh] overflow-y-auto">
+                <div className="p-6 pt-0 max-h-[80vh] overflow-y-auto no-scrollbar">
                     <PublicProfileView
                         profileData={profileData}
                         isPreview={true}

@@ -3,7 +3,7 @@ from .models import SubscriptionPlan, UserSubscription, CreditWallet, Transactio
 
 @admin.register(SubscriptionPlan)
 class SubscriptionPlanAdmin(admin.ModelAdmin):
-    list_display = ('name', 'slug', 'price_usd', 'credit_amount', 'duration_days', 'is_active')
+    list_display = ('name', 'slug', 'price_bdt', 'base_currency', 'credit_amount', 'duration_days', 'is_active')
     list_filter = ('is_active',)
     search_fields = ('name', 'slug')
 

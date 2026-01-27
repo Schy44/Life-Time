@@ -14,7 +14,7 @@ import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FaEdit, FaEye, FaTimes, FaSave } from 'react-icons/fa';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getProfile } from '../services/api';
+import { getProfile, getCountries } from '../services/api'; // Import getCountries
 import apiClient from '../lib/api';
 
 const ProfilePage = () => {
@@ -60,6 +60,20 @@ const ProfilePage = () => {
     staleTime: 1000 * 60 * 5, // 5 minutes: treat data as fresh
     refetchOnWindowFocus: false, // we'll handle focus manually
   });
+
+  // Fetch countries for mapping
+  const { data: countries = [] } = useQuery({
+    queryKey: ['countries'],
+    queryFn: getCountries,
+    staleTime: Infinity,
+  });
+
+  // Helper to get country name
+  const getCountryName = (code) => {
+    if (!code) return '—';
+    const country = countries.find(c => c.code === code || c.value === code);
+    return country ? country.name : code;
+  };
 
   // Normalize and sync query data into local state for existing logic
   useEffect(() => {
@@ -222,9 +236,9 @@ const ProfilePage = () => {
     },
     locationResidency: {
       current_city: current_city,
-      current_country: current_country,
+      current_country: getCountryName(current_country),
       origin_city: origin_city,
-      origin_country: origin_country,
+      origin_country: getCountryName(origin_country),
       visa_status: visa_status,
     },
     family: {
@@ -290,10 +304,10 @@ const ProfilePage = () => {
   return (
     <>
       <AnimatedBackground />
-      <main className="min-h-screen p-0 bg-gray-50 dark:bg-gray-900">
+      <main className="min-h-screen p-0 bg-transparent">
         <div className="w-full flex justify-center">
           <div className="w-full max-w-screen-xl px-6 py-8">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md overflow-hidden p-6">
+            <div className="bg-transparent overflow-visible p-0">
               {/* Action Buttons - Always visible */}
               <div className="flex justify-end gap-3 mb-6">
                 {!editSection ? (

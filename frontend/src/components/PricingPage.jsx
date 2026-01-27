@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import GlassCard from './GlassCard';
-import { CheckCircle, XCircle, Star, Zap, Loader2 } from 'lucide-react';
-import axios from 'axios';
+import { CheckCircle, XCircle, Star, Zap, Loader2, Clock } from 'lucide-react';
+import apiClient from '../lib/api';
 import PaymentMethodModal from './PaymentMethodModal';
+import { useNavigate } from 'react-router-dom';
 
 const Feature = ({ included, text }) => (
   <li className="flex items-center space-x-3 text-gray-700 dark:text-gray-300">
@@ -16,9 +17,9 @@ const Feature = ({ included, text }) => (
   </li>
 );
 
-const PricingCard = ({ plan, selectedPlan, onSelect }) => {
+const PricingCard = ({ plan, selectedPlan, onSelect, isFeatured: isFeaturedProp }) => {
   const isSelected = selectedPlan === plan.slug;
-  const isFeatured = plan.slug === 'yearly' || plan.slug === 'platinum'; // Logic for featured
+  const isFeatured = isFeaturedProp || plan.slug === 'bundle_10'; // Updated logic
 
   const cardVariants = {
     hidden: { opacity: 0, y: 50 },
@@ -78,14 +79,26 @@ const PricingCard = ({ plan, selectedPlan, onSelect }) => {
     }
   }
 
-  // Backup Manual Features if none from DB (for safety)
-  if (featuresList.length === 0) {
-    featuresList = [
-      { text: 'Access to Profile Listings', included: true },
-      { text: `${plan.credit_amount} Credits included`, included: plan.credit_amount > 0 },
-      { text: 'Verified Badge', included: plan.slug !== 'free' },
-      { text: 'Priority Support', included: plan.slug === 'yearly' },
-    ];
+  // Enhanced Manual Features for new plan types
+  if (featuresList.length === 0 || plan.features?.type) {
+    if (plan.slug === 'activation') {
+      featuresList = [
+        { text: 'Profile Visibility to All Users', included: true },
+        { text: 'Send Connection Requests', included: true },
+        { text: 'Basic Search Access', included: true },
+        { text: 'Verified Badge (after ID check)', included: true },
+      ];
+    } else if (plan.features?.type === 'bundle') {
+      featuresList = [
+        { text: `Includes ${plan.credit_amount} Profile Unlocks`, included: true },
+        { text: 'View Full Bio & Family Details', included: true },
+        { text: 'Access to Biodata PDF Download', included: true },
+        { text: 'Permanent Credits (No Expiry)', included: true },
+      ];
+      if (plan.features?.discount) {
+        featuresList.push({ text: `Save ${plan.features.discount} vs Single`, included: true });
+      }
+    }
   }
 
   return (
@@ -119,10 +132,12 @@ const PricingCard = ({ plan, selectedPlan, onSelect }) => {
         </div>
 
         <div className="mb-8 text-center">
-          <span className="text-5xl font-extrabold text-gray-800 dark:text-white">${plan.price_usd}</span>
-          <span className="text-lg font-medium text-gray-600 dark:text-gray-300">
-            {plan.duration_days > 0 ? ` / ${plan.duration_days} days` : ''}
+          <span className="text-5xl font-extrabold text-gray-800 dark:text-white">
+            {plan.price_bdt === 0 ? 'Free' : `৳${plan.price_bdt}`}
           </span>
+          <p className="text-sm text-gray-500 mt-2">
+            approx. ${(plan.price_bdt * 0.0085).toFixed(2)} USD
+          </p>
         </div>
 
         {plan.credit_amount > 0 && (
@@ -149,7 +164,7 @@ const PricingCard = ({ plan, selectedPlan, onSelect }) => {
               : 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-white/20 dark:text-white dark:hover:bg-white/30'
             }`}
         >
-          {plan.slug === 'free' ? 'Current Plan' : 'Choose Plan'}
+          {plan.slug === 'activation' ? 'Activate Now' : 'Get Credits'}
         </motion.button>
       </GlassCard>
     </motion.div>
@@ -253,6 +268,7 @@ const CreditBundleCard = ({ title, credits, price, benefit, popular, onSelect })
 );
 
 const PricingPage = () => {
+  const navigate = useNavigate();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -265,9 +281,10 @@ const PricingPage = () => {
   useEffect(() => {
     const fetchPlans = async () => {
       try {
-        const response = await axios.get('http://127.0.0.1:8000/api/subscription/plans/');
+        const response = await apiClient.get('/subscription/plans/');
         // Sort: Free -> Monthly -> Yearly
-        const sorted = response.data.sort((a, b) => a.price_usd - b.price_usd);
+        // Sort: Free -> Packages by price
+        const sorted = response.data.sort((a, b) => a.price_bdt - b.price_bdt);
         setPlans(sorted);
       } catch (error) {
         console.error("Failed to fetch plans", error);
@@ -319,7 +336,7 @@ const PricingPage = () => {
             viewport={{ once: true, amount: 0.5 }}
             className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-800 dark:text-white mb-4"
           >
-            Choose Your Journey
+            Pricing & Credits
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -328,59 +345,46 @@ const PricingPage = () => {
             transition={{ delay: 0.2 }}
             className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto"
           >
-            Select a plan that aligns with your aspirations and unlock a world of meaningful connections.
+            Activate your profile to start connecting, then use credits to unlock full profile details.
           </motion.p>
-        </div>
-
-        {/* Subscription Plans */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch mb-24 max-w-6xl mx-auto">
-          {plans.map((plan, index) => (
-            <PricingCard
-              key={plan.slug}
-              plan={plan}
-              selectedPlan={selectedPlan}
-              onSelect={handlePlanSelect}
-            />
-          ))}
-        </div>
-
-        {/* Comparison Table */}
-        <div className="mb-24 max-w-5xl mx-auto">
-          <ComparisonTable plans={plans} />
         </div>
 
         {/* Credit Bundles */}
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h3 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Need More Power?</h3>
-            <p className="text-gray-600 dark:text-gray-400">Top-up credits instantly to send more connection requests.</p>
+            <h3 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Choose Your Credit Bundle</h3>
+            <p className="text-gray-600 dark:text-gray-400">Unlock profiles to see details of your potential matches</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <CreditBundleCard
-              title="Starter Stash"
-              credits={100}
-              price={10}
-              benefit="Perfect for sending ~10 extra connection requests."
-              onSelect={handleCreditSelect}
-            />
-            <CreditBundleCard
-              title="Connector's Bag"
-              credits={550}
-              price={50}
-              popular={true}
-              benefit="Best Value! Get 10% Bonus Credits. Approx 55 requests."
-              onSelect={handleCreditSelect}
-            />
-            <CreditBundleCard
-              title="Socialite's Chest"
-              credits={1200}
-              price={100}
-              benefit="Maximum Power! 20% Bonus Credits. Dominate the search."
-              onSelect={handleCreditSelect}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {plans.filter(p => p.slug.startsWith('bundle_')).map(plan => (
+              <PricingCard
+                key={plan.slug}
+                plan={plan}
+                selectedPlan={selectedPlan}
+                onSelect={handlePlanSelect}
+                isFeatured={plan.slug === 'bundle_10'}
+              />
+            ))}
           </div>
         </div>
+
+        {/* Credit History Link */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.5 }}
+          className="mt-16 text-center"
+        >
+          <button
+            onClick={() => navigate('/credit-history')}
+            className="inline-flex items-center gap-2 text-gray-500 hover:text-purple-500 transition-colors font-medium border-b border-gray-500/20 hover:border-purple-500/50 pb-1 group"
+          >
+            <Clock size={16} className="group-hover:rotate-12 transition-transform" />
+            View My Credit & Transaction History
+          </button>
+        </motion.div>
 
       </div>
     </section>

@@ -251,10 +251,20 @@ const InterestsSection = ({ interests = [], currentUserProfile, onUpdate = () =>
         setLocalInterests(prev => [res.data, ...prev]);
       }
       await onUpdate();
-      alert('Interest re-sent successfully!');
+      const creditsInfo = res.data.credits_deducted ? ` (${res.data.credits_deducted} credit used, ${res.data.new_balance} remaining)` : '';
+      alert(`Interest re-sent successfully!${creditsInfo}`);
     } catch (err) {
       console.error('Send again failed', err);
-      alert('Failed to re-send interest. Try again.');
+      // Handle insufficient credits error (HTTP 402)
+      if (err.response?.status === 402) {
+        const errorData = err.response.data;
+        const message = errorData.message || 'Insufficient credits to send interest request.';
+        if (window.confirm(`${message}\n\nWould you like to buy more credits?`)) {
+          window.location.href = '/upgrade';
+        }
+      } else {
+        alert(err.response?.data?.error || 'Failed to re-send interest. Try again.');
+      }
     } finally {
       setIsProcessing(false);
     }

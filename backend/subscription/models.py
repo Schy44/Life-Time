@@ -7,16 +7,17 @@ class SubscriptionPlan(models.Model):
     # Removed hardcoded choices to allow flexible naming via API/Admin
     name = models.CharField(max_length=100, unique=True)
     slug = models.SlugField(primary_key=True)
-    price_usd = models.DecimalField(max_digits=6, decimal_places=2, help_text="Price in USD")
-    credit_amount = models.PositiveIntegerField(default=0, help_text="Credits given per renewal")
-    duration_days = models.PositiveIntegerField(help_text="Duration in days. 0 for infinite/free.")
+    price_bdt = models.DecimalField(max_digits=10, decimal_places=2, help_text="Price in BDT (Base Currency)")
+    base_currency = models.CharField(max_length=3, default='BDT')
+    credit_amount = models.PositiveIntegerField(default=0, help_text="Credits given (for bundles)")
+    duration_days = models.PositiveIntegerField(default=0, help_text="Duration in days. 0 for permanent.")
     description = models.TextField(blank=True)
     features = models.JSONField(default=dict, blank=True, help_text="Feature flags and limits")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.name} (${self.price_usd})"
+        return f"{self.name} ({self.price_bdt} {self.base_currency})"
 
 class UserSubscription(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='subscription')
@@ -68,13 +69,15 @@ class Transaction(models.Model):
         ('failed', 'Failed'),
     )
     PURPOSE_CHOICES = (
-        ('subscription', 'Subscription'),
+        ('subscription', 'Subscription (Legacy)'),
+        ('profile_activation', 'Profile Activation'),
         ('credit_topup', 'Credit Top-up'),
+        ('chat_unlock', 'Chat Unlock'),
     )
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='transactions')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    currency = models.CharField(max_length=3, default='USD')
+    currency = models.CharField(max_length=10, default='USD')  # Increased to support 'CREDITS'
     gateway = models.CharField(max_length=20, choices=GATEWAY_CHOICES)
     transaction_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')

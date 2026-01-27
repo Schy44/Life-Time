@@ -10,6 +10,11 @@ export const getProfessions = async () => {
     return response.data;
 };
 
+export const getEducationDegrees = async () => {
+    const response = await apiClient.get('/education-degrees/');
+    return response.data;
+};
+
 export const getProfiles = async (params = {}) => {
     const response = await apiClient.get('/profiles/', { params });
     return response.data;

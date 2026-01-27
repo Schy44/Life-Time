@@ -1,0 +1,46 @@
+{% extends 'emails/base_email.html' %}
+
+{% block content %}
+    <h1>Payment Successful!</h1>
+    
+    <p>Hello <span class="highlight">{{ user_name }}</span>,</p>
+    
+    <p>We are pleased to confirm that we have received your payment. Your account has been updated successfully.</p>
+    
+    <div class="info-box">
+        <div class="info-row">
+            <span class="label">Transaction ID</span>
+            <span class="value">{{ transaction_id }}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">Date</span>
+            <span class="value">{{ date }}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">Amount Paid</span>
+            <span class="value">{{ amount }} {{ currency }}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">Payment Purpose</span>
+            <span class="value" style="text-transform: capitalize;">{{ purpose_display }}</span>
+        </div>
+    </div>
+
+    {% if is_activation %}
+    <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 15px; margin: 20px 0; text-align: center;">
+        <p style="color: #047857; margin: 0; font-weight: 600;">✅ Your Profile is Now Activated</p>
+        <p style="color: #065f46; font-size: 14px; margin-top: 5px;">You are now visible to all members and can start connecting.</p>
+    </div>
+    {% endif %}
+
+    {% if credits_added %}
+    <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 15px; margin: 20px 0; text-align: center;">
+        <p style="color: #1e40af; margin: 0; font-weight: 600;">💎 {{ credits_added }} Credits Added</p>
+        <p style="color: #1e3a8a; font-size: 14px; margin-top: 5px;">Your new balance: <strong>{{ new_balance }} Credits</strong></p>
+    </div>
+    {% endif %}
+
+    <div style="text-align: center;">
+        <a href="{{ frontend_url }}/profiles" class="button">Start Exploring</a>
+    </div>
+{% endblock %}

@@ -126,12 +126,12 @@ const UserDropdown = ({ user, logout, closeMenu }) => {
             ))}
 
             <button
-              onClick={() => { navigate('/upgrade'); setIsOpen(false); }}
+              onClick={() => { navigate(user?.is_activated ? '/upgrade' : '/onboarding'); setIsOpen(false); }}
               className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-black dark:text-white hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors group mt-1 border-t border-black/5 dark:border-white/5"
             >
               <span className="flex items-center">
                 <Crown size={16} className="mr-3" />
-                Upgrade
+                {user?.is_activated ? 'Upgrade' : 'Activate Profile'}
               </span>
               <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
             </button>
@@ -218,11 +218,11 @@ const Navbar = () => {
               </NavLink>
               {user ? (
                 <>
-                  <NavLink to="/profiles" className={navLinkClass}>
-                    Discover
-                  </NavLink>
                   <NavLink to="/analytics" className={navLinkClass}>
                     Analytics
+                  </NavLink>
+                  <NavLink to="/survey" className={navLinkClass}>
+                    Find Who fits you?
                   </NavLink>
                 </>
               ) : (
@@ -251,11 +251,11 @@ const Navbar = () => {
 
                 {/* Unified Upgrade & Credits Button */}
                 <button
-                  onClick={() => navigate('/upgrade')}
+                  onClick={() => navigate(displayUser?.is_activated ? '/upgrade' : '/onboarding')}
                   className="flex items-center space-x-3 px-3 py-1.5 bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/10 rounded-lg hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-all group"
                 >
                   <span className="text-xs font-semibold text-black dark:text-white group-hover:text-black/80 dark:group-hover:text-white/80 transition-colors">
-                    Upgrade
+                    {displayUser?.is_activated ? 'Upgrade' : 'Activate Profile'}
                   </span>
                   <div className="w-px h-3 bg-black/10 dark:bg-white/10"></div>
                   <div className="flex items-center space-x-1.5">
@@ -271,7 +271,7 @@ const Navbar = () => {
             ) : (
               <div className="flex items-center space-x-3">
                 <Link
-                  to="/register"
+                  to="/survey"
                   className="px-5 py-2 bg-black dark:bg-white text-white dark:text-black rounded-xl text-sm font-semibold hover:bg-black/90 dark:hover:bg-white/90 transition-all shadow-sm"
                   onClick={closeMobileMenu}
                 >
@@ -338,9 +338,12 @@ const Navbar = () => {
                   </div>
                 </div>
 
-                <button className="w-full mt-3 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg text-sm font-medium flex items-center justify-center space-x-2 hover:bg-black/90 dark:hover:bg-white/90 transition-all">
+                <button
+                  onClick={() => { navigate(displayUser?.is_activated ? '/upgrade' : '/onboarding'); closeMobileMenu(); }}
+                  className="w-full mt-3 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg text-sm font-medium flex items-center justify-center space-x-2 hover:bg-black/90 dark:hover:bg-white/90 transition-all"
+                >
                   <Crown size={16} />
-                  <span>Upgrade</span>
+                  <span>{displayUser?.is_activated ? 'Upgrade' : 'Activate Profile'}</span>
                 </button>
               </div>
             )}
@@ -355,8 +358,8 @@ const Navbar = () => {
 
             {user ? (
               <>
-                <NavLink to="/profiles" className="block px-4 py-2.5 text-sm font-medium text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/[0.02] dark:hover:bg-white/[0.02] rounded-lg transition-colors" onClick={closeMobileMenu}>Discover</NavLink>
                 <NavLink to="/analytics" className="block px-4 py-2.5 text-sm font-medium text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/[0.02] dark:hover:bg-white/[0.02] rounded-lg transition-colors" onClick={closeMobileMenu}>Analytics</NavLink>
+                <NavLink to="/survey" className="block px-4 py-2.5 text-sm font-medium text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/[0.02] dark:hover:bg-white/[0.02] rounded-lg transition-colors" onClick={closeMobileMenu}>Find Who fits you?</NavLink>
                 <NavLink to="/profile" className="block px-4 py-2.5 text-sm font-medium text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/[0.02] dark:hover:bg-white/[0.02] rounded-lg transition-colors" onClick={closeMobileMenu}>Profile</NavLink>
                 <NavLink to="/settings" className="block px-4 py-2.5 text-sm font-medium text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/[0.02] dark:hover:bg-white/[0.02] rounded-lg transition-colors" onClick={closeMobileMenu}>Settings</NavLink>
 
@@ -371,7 +374,7 @@ const Navbar = () => {
               <>
                 <NavLink to="/login" className="block px-4 py-2.5 text-sm font-medium text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/[0.02] dark:hover:bg-white/[0.02] rounded-lg transition-colors" onClick={closeMobileMenu}>Login</NavLink>
                 <Link
-                  to="/register"
+                  to="/survey"
                   className="block px-4 py-2.5 text-sm font-medium text-center bg-black dark:bg-white text-white dark:text-black rounded-lg hover:bg-black/90 dark:hover:bg-white/90 transition-all"
                   onClick={closeMobileMenu}
                 >

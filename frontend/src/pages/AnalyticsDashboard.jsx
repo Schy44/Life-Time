@@ -11,6 +11,8 @@ import {
 import { motion } from 'framer-motion';
 import { getDashboardAnalytics } from '../services/analyticsService';
 import { useAuth } from '../context/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { getProfile } from '../services/api';
 
 // --- 1. PRE-DEFINED SUB-COMPONENTS (Hoisting Safety) ---
 
@@ -49,6 +51,15 @@ const MetricBadge = ({ label, value, trend, trendUp }) => (
 
 const AnalyticsDashboard = () => {
     const { user } = useAuth();
+
+    // Fetch profile data for personalization
+    const { data: profile } = useQuery({
+        queryKey: ['me'],
+        queryFn: getProfile,
+        enabled: !!user,
+        staleTime: 1000 * 60 * 5,
+    });
+
     const [timeRange, setTimeRange] = useState('30d');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -213,14 +224,14 @@ const AnalyticsDashboard = () => {
                 <div>
                     <div className="flex items-center gap-3 mb-2">
                         <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-                        {user?.profile?.subscription_plan && (
+                        {profile?.subscription_plan && (
                             <span className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
-                                {user.profile.subscription_plan} Plan
+                                {profile.subscription_plan} Plan
                             </span>
                         )}
                     </div>
                     <p className="text-slate-500">
-                        Welcome back, <strong>{user?.profile?.name?.split(' ')[0] || 'User'}</strong>.
+                        Welcome back, <strong>{profile?.name?.split(' ')[0] || user?.username || 'User'}</strong>.
                         {advancedAnalytics?.view_trend > 0 ? ' Your profile is trending up this week.' : ' Keep your profile updated for better visibility.'}
                     </p>
                 </div>
@@ -290,7 +301,7 @@ const AnalyticsDashboard = () => {
                         <div>
                             <h3 className="font-bold text-lg opacity-90">Trust Score</h3>
                             <p className="text-emerald-100 text-xs mt-1">
-                                {user?.profile?.is_verified ? 'Verified profile' : 'Get verified for 3x matches'}
+                                {profile?.is_verified ? 'Verified profile' : 'Get verified for 3x matches'}
                             </p>
                         </div>
                         <ShieldCheck className="w-6 h-6 text-emerald-100" />

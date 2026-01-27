@@ -20,7 +20,7 @@ const Login = () => {
 
             if (error) throw error;
 
-            navigate('/survey');
+            navigate('/onboarding');
         } catch (error) {
             console.error('Login failed', error);
             alert(`Login failed: ${error.message}`);

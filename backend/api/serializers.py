@@ -3,7 +3,11 @@ from datetime import date
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.db import models
-from .models import Profile, AdditionalImage, Education, WorkExperience, Preference, Interest, Notification, VerificationDocument, MatchUnlock
+from .models import (
+    Profile, AdditionalImage, Education, WorkExperience, Preference, Interest, 
+    Notification, VerificationDocument, AppConfig
+)
+from subscription.models import Transaction
 from .services.matching_service import MatchingService
 
 
@@ -85,7 +89,7 @@ class InterestSerializer(serializers.ModelSerializer):
     class Meta:
         model = Interest
         fields = ('id', 'sender', 'receiver',
-                  'status', 'created_at', 'updated_at')
+                  'status', 'share_type', 'created_at', 'updated_at')
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -108,23 +112,29 @@ class ProfileSerializer(serializers.ModelSerializer):
         child=serializers.IntegerField(), write_only=True, required=False
     )
     clear_profile_image = serializers.BooleanField(write_only=True, required=False)
+    education_simple = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    profession_simple = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    current_country_name = serializers.SerializerMethodField()
+    origin_country_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
         fields = (
             'id', 'user', 'profile_for', 'name', 'age', 'date_of_birth', 'birth_year', 'gender',
             'profile_image', 'additional_images', 'height_inches', 'skin_complexion', 'blood_group', 'religion',
-            'current_city', 'current_country', 'origin_city', 'origin_country', 'visa_status', 'citizenship',
+            'current_city', 'current_country', 'current_country_name', 'origin_city', 'origin_country', 'origin_country_name', 'visa_status', 'citizenship',
             'father_occupation', 'mother_occupation', 'siblings', 'family_type', 'marital_status',
             'siblings_details', 'paternal_family_details', 'maternal_family_details',
             'willing_to_relocate', 'lifestyle_priority',
             'about', 'looking_for', 'email', 'phone',
-            'facebook_profile', 'instagram_profile', 'linkedin_profile', 'is_verified',
+            'facebook_profile', 'instagram_profile', 'linkedin_profile', 'is_verified', 'is_activated',
             'profile_image_privacy', 'additional_images_privacy', 'is_deleted', 'created_at', 'updated_at',
             'education', 'work_experience', 'preference', 'uploaded_images', 'additional_images_to_keep',
-            'compatibility_score', 'interest', 'faith_tags', 'clear_profile_image', 'credits'
+            'compatibility_score', 'interest', 'faith_tags', 'clear_profile_image', 'credits',
+            'education_simple', 'profession_simple'
         )
-        read_only_fields = ('user', 'is_verified', 'birth_year',
+        read_only_fields = ('user', 'is_verified', 'is_activated', 'birth_year',
                             'additional_images', 'created_at', 'updated_at', 'interest', 'credits')
 
     def get_credits(self, obj):
@@ -133,22 +143,36 @@ class ProfileSerializer(serializers.ModelSerializer):
         except:
             return 0
 
-    def to_internal_value(self, data):
-        # Let the parent class handle initial parsing. This correctly handles files.
-        internal_value = super().to_internal_value(data)
+        return super().to_internal_value(data_copy)
 
-        # The frontend sends some nested data as JSON strings. We need to parse them.
-        json_fields = ['education', 'work_experience',
-                       'preference', 'faith_tags']
+    def to_internal_value(self, data):
+        # Create a mutable copy of the data
+        # If it's a QueryDict (from MulitPartParser), convert to standard dict to avoid quirks
+        # but preserve list fields that we explicitly expect.
+        if hasattr(data, 'dict') and hasattr(data, 'getlist'):
+            data_copy = data.dict() # Gets single/last value for all keys
+            # Explicitly preserve valid list fields
+            list_fields = ['uploaded_images', 'additional_images_to_keep']
+            for field in list_fields:
+                if field in data:
+                    data_copy[field] = data.getlist(field)
+        else:
+            # Standard dict or dict-like
+            data_copy = data.copy() if hasattr(data, 'copy') else dict(data)
+
+        # The frontend sends some nested data as JSON strings (common with MultiPartParser).
+        # We need to parse them BEFORE calling super().to_internal_value()
+        json_fields = ['education', 'work_experience', 'preference', 'faith_tags']
         for field in json_fields:
-            field_value = data.get(field)
+            field_value = data_copy.get(field)
             if field_value and isinstance(field_value, str):
                 try:
-                    internal_value[field] = json.loads(field_value)
+                    data_copy[field] = json.loads(field_value)
                 except (json.JSONDecodeError, TypeError):
-                    raise serializers.ValidationError(
-                        {field: f"Invalid JSON format for {field}."})
-        return internal_value
+                    # We can let super().to_internal_value handle the error or raise here
+                    pass
+
+        return super().to_internal_value(data_copy)
 
     def _coerce_to_int_list(self, value):
         """
@@ -234,6 +258,8 @@ class ProfileSerializer(serializers.ModelSerializer):
         work_experience_data = validated_data.pop('work_experience', None)
         preference_data = validated_data.pop('preference', None)
         clear_profile_image = validated_data.pop('clear_profile_image', False)
+        education_simple = validated_data.pop('education_simple', None)
+        profession_simple = validated_data.pop('profession_simple', None)
 
         # Update the main Profile instance with its own fields
         # This call handles the profile_image update correctly and saves the instance.
@@ -300,8 +326,33 @@ class ProfileSerializer(serializers.ModelSerializer):
 
         # --- Handle Preferences ---
         if preference_data is not None:
+            # Defensive check: Ensure JSON fields are lists/dicts, not empty strings
+            json_fields = ['marital_statuses', 'profession', 'country']
+            for field in json_fields:
+                if preference_data.get(field) == '':
+                    preference_data[field] = []
+            
             Preference.objects.update_or_create(
                 profile=instance, defaults=preference_data)
+
+        # --- Handle Simplified Onboarding Fields ---
+        if education_simple:
+            # Create or update the first education record
+            edu = instance.education.first()
+            if edu:
+                edu.degree = education_simple
+                edu.save()
+            else:
+                Education.objects.create(profile=instance, degree=education_simple, school="Not specified")
+
+        if profession_simple:
+            # Create or update the first work record
+            work = instance.work_experience.first()
+            if work:
+                work.title = profession_simple
+                work.save()
+            else:
+                WorkExperience.objects.create(profile=instance, title=profession_simple, company="Not specified")
 
         return instance
 
@@ -332,7 +383,12 @@ class ProfileSerializer(serializers.ModelSerializer):
         user_profile = request.user.profile
         other_profile = obj
         
-        return MatchingService.calculate_compatibility_score(user_profile, other_profile)
+        result = MatchingService.calculate_compatibility_score(user_profile, other_profile)
+        
+        # Extract score from dict (new format) or return raw value (backwards compatibility)
+        if result and isinstance(result, dict):
+            return result.get('score')
+        return result
     
 
     def get_interest(self, obj):
@@ -347,89 +403,102 @@ class ProfileSerializer(serializers.ModelSerializer):
                 return InterestSerializer(interest).data
         return None
 
-    def _has_accepted_interest(self, requesting_user_profile, profile_owner):
+    def _get_interest(self, requesting_user_profile, profile_owner):
         if not requesting_user_profile or not profile_owner:
-            return False
+            return None
         return Interest.objects.filter(
             (models.Q(sender=requesting_user_profile, receiver=profile_owner) |
              models.Q(sender=profile_owner, receiver=requesting_user_profile)),
             status='accepted'
-        ).exists()
+        ).first()
+
+    def _has_accepted_interest(self, requesting_user_profile, profile_owner):
+        return self._get_interest(requesting_user_profile, profile_owner) is not None
+
+    def get_current_country_name(self, obj):
+        from .utils.country_utils import get_country_name
+        return get_country_name(obj.current_country)
+
+    def get_origin_country_name(self, obj):
+        from .utils.country_utils import get_country_name
+        return get_country_name(obj.origin_country)
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         request = self.context.get('request')
 
-
+        # Initialize defaults
         representation['is_unlocked'] = False
         is_owner = False
-        is_unlocked = False
         has_accepted_interest = False
+        share_type = 'none'
 
         if request and request.user.is_authenticated:
-            is_owner = (request.user.profile == instance)
-            is_unlocked = MatchUnlock.objects.filter(
-                user=request.user, 
-                target_profile=instance
-            ).exists()
-            has_accepted_interest = self._has_accepted_interest(
-                request.user.profile, instance
-            )
-            representation['is_unlocked'] = is_unlocked or is_owner
+            try:
+                user_profile = request.user.profile
+                is_owner = (user_profile == instance)
+                
+                # Use the _get_interest helper which checks for 'accepted' status
+                active_interest = self._get_interest(user_profile, instance)
+                if active_interest:
+                    has_accepted_interest = True
+                    share_type = active_interest.share_type
+            except (AttributeError, Profile.DoesNotExist):
+                pass
+            
+        # Profile is "unlocked" (full bio-data/locked fields) if owner or matched
+        representation['is_unlocked'] = is_owner or has_accepted_interest
+        show_full_details = representation['is_unlocked']
 
-        # Use a "show_full_details" flag for clarity
-        show_full_details = is_owner or is_unlocked
+        # --- Image Visibility Logic ---
+        # Show profile image if: owner, OR (matched AND share_type is full), OR privacy is public
+        show_profile_image = is_owner or \
+                            (has_accepted_interest and share_type == 'full') or \
+                            (instance.profile_image_privacy == 'public')
+        
+        # Show additional gallery images if: owner, OR (matched AND share_type is full), OR privacy is public
+        show_additional_images = is_owner or \
+                               (has_accepted_interest and share_type == 'full') or \
+                               (instance.additional_images_privacy == 'public')
 
+        if not show_profile_image:
+            representation['profile_image'] = None
+        
+        if not show_additional_images:
+            representation['additional_images'] = []
+
+        # --- Name and Contact Masking ---
         if not show_full_details:
              # Handle Name Privacy (Hybrid: Common Surnames + Initial Fallback)
-            if not is_unlocked:
-                full_name = representation.get('name', '')
-                common_surnames = [
-                    'Chowdhury', 'Syed', 'Khan', 'Ali', 'Zaman', 'Haque', 'Ahmed', 
-                    'Hussain', 'Majumder', 'Talukdar', 'Bhuiyan', 'Rahman', 'Islam', 'Uddin',
-                    'Siddique', 'Miah', 'Sheikh', 'Ghosh', 'Das', 'Roy'
-                ]
-                
-                words = full_name.split()
-                found_surname = None
-                for word in words:
-                    # Clean punctuation from word
-                    clean_word = "".join(filter(str.isalpha, word))
-                    if clean_word.capitalize() in common_surnames:
-                        found_surname = clean_word.capitalize()
-                        break
-                
-                if found_surname:
-                    representation['name'] = found_surname
-                elif words:
-                    first_word = words[0]
-                    representation['name'] = f"{first_word[0].upper()}. {'*' * 5}"
-                else:
-                    representation['name'] = "Member"
-
-            # Handle profile_image privacy
-            # If match exists AND is accepted, OR if explicitly unlocked -> show image
-            # BUT if it's 'matches' only, and not a match yet, we might still show it blurred on frontend
-            # To allow "Blurry Previews", we only set to None if it's EXPLICITLY requested by model
-            # and we are not even a match yet.
-            if instance.profile_image_privacy == 'matches' and not (has_accepted_interest or show_full_details):
-                # If we want a truly "private" (hidden) experience, return None. 
-                # If we want a "blurry" experience, we let it pass but frontend blurs.
-                # The user said "make extra photos private", so we'll hide them unless unlocked/matched.
-                representation['profile_image'] = None
-
-            # Handle additional_images privacy
-            if instance.additional_images_privacy == 'matches' and not (has_accepted_interest or show_full_details):
-                representation['additional_images'] = []
+            full_name = representation.get('name', '')
+            common_surnames = [
+                'Chowdhury', 'Syed', 'Khan', 'Ali', 'Zaman', 'Haque', 'Ahmed', 
+                'Hussain', 'Majumder', 'Talukdar', 'Bhuiyan', 'Rahman', 'Islam', 'Uddin',
+                'Siddique', 'Miah', 'Sheikh', 'Ghosh', 'Das', 'Roy'
+            ]
             
-            # Mask Social Links but indicate presence
-            social_fields = ['facebook_profile', 'instagram_profile', 'linkedin_profile']
+            words = full_name.split()
+            found_surname = None
+            for word in words:
+                # Clean punctuation from word
+                clean_word = "".join(filter(str.isalpha, word))
+                if clean_word.capitalize() in common_surnames:
+                    found_surname = clean_word.capitalize()
+                    break
+            
+            if found_surname:
+                representation['name'] = found_surname
+            elif words:
+                first_word = words[0]
+                representation['name'] = f"{first_word[0].upper()}. {'*' * 5}"
+            else:
+                representation['name'] = "Member"
+
+            # Mask Social Links and Phone but indicate presence
+            social_fields = ['facebook_profile', 'instagram_profile', 'linkedin_profile', 'phone']
             for field in social_fields:
-                if representation.get(field) and not show_full_details:
+                if representation.get(field):
                     representation[field] = "LOCKED"
-            
-            # Record that it's a locked view for the frontend
-            representation['is_unlocked'] = show_full_details
 
         return representation
 
@@ -480,3 +549,10 @@ class VerificationDocumentSerializer(serializers.ModelSerializer):
         if obj.document_image:
             return obj.document_image.url
         return None
+
+
+class TransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Transaction
+        fields = ('id', 'amount', 'currency', 'gateway', 'status', 'purpose', 'metadata', 'created_at')
+        read_only_fields = ('created_at',)

@@ -6,13 +6,14 @@ import { motion } from 'framer-motion';
 import AnimatedBackground from '../components/AnimatedBackground';
 import GlassCard from '../components/GlassCard';
 import { useAuth } from '../context/AuthContext';
-import { Users, Zap, Heart, Rocket } from 'lucide-react';
+import { Users, Zap, Heart, Sparkles, MapPin } from 'lucide-react';
 import FaqsPage from '../components/FaqsPage';
 import PricingPage from '../components/PricingPage';
 import Footer from '../components/Footer';
 import { FlipWords } from '../components/FlipWords';
 import GlobalMap from '../components/GlobalMap';
 import Testimonials from '../components/Testimonials';
+import globalSearchImg from '../assets/images/global_search_hero.png';
 gsap.registerPlugin(ScrollTrigger);
 
 
@@ -116,7 +117,7 @@ const Home = () => {
       <main className="relative w-full text-gray-800 dark:text-white">
 
         {/* Hero Section - Modular Glassmorphism Design */}
-        <section className="relative min-h-screen flex flex-col justify-center items-center text-center px-6 md:px-12 overflow-hidden">
+        <section className="relative min-h-[60vh] flex flex-col items-center text-center px-6 md:px-12 overflow-hidden pt-12 pb-12">
           {/* Subtle Animated Shapes (complementing AnimatedBackground) */}
           <motion.div
             animate={{
@@ -139,7 +140,7 @@ const Home = () => {
             className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-indigo-300/10 rounded-full mix-blend-screen filter blur-2xl opacity-50"
           ></motion.div>
 
-          <div className="max-w-5xl z-10 relative grid grid-cols-1 lg:grid-cols-2 gap-8 items-center py-12">
+          <div className="max-w-5xl z-10 relative grid grid-cols-1 lg:grid-cols-2 gap-8 items-center py-4">
             {/* Left Part: Heading & Subtitle */}
             <motion.div
               initial={{ opacity: 0, x: -50 }}
@@ -155,83 +156,110 @@ const Home = () => {
               </h1>
 
               <p
-                className="hero-subtitle text-lg md:text-xl max-w-xl lg:max-w-none mx-auto lg:mx-0 mb-8 text-gray-600 dark:text-gray-300"
+                className="hero-subtitle text-lg md:text-xl max-w-xl lg:max-w-none mx-auto lg:mx-0 mb-8 text-gray-600 dark:text-gray-300 leading-relaxed"
               >
-                Our platform connects brides and grooms, offering secure profile management, permission-based viewing, and a commitment-ensuring admin fee for access.
+                Our platform connects brides and grooms, offering secure profile management and permission-based viewing.
               </p>
+
+              {/* CTA Moved to Left Column */}
+              <div className="flex flex-col sm:flex-row justify-center lg:justify-start items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-12">
+                <Link to="/survey">
+                  <motion.button
+                    whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(147, 51, 234, 0.4)" }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-purple-600 text-white px-10 py-4 rounded-full font-bold text-lg tracking-wide hover:bg-purple-700 transition-all shadow-xl flex items-center space-x-3"
+                  >
+                    <Sparkles size={22} />
+                    <span>GET STARTED</span>
+                  </motion.button>
+                </Link>
+              </div>
             </motion.div>
 
-            {/* Right Part: CTA, Statistics, and New Content Blocks */}
+            {/* Right Part: Dynamic Illustration (No Boxes) */}
             <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
-              className="lg:text-left text-center space-y-6"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 1, ease: 'easeOut', delay: 0.4 }}
+              className="relative flex flex-col items-center justify-center pointer-events-none lg:pointer-events-auto"
             >
-              {/* CTA Buttons */}
-              <GlassCard className="p-6 bg-white/10 dark:bg-gray-800/10 backdrop-blur-md border border-white/20 dark:border-gray-700/20 shadow-lg rounded-3xl">
-                <div className="hero-cta flex flex-col sm:flex-row justify-center lg:justify-start items-center space-y-4 sm:space-y-0 sm:space-x-4">
-                  <Link to="/profiles">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="bg-purple-600 text-white px-8 py-4 rounded-full font-bold text-base tracking-wide hover:bg-purple-700 transition-colors shadow-lg flex items-center space-x-2"
-                    >
-                      <Rocket size={20} />
-                      <span>GET STARTED</span>
-                    </motion.button>
-                  </Link>
-                </div>
-              </GlassCard>
+              {/* Background Glow */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-purple-500/10 dark:bg-purple-500/5 rounded-full blur-[80px] -z-10" />
 
-              {/* New Small Parts */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <GlassCard className="p-5 bg-white/10 dark:bg-gray-800/10 backdrop-blur-md border border-white/20 dark:border-gray-700/20 shadow-lg rounded-3xl text-gray-800 dark:text-white">
-                  <h4 className="font-bold mb-2">Secure Profile Creation</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">Create and manage personal profiles with robust verification processes.</p>
-                </GlassCard>
-                <GlassCard className="p-5 bg-white/10 dark:bg-gray-800/10 backdrop-blur-md border border-white/20 dark:border-gray-700/20 shadow-lg rounded-3xl text-gray-800 dark:text-white">
-                  <h4 className="font-bold mb-2">Permission-Based Access</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">Control who views your profile with our advanced permission system.</p>
-                </GlassCard>
-                <GlassCard className="p-5 bg-white/10 dark:bg-gray-800/10 backdrop-blur-md border border-white/20 dark:border-gray-700/20 shadow-lg rounded-3xl text-gray-800 dark:text-white sm:col-span-2">
-                  <h4 className="font-bold mb-2">Transparent Admin Fees</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">Access profiles after a small, transparent admin fee, ensuring commitment and security.</p>
-                </GlassCard>
-              </div>
+              {/* Main Illustration */}
+              <motion.div
+                animate={{
+                  y: [0, -20, 0],
+                  rotate: [0, 1.5, 0, -1.5, 0]
+                }}
+                transition={{
+                  duration: 6,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+                className="relative z-20 w-full max-w-[480px] drop-shadow-[0_45px_45px_rgba(0,0,0,0.12)] px-4"
+              >
+                <img
+                  src={globalSearchImg}
+                  alt="Global Matching"
+                  className="w-full h-auto rounded-[3rem] mix-blend-multiply dark:mix-blend-normal"
+                />
+              </motion.div>
 
-              {/* Statistics Section */}
-              <GlassCard className="p-6 bg-white/10 dark:bg-gray-800/10 backdrop-blur-md border border-white/20 dark:border-gray-700/20 shadow-lg rounded-3xl">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4, duration: 0.6 }}
-                    className="flex flex-col items-center"
-                  >
-                    <h3 className="text-3xl md:text-4xl font-extrabold text-gray-800 dark:text-white">10M+</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">Verified Profiles</p>
-                  </motion.div>
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5, duration: 0.6 }}
-                    className="flex flex-col items-center"
-                  >
-                    <h3 className="text-3xl md:text-4xl font-extrabold text-gray-800 dark:text-white">500K+</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">Successful Matches</p>
-                  </motion.div>
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6, duration: 0.6 }}
-                    className="flex flex-col items-center"
-                  >
-                    <h3 className="text-3xl md:text-4xl font-extrabold text-gray-800 dark:text-white">100%</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">Privacy Control</p>
-                  </motion.div>
+              {/* Stylish Caption */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 }}
+                className="text-center mt-12 space-y-4 max-w-sm"
+              >
+                <p className="text-xl md:text-2xl text-gray-800 dark:text-gray-100 font-bold italic leading-snug">
+                  "we look for the right person for you in any location."
+                </p>
+              </motion.div>
+
+              {/* Floating Decorative Elements - Repositioned further out to remove congestion */}
+              <motion.div
+                animate={{ y: [0, 40, 0], x: [0, -20, 0], rotate: [0, 15, 0] }}
+                transition={{ duration: 7, repeat: Infinity }}
+                className="absolute top-[-30px] right-[-40px] p-5 bg-white/40 dark:bg-gray-800/20 backdrop-blur-xl rounded-[2rem] shadow-2xl border border-white/40 hidden xl:block z-30"
+              >
+                <Heart className="text-pink-500 fill-pink-500" size={32} />
+              </motion.div>
+
+              <motion.div
+                animate={{ y: [0, -60, 0], x: [0, 20, 0], rotate: [0, -20, 0] }}
+                transition={{ duration: 9, repeat: Infinity, delay: 1 }}
+                className="absolute bottom-[20%] left-[-60px] p-5 bg-white/40 dark:bg-gray-800/20 backdrop-blur-xl rounded-[2rem] shadow-2xl border border-white/40 hidden xl:block z-30"
+              >
+                <Users className="text-indigo-500" size={32} />
+              </motion.div>
+
+              <motion.div
+                animate={{ scale: [1, 1.2, 1], rotate: [0, -10, 0] }}
+                transition={{ duration: 5, repeat: Infinity, delay: 0.5 }}
+                className="absolute top-1/2 right-[-80px] p-4 bg-white/40 dark:bg-gray-800/20 backdrop-blur-xl rounded-[1.5rem] shadow-xl border border-white/40 hidden xl:block z-30"
+              >
+                <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
+                  <Heart className="text-white fill-white" size={16} />
                 </div>
-              </GlassCard>
+              </motion.div>
+
+              <motion.div
+                animate={{ y: [0, 40, 0], x: [0, 30, 0] }}
+                transition={{ duration: 6, repeat: Infinity, delay: 2 }}
+                className="absolute top-1/4 left-[-100px] p-4 bg-white/30 dark:bg-gray-800/20 backdrop-blur-xl rounded-full shadow-xl border border-white/40 hidden xl:block z-30"
+              >
+                <Sparkles className="text-indigo-600" size={28} />
+              </motion.div>
+
+              <motion.div
+                animate={{ scale: [1, 1.1, 1], y: [0, -20, 0] }}
+                transition={{ duration: 4, repeat: Infinity, delay: 1.5 }}
+                className="absolute bottom-10 right-[-40px] p-4 bg-white/30 dark:bg-gray-800/20 backdrop-blur-xl rounded-3xl shadow-xl border border-white/40 hidden xl:block z-30"
+              >
+                <MapPin className="text-purple-600 fill-purple-100" size={32} />
+              </motion.div>
             </motion.div>
           </div>
         </section>

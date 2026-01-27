@@ -6,6 +6,9 @@ from .serializers import SubscriptionPlanSerializer, UserSubscriptionSerializer,
 from .models import SubscriptionPlan, UserSubscription, CreditWallet, Transaction
 from .gateways.stripe_gateway import StripeGateway
 from .gateways.sslcommerz_gateway import SSLCommerzGateway
+from api.utils.currency import CurrencyService
+from api.utils.currency import CurrencyService
+from api.services.email_service import EmailService
 import uuid
 
 class PlanListView(generics.ListAPIView):
@@ -46,44 +49,41 @@ class PaymentInitiateView(APIView):
             data = serializer.validated_data
             user = request.user
             gateway_name = data['gateway']
+            target_currency = data.get('currency', 'BDT')
             
-            amount = 0
+            amount_bdt = 0
             purpose = ''
+            credits_to_add = 0
             
             if data.get('plan_slug'):
                 plan = get_object_or_404(SubscriptionPlan, slug=data['plan_slug'])
-                amount = plan.price_usd
-                purpose = 'subscription'
-            elif data.get('credit_amount'):
-                # Simple logic: 1 credit = $0.1 (or use a package model if complex)
-                # User prompt said "$50 for monthly", "$500 yearly".
-                # Credits: "Buy credits". Let's assume $1 = 10 credits for now or configurable.
-                # I'll implement 1 Credit = $0.5 for now? Or just map credit packages.
-                # Simplest: Input amount directly? No, usually you buy packages.
-                # I will assume data['credit_amount'] is the DOLLAR amount they want to spend? 
-                # OR data['credit_amount'] is NUMBER of credits.
-                # Implementation Plan didn't specify packages.
-                # I'll assume 1 Credit = $1 for simplicity unless configured.
-                # Actually, plan mentions "Buy credits".
-                # Let's fix 1 Credit = $1 USD for simplicity.
-                amount = data['credit_amount'] * 1 # $1 per credit
-                purpose = 'credit_topup'
-                data['credits_to_add'] = data['credit_amount'] # storing number of credits
+                amount_bdt = plan.price_bdt
+                credits_to_add = plan.credit_amount
+                if plan.slug == 'activation':
+                    purpose = 'profile_activation'
+                else:
+                    purpose = 'credit_topup'
             
-            if amount <= 0 and purpose == 'subscription':
-                 # Free plan change?
-                 return Response({"error": "Cannot pay for free plan"}, status=400)
+            if amount_bdt <= 0:
+                  return Response({"error": "Invalid amount for payment"}, status=400)
 
+            # Convert if necessary
+            pay_amount = CurrencyService.convert(amount_bdt, 'BDT', target_currency)
+            
             # Create Transaction
             transaction = Transaction.objects.create(
                 user=user,
-                amount=amount,
-                currency='USD',
+                amount=pay_amount,
+                currency=target_currency,
                 gateway=gateway_name,
                 purpose=purpose,
                 status='pending',
-                transaction_id=str(uuid.uuid4()), # temporary unique id
-                metadata=data
+                transaction_id=str(uuid.uuid4()),
+                metadata={
+                    **data,
+                    'amount_bdt': str(amount_bdt),
+                    'credits_to_add': credits_to_add
+                }
             )
             
             # Select Gateway
@@ -194,8 +194,32 @@ class PaymentCallbackView(APIView):
                              previous_balance = wallet.balance
                              wallet.add_credits(credits_to_add)
                              print(f"DEBUG: Added {credits_to_add} credits. New Balance: {wallet.balance}")
+
+                     elif transaction.purpose == 'profile_activation':
+                         print("DEBUG: Activating User Profile...")
+                         try:
+                             profile = transaction.user.profile
+                             profile.is_activated = True
+                             profile.save()
+                             print(f"DEBUG: Profile activated for user {transaction.user.email}")
+                         except Exception as act_err:
+                             print(f"ERROR activating profile: {act_err}")
                              
-                     return Response({"status": "Payment Successful", "transaction": transaction.transaction_id})
+                             print(f"ERROR activating profile: {act_err}")
+                             
+                     # Send Email Notification
+                     try:
+                         EmailService.send_payment_confirmation_email(transaction)
+                     except Exception as email_err:
+                         print(f"ERROR sending email: {email_err}")
+
+                     return Response({
+                         "status": "Payment Successful", 
+                         "transaction": transaction.transaction_id,
+                         "purpose": transaction.purpose.replace('_', ' ').title(),
+                         "amount": float(transaction.amount),
+                         "currency": transaction.currency
+                     })
 
              except Exception as e:
                  print(f"ERROR: {str(e)}")
@@ -208,67 +232,53 @@ class CreateFreePlanView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def post(self, request):
-        # 1. Silver (Free)
+        # 1. Profile Activation
         SubscriptionPlan.objects.update_or_create(
-            slug='free',
+            slug='activation',
             defaults={
-                'name': 'Silver (Free)',
-                'price_usd': 0,
-                'duration_days': 0,
-                'description': 'Start your journey. Browse profiles and be discovered.',
-                'credit_amount': 0,
-                'features': {
-                    'verified_badge': False,
-                    'connection_requests': 0,
-                    'profile_visibility': 'Standard',
-                    'see_who_viewed_me': False,
-                    'support': 'Standard',
-                    'can_initiate_chat': False
-                }
+                'name': 'Profile Activation',
+                'price_bdt': 1000,
+                'description': 'Mandatory one-time fee to make your profile visible and active.',
+                'features': {'type': 'activation'}
             }
         )
         
-        # 2. Gold (Monthly)
+        # 2. Single Unlock
         SubscriptionPlan.objects.update_or_create(
-            slug='monthly',
+            slug='bundle_single',
             defaults={
-                'name': 'Gold (Monthly)',
-                'price_usd': 29, 
-                'duration_days': 30,
-                'description': 'Get 3x more matches with Verified Badge and Credits.',
-                'credit_amount': 100, # 100 Credits (~$10 value)
-                'features': {
-                    'verified_badge': True,
-                    'connection_requests': 30,
-                    'profile_visibility': 'High',
-                    'see_who_viewed_me': True,
-                    'support': 'Priority',
-                    'ad_free': True
-                }
+                'name': 'Single Profile Unlock',
+                'price_bdt': 1500,
+                'credit_amount': 1,
+                'description': 'Unlock one profile to connect and chat.',
+                'features': {'type': 'bundle'}
             }
         )
         
-        # 3. Platinum (Yearly)
+        # 3. 3-Profile Bundle
         SubscriptionPlan.objects.update_or_create(
-            slug='yearly',
+            slug='bundle_3',
             defaults={
-                'name': 'Platinum (Yearly)',
-                'price_usd': 199, 
-                'duration_days': 365,
-                'description': 'Maximum Visibility & Priority Treatment. VIP Status.',
-                'credit_amount': 1500, # 1500 Credits (~$150 value)
-                'features': {
-                    'verified_badge': True,
-                    'connection_requests': 'Unlimited',
-                    'profile_visibility': 'Priority',
-                    'see_who_viewed_me': True,
-                    'support': 'Dedicated Relationship Manager',
-                    'profile_spotlight': 'Monthly',
-                    'ad_free': True
-                }
+                'name': '3-Profile Bundle',
+                'price_bdt': 4000,
+                'credit_amount': 3,
+                'description': 'Save credits! Unlock 3 profiles.',
+                'features': {'type': 'bundle', 'discount': '500 BDT'}
             }
         )
-        return Response({"message": "Plans updated to Silver/Gold/Platinum"}, status=status.HTTP_200_OK)
+
+        # 4. 10-Profile Bundle
+        SubscriptionPlan.objects.update_or_create(
+            slug='bundle_10',
+            defaults={
+                'name': '10-Profile Bundle',
+                'price_bdt': 13000,
+                'credit_amount': 10,
+                'description': 'Best Value! Unlock 10 profiles.',
+                'features': {'type': 'bundle', 'discount': '2000 BDT'}
+            }
+        )
+        return Response({"message": "New plans (Activation & Bundles) initialized"}, status=status.HTTP_200_OK)
 
 from django.contrib.auth import get_user_model
 from .serializers import TransferSubscriptionSerializer

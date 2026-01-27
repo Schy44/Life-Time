@@ -2,7 +2,8 @@ from django.contrib import admin
 from django.utils.html import format_html
 from .models import (
     Profile, AdditionalImage, Education, WorkExperience, Preference, 
-    VerificationDocument, ProfileView, AnalyticsSnapshot
+    VerificationDocument, ProfileView, AnalyticsSnapshot,
+    AppConfig
 )
 
 class AdditionalImageInline(admin.TabularInline):
@@ -22,8 +23,8 @@ class PreferenceInline(admin.StackedInline):
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'gender', 'is_verified', 'show_on_map', 'created_at')
-    list_filter = ('gender', 'is_verified', 'show_on_map', 'created_at')
+    list_display = ('name', 'user', 'gender', 'is_activated', 'is_verified', 'show_on_map', 'created_at')
+    list_filter = ('gender', 'is_activated', 'is_verified', 'show_on_map', 'created_at')
     search_fields = ('name', 'user__username', 'current_city', 'current_country')
     inlines = [EducationInline, WorkExperienceInline, PreferenceInline, AdditionalImageInline]
     fieldsets = (
@@ -34,7 +35,7 @@ class ProfileAdmin(admin.ModelAdmin):
         ('Optional Details', {'fields': ('marital_status', 'blood_group')}),
         ('Social Media', {'fields': ('facebook_profile', 'instagram_profile', 'linkedin_profile')}),
         ('Privacy Settings', {'fields': ('profile_image_privacy', 'additional_images_privacy', 'show_on_map')}),
-        ('Verification', {'fields': ('is_verified',)}),
+        ('Verification', {'fields': ('is_verified', 'is_activated')}),
         ('Lifecycle', {'fields': ('is_deleted',)}),
     )
 
@@ -105,3 +106,19 @@ class AnalyticsSnapshotAdmin(admin.ModelAdmin):
     search_fields = ('profile__user__username',)
     readonly_fields = ('date',)
     date_hierarchy = 'date'
+
+
+# ==================== MESSAGING ADMIN ====================
+
+@admin.register(AppConfig)
+class AppConfigAdmin(admin.ModelAdmin):
+    list_display = ('key', 'value', 'description', 'updated_at')
+    search_fields = ('key', 'description')
+    readonly_fields = ('updated_at',)
+    
+    def has_delete_permission(self, request, obj=None):
+        return super().has_delete_permission(request, obj)
+
+
+
+

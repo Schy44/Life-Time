@@ -45,14 +45,15 @@ const Register = () => {
                 options: {
                     data: {
                         name: name,
-                    }
+                    },
+                    emailRedirectTo: `${window.location.origin}/onboarding`,
                 }
             });
 
             if (error) throw error;
 
-            alert('Registration successful! Please check your email to verify your account.');
-            navigate('/login');
+            alert('Registration successful! Let\'s build your profile.');
+            navigate('/onboarding');
         } catch (error) {
             console.error('Registration failed', error);
             alert(`Registration failed: ${error.message}`);
@@ -127,8 +128,8 @@ const Register = () => {
                                     type={showPassword ? "text" : "password"}
                                     placeholder="Password (min 6 characters)"
                                     className={`w-full pl-10 pr-12 py-3 rounded-xl border bg-gray-50 focus:bg-white focus:ring-2 outline-none transition-all duration-200 ${password.length > 0 && !passwordLengthValid
-                                            ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                                            : 'border-gray-200 focus:border-lavender-500 focus:ring-lavender-200'
+                                        ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                                        : 'border-gray-200 focus:border-lavender-500 focus:ring-lavender-200'
                                         }`}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
@@ -172,8 +173,8 @@ const Register = () => {
                                     type={showConfirmPassword ? "text" : "password"}
                                     placeholder="Confirm Password"
                                     className={`w-full pl-10 pr-12 py-3 rounded-xl border bg-gray-50 focus:bg-white focus:ring-2 outline-none transition-all duration-200 ${password2.length > 0 && !passwordsMatch
-                                            ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                                            : 'border-gray-200 focus:border-lavender-500 focus:ring-lavender-200'
+                                        ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                                        : 'border-gray-200 focus:border-lavender-500 focus:ring-lavender-200'
                                         }`}
                                     value={password2}
                                     onChange={(e) => setPassword2(e.target.value)}

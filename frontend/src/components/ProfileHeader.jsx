@@ -9,15 +9,9 @@ const ProfileHeader = ({ name, age, profileImage, isVerified, isOnline, profileI
   let imageToDisplay = null;
 
   // Logic to determine which image to display
-  if (profileImage) { // Only consider if a profileImage URL is actually provided
-    if (profileImagePrivacy === 'public') {
-      imageToDisplay = profileImage;
-    } else if (profileImagePrivacy === 'matches') {
-      if (hasAcceptedInterest) {
-        imageToDisplay = profileImage;
-      }
-    }
-    // If profileImagePrivacy is 'private' or doesn't meet 'matches' criteria, imageToDisplay remains null
+  // If backend returns the URL, it means the user has permission (public OR matched)
+  if (profileImage || hasAcceptedInterest) {
+    imageToDisplay = profileImage || '/placeholder-profile.png';
   }
 
   return (

@@ -1,0 +1,40 @@
+/* Ensure the datepicker wrapper takes full width */
+.react-datepicker-wrapper {
+  width: 100% !important;
+  display: block !important;
+}
+
+.react-datepicker__input-container {
+  width: 100% !important;
+  display: block !important;
+}
+
+/* Customizing the header */
+.react-datepicker__header {
+  background-color: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+/* Selected day */
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background-color: #2563eb !important; /* blue-600 */
+  border-radius: 0.5rem !important;
+}
+
+/* Today's date */
+.react-datepicker__day--today {
+  font-weight: bold;
+  color: #2563eb;
+}
+
+/* Dropdowns */
+.react-datepicker__year-select,
+.react-datepicker__month-select {
+  padding: 2px 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background-color: white;
+  margin: 0 4px;
+  outline: none;
+}

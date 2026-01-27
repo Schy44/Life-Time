@@ -5,7 +5,7 @@ from .views import (
     CountryListView, ProfessionListView, NotificationListView, 
     MarkNotificationAsReadView, UnreadNotificationCountView,
     VerificationDocumentViewSet, AdminVerificationDocumentViewSet,
-    RecommendedMatchesView, unlock_profile,
+    RecommendedMatchesView, EducationDegreeListView, TransactionListView,
     # Analytics views
     get_basic_stats, who_viewed_me, get_advanced_analytics, get_profile_strength
 )
@@ -23,6 +23,7 @@ urlpatterns = [
     path('profile/', ProfileDetailView.as_view(), name='profile-detail'),
     path('countries/', CountryListView.as_view(), name='country-list'),
     path('professions/', ProfessionListView.as_view(), name='profession-list'),
+    path('education-degrees/', EducationDegreeListView.as_view(), name='education-degrees'),
     path('profiles/recommendations/', RecommendedMatchesView.as_view(), name='profile-recommendations'),
     path('notifications/', NotificationListView.as_view(), name='notification-list'),
     path('notifications/mark-read/', MarkNotificationAsReadView.as_view(), name='notification-mark-read'),
@@ -33,6 +34,6 @@ urlpatterns = [
     path('analytics/advanced/', get_advanced_analytics, name='analytics-advanced'),
     path('analytics/strength/', get_profile_strength, name='analytics-strength'),
     path('analytics/admin/', AdminDashboardAnalyticsView.as_view(), name='admin-analytics'),
-    path('profiles/unlock/', unlock_profile, name='profile-unlock'),
+    path('transactions/', TransactionListView.as_view(), name='transaction-list'),
     path('', include(router.urls)),
 ]

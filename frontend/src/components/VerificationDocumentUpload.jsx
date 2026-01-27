@@ -136,25 +136,27 @@ const VerificationDocumentUpload = () => {
         }
     };
 
+    const isVerified = documents.some(doc => doc.status === 'approved');
+
     return (
         <div className="space-y-6">
             {/* Upload Section */}
-            <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+            <div className={`bg-white rounded-2xl shadow-sm p-6 border border-gray-100 transition-all duration-300 ${isVerified ? 'opacity-60 pointer-events-none' : ''}`}>
                 <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-white" />
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isVerified ? 'bg-green-500' : 'bg-gradient-to-br from-purple-500 to-pink-500'}`}>
+                        {isVerified ? <CheckCircle className="w-5 h-5 text-white" /> : <FileText className="w-5 h-5 text-white" />}
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold text-gray-900">Verify Your Profile</h3>
-                        <p className="text-sm text-gray-500">Upload your ID document for verification</p>
+                        <h3 className="text-lg font-semibold text-gray-900">{isVerified ? 'Profile Verified' : 'Verify Your Profile'}</h3>
+                        <p className="text-sm text-gray-500">{isVerified ? 'Your identity has been successfully confirmed.' : 'Upload your ID document for verification'}</p>
                     </div>
                 </div>
 
                 {!selectedFile ? (
                     <div
                         className={`relative border-2 border-dashed rounded-xl p-8 transition-all duration-200 ${dragActive
-                                ? 'border-purple-500 bg-purple-50'
-                                : 'border-gray-200 hover:border-purple-300 bg-gray-50'
+                            ? 'border-purple-500 bg-purple-50'
+                            : 'border-gray-200 hover:border-purple-300 bg-gray-50'
                             }`}
                         onDragEnter={handleDrag}
                         onDragLeave={handleDrag}

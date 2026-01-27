@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { FaPlus, FaTrash } from 'react-icons/fa';
 import Select from 'react-select'; // Import react-select
+import CreatableSelect from 'react-select/creatable';
 import GlassCard from './GlassCard';
 import FaithTagsSection from './FaithTagsSection';
-import { getCountries, getProfessions } from '../services/api.js'; // Import getCountries and getProfessions
+import { getCountries, getProfessions, getEducationDegrees } from '../services/api.js'; // Import getCountries and getProfessions
 import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '../context/ThemeContext'; // Import useTheme
 import DragDropUpload from './DragDropUpload'; // Import DragDropUpload
@@ -81,9 +82,19 @@ const ProfileForm = ({ initialData, onSubmit, section = 'all' }) => {
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
 
-  const [formData, setFormData] = useState({
-    ...initialData,
-    preference: initialData.preference || {},
+  const [formData, setFormData] = useState(() => {
+    const prefs = { ...(initialData.preference || {}) };
+    ['country', 'profession', 'marital_statuses'].forEach(field => {
+      if (prefs[field] && !Array.isArray(prefs[field])) {
+        prefs[field] = [prefs[field]];
+      } else if (!prefs[field]) {
+        prefs[field] = [];
+      }
+    });
+    return {
+      ...initialData,
+      preference: prefs,
+    };
   });
   const [profileImageFile, setProfileImageFile] = useState(null);
   const [profileImagePreview, setProfileImagePreview] = useState(null);
@@ -93,6 +104,54 @@ const ProfileForm = ({ initialData, onSubmit, section = 'all' }) => {
   const [errors, setErrors] = useState({});
   const [countries, setCountries] = useState([]); // Local state, sourced from cached query
   const [professions, setProfessions] = useState([]); // Local state, sourced from cached query
+  const [degrees, setDegrees] = useState([]);
+  const [showDraftToast, setShowDraftToast] = useState(false);
+  const [portalTarget, setPortalTarget] = useState(null);
+
+  useEffect(() => {
+    setPortalTarget(document.body);
+  }, []);
+
+  // Autosave Draft to LocalStorage
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formData && Object.keys(formData).length > 0) {
+        // We don't save initial state if it's the first render
+        localStorage.setItem(`profile_draft_${initialData.id || 'new'}`, JSON.stringify(formData));
+      }
+    }, 1000); // 1s debounce
+    return () => clearTimeout(timer);
+  }, [formData, initialData.id]);
+
+  // Check for existing draft on mount
+  useEffect(() => {
+    const savedDraft = localStorage.getItem(`profile_draft_${initialData.id || 'new'}`);
+    if (savedDraft) {
+      try {
+        const parsed = JSON.parse(savedDraft);
+        // Only show toast if the draft is actually different from initialData
+        const isDifferent = JSON.stringify(parsed) !== JSON.stringify(initialData);
+        if (isDifferent) {
+          setShowDraftToast(true);
+        }
+      } catch (e) {
+        console.error("Error parsing draft", e);
+      }
+    }
+  }, [initialData]);
+
+  const restoreDraft = () => {
+    const savedDraft = localStorage.getItem(`profile_draft_${initialData.id || 'new'}`);
+    if (savedDraft) {
+      setFormData(JSON.parse(savedDraft));
+      setShowDraftToast(false);
+    }
+  };
+
+  const discardDraft = () => {
+    localStorage.removeItem(`profile_draft_${initialData.id || 'new'}`);
+    setShowDraftToast(false);
+  };
 
   const { data: countriesData } = useQuery({
     queryKey: ['countries'],
@@ -106,25 +165,34 @@ const ProfileForm = ({ initialData, onSubmit, section = 'all' }) => {
     staleTime: 1000 * 60 * 60, // 1 hour
   });
 
+  const { data: degreesData } = useQuery({
+    queryKey: ['degrees'],
+    queryFn: getEducationDegrees,
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
+
   useEffect(() => {
+    const prefs = { ...(initialData.preference || {}) };
+    ['country', 'profession', 'marital_statuses'].forEach(field => {
+      if (prefs[field] && !Array.isArray(prefs[field])) {
+        prefs[field] = [prefs[field]];
+      } else if (!prefs[field]) {
+        prefs[field] = [];
+      }
+    });
+
     setFormData({
       ...initialData,
-      preference: initialData.preference || {},
+      preference: prefs,
     });
     setAdditionalImagesToKeep(initialData.additional_images ? initialData.additional_images.map(img => img.id) : []);
   }, [initialData]);
 
   useEffect(() => {
-    if (countriesData) {
-      setCountries(countriesData);
-    }
-  }, [countriesData]);
-
-  useEffect(() => {
-    if (professionsData) {
-      setProfessions(professionsData.map(p => ({ value: p, label: p })));
-    }
-  }, [professionsData]);
+    if (countriesData) setCountries(countriesData);
+    if (professionsData) setProfessions(professionsData.map(p => ({ value: p, label: p })));
+    if (degreesData) setDegrees(degreesData.map(d => ({ value: d, label: d })));
+  }, [countriesData, professionsData, degreesData]);
 
   useEffect(() => {
     if (formData.religion && !RELIGION_CHOICES.some(choice => choice.value === formData.religion)) {
@@ -244,6 +312,17 @@ const ProfileForm = ({ initialData, onSubmit, section = 'all' }) => {
 
   const handleRemoveAdditionalImage = (idToRemove) => {
     setAdditionalImagesToKeep(prev => prev.filter(id => id !== idToRemove));
+  };
+
+  const handleSelectChange = (selectedOption, actionMeta) => {
+    const { name } = actionMeta;
+    setFormData(prev => ({
+      ...prev,
+      [name]: selectedOption ? selectedOption.value : '',
+    }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: null }));
+    }
   };
 
   const handlePreferenceChange = (e) => {
@@ -382,6 +461,8 @@ const ProfileForm = ({ initialData, onSubmit, section = 'all' }) => {
     }
 
     console.log('FormData prepared, calling onSubmit');
+    // Clear draft on successful submit (assuming onSubmit succeeds or handles it)
+    localStorage.removeItem(`profile_draft_${initialData.id || 'new'}`);
     onSubmit(data);
   };
 
@@ -397,8 +478,12 @@ const ProfileForm = ({ initialData, onSubmit, section = 'all' }) => {
     }),
     menu: (provided) => ({
       ...provided,
-      backgroundColor: isDarkMode ? '#1f2937' : 'white',
+      backgroundColor: isDarkMode ? '#1f2937' : '#ffffff',
+      zIndex: 999999,
+      border: isDarkMode ? '1px solid #374151' : '1px solid #e5e7eb',
+      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
     }),
+    menuPortal: (base) => ({ ...base, zIndex: 999999 }),
     option: (provided, state) => ({
       ...provided,
       backgroundColor: state.isSelected ? (isDarkMode ? '#4f46e5' : '#6366f1') : (state.isFocused ? (isDarkMode ? '#374151' : '#f3f4f6') : 'transparent'),
@@ -613,12 +698,17 @@ const ProfileForm = ({ initialData, onSubmit, section = 'all' }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Current Country <span className="text-red-500">*</span></label>
-                <select name="current_country" value={formData.current_country || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
-                  <option value="">Select Country</option>
-                  {countries.map(country => (
-                    <option key={country.code} value={country.code}>{country.name}</option>
-                  ))}
-                </select>
+                <CreatableSelect
+                  isClearable
+                  name="current_country"
+                  options={countries}
+                  styles={selectStyles}
+                  menuPortalTarget={portalTarget}
+                  menuPosition="fixed"
+                  placeholder="Select or type country"
+                  value={countries.find(c => c.value === formData.current_country || c.label === formData.current_country) || (formData.current_country ? { label: formData.current_country, value: formData.current_country } : null)}
+                  onChange={handleSelectChange}
+                />
                 {errors.current_country && <p className="text-red-500 text-xs mt-1">{errors.current_country}</p>}
               </div>
               <div>
@@ -627,12 +717,17 @@ const ProfileForm = ({ initialData, onSubmit, section = 'all' }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Origin Country</label>
-                <select name="origin_country" value={formData.origin_country || ''} onChange={handleChange} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
-                  <option value="">Select Country</option>
-                  {countries.map(country => (
-                    <option key={country.code} value={country.code}>{country.name}</option>
-                  ))}
-                </select>
+                <CreatableSelect
+                  isClearable
+                  name="origin_country"
+                  options={countries}
+                  styles={selectStyles}
+                  menuPortalTarget={portalTarget}
+                  menuPosition="fixed"
+                  placeholder="Select or type country"
+                  value={countries.find(c => c.value === formData.origin_country || c.label === formData.origin_country) || (formData.origin_country ? { label: formData.origin_country, value: formData.origin_country } : null)}
+                  onChange={handleSelectChange}
+                />
               </div>
             </div>
           </GlassCard>
@@ -796,7 +891,16 @@ const ProfileForm = ({ initialData, onSubmit, section = 'all' }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Degree</label>
-                  <input type="text" value={edu.degree || ''} onChange={(e) => handleNestedChange('education', index, 'degree', e.target.value)} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+                  <CreatableSelect
+                    isClearable
+                    options={degrees}
+                    styles={selectStyles}
+                    menuPortalTarget={portalTarget}
+                    menuPosition="fixed"
+                    placeholder="Select or type degree"
+                    value={degrees.find(d => d.value === edu.degree) || (edu.degree ? { label: edu.degree, value: edu.degree } : null)}
+                    onChange={(val) => handleNestedChange('education', index, 'degree', val ? val.value : '')}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">School</label>
@@ -827,7 +931,16 @@ const ProfileForm = ({ initialData, onSubmit, section = 'all' }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Title</label>
-                  <input type="text" value={work.title || ''} onChange={(e) => handleNestedChange('work_experience', index, 'title', e.target.value)} className="w-full rounded-md border border-gray-300 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" />
+                  <CreatableSelect
+                    isClearable
+                    options={professions}
+                    styles={selectStyles}
+                    menuPortalTarget={portalTarget}
+                    menuPosition="fixed"
+                    placeholder="Select or type title"
+                    value={professions.find(p => p.value === work.title || p.label === work.title) || (work.title ? { label: work.title, value: work.title } : null)}
+                    onChange={(val) => handleNestedChange('work_experience', index, 'title', val ? val.value : '')}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Company</label>
@@ -881,6 +994,8 @@ const ProfileForm = ({ initialData, onSubmit, section = 'all' }) => {
                 name="marital_statuses"
                 options={MARITAL_STATUS_CHOICES}
                 styles={selectStyles}
+                menuPortalTarget={document.body}
+                menuPosition="fixed"
                 className="basic-multi-select"
                 classNamePrefix="select"
                 value={MARITAL_STATUS_CHOICES.filter(option => formData.preference.marital_statuses?.includes(option.value))}
@@ -889,27 +1004,31 @@ const ProfileForm = ({ initialData, onSubmit, section = 'all' }) => {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Profession</label>
-              <Select
+              <CreatableSelect
                 isMulti
                 name="profession"
                 options={professions}
                 styles={selectStyles}
+                menuPortalTarget={document.body}
+                menuPosition="fixed"
                 className="basic-multi-select"
                 classNamePrefix="select"
-                value={professions.filter(option => formData.preference.profession?.includes(option.value))}
+                value={(formData.preference.profession || []).map(val => professions.find(p => p.value === val || p.label === val) || { label: val, value: val })}
                 onChange={handlePreferenceReactSelectChange}
               />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Country</label>
-              <Select
+              <CreatableSelect
                 isMulti
                 name="country"
-                options={countries.map(country => ({ value: country.code, label: country.name }))}
+                options={countries}
                 styles={selectStyles}
+                menuPortalTarget={document.body}
+                menuPosition="fixed"
                 className="basic-multi-select"
                 classNamePrefix="select"
-                value={countries.map(country => ({ value: country.code, label: country.name })).filter(option => formData.preference.country?.includes(option.value))}
+                value={(formData.preference.country || []).map(val => countries.find(c => c.value === val || c.label === val) || { label: val, value: val })}
                 onChange={handlePreferenceReactSelectChange}
               />
             </div>
@@ -1017,9 +1136,28 @@ const ProfileForm = ({ initialData, onSubmit, section = 'all' }) => {
         />
       </GlassCard>
 
-      <button type="submit" className="w-full p-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-500 text-white font-bold text-lg hover:from-purple-700 hover:to-pink-600 transition duration-300">
-        Save Profile
-      </button>
+      {/* Sticky Save Bar */}
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-auto pointer-events-none">
+        <div className="flex items-center gap-3 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-2xl pointer-events-auto">
+          {showDraftToast && (
+            <div className="flex items-center gap-4 bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2 rounded-xl border border-indigo-100 dark:border-indigo-800 animate-in slide-in-from-bottom-2">
+              <p className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300">Draft found</p>
+              <div className="flex gap-2">
+                <button type="button" onClick={restoreDraft} className="text-[10px] font-black uppercase text-indigo-600 hover:underline">Restore</button>
+                <button type="button" onClick={discardDraft} className="text-[10px] font-black uppercase text-gray-400 hover:text-red-500">Discard</button>
+              </div>
+            </div>
+          )}
+          <button
+            type="submit"
+            className="px-8 py-3 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl font-bold text-[10px] uppercase tracking-[0.1em] shadow-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all active:scale-95 whitespace-nowrap"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+
+      <div className="h-24"></div> {/* Spacer for sticky footer */}
     </form >
   );
 };

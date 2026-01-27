@@ -1,16 +1,42 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
+import logging
+
+logger = logging.getLogger(__name__)
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
-from .serializers import UserSerializer, ProfileSerializer, InterestSerializer, NotificationSerializer, VerificationDocumentSerializer
+from .serializers import (
+    UserSerializer, ProfileSerializer, InterestSerializer, 
+    NotificationSerializer, VerificationDocumentSerializer, TransactionSerializer
+)
 from django.contrib.auth.models import User
 from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import IsAuthenticated
-from rest_framework import viewsets
-from .models import Profile, Interest, WorkExperience, Notification, VerificationDocument, MatchUnlock
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework import viewsets, generics
+from django.core import signing
+from django.shortcuts import redirect
+from django.conf import settings
+from .services.email_service import EmailService
+from django.db.models import Q
+from .models import Profile, Interest, WorkExperience, Education, Notification, VerificationDocument
+from subscription.models import Transaction
+from .utils.country_utils import COUNTRY_MASTER_LIST
+
+
+class EducationDegreeListView(APIView):
+    def get(self, request):
+        # Fetch distinct degrees already in the system
+        degrees = Education.objects.values_list('degree', flat=True).distinct()
+        # Fallback to some common ones if none exist yet
+        if not degrees:
+            degrees = [
+                "SSC / Dakhil", "HSC / Alim", "Bachelors / Honours", 
+                "Masters", "PhD", "MBBS", "Engineering", "Diploma"
+            ]
+        return Response(degrees)
 from rest_framework.decorators import action
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.pagination import PageNumberPagination
 from .services.matching_service import MatchingService
 from django.db.models import Q
@@ -23,62 +49,53 @@ from rest_framework.permissions import IsAdminUser
 
 class CountryListView(APIView):
     def get(self, request):
-        # Static list of countries with codes and names. This provides a consistent list
-        # regardless of user-generated profile data.
-        countries = [
-            {"name": "United States", "code": "US"},
-            {"name": "Canada", "code": "CA"},
-            {"name": "United Kingdom", "code": "GB"},
-            {"name": "Australia", "code": "AU"},
-            {"name": "Germany", "code": "DE"},
-            {"name": "France", "code": "FR"},
-            {"name": "Spain", "code": "ES"},
-            {"name": "Italy", "code": "IT"},
-            {"name": "Japan", "code": "JP"},
-            {"name": "China", "code": "CN"},
-            {"name": "India", "code": "IN"},
-            {"name": "Brazil", "code": "BR"},
-            {"name": "Mexico", "code": "MX"},
-            {"name": "South Africa", "code": "ZA"},
-            {"name": "Nigeria", "code": "NG"},
-            {"name": "Egypt", "code": "EG"},
-            {"name": "Argentina", "code": "AR"},
-            {"name": "Sweden", "code": "SE"},
-            {"name": "Norway", "code": "NO"},
-            {"name": "Denmark", "code": "DK"},
-            {"name": "Finland", "code": "FI"},
-            {"name": "Netherlands", "code": "NL"},
-            {"name": "Belgium", "code": "BE"},
-            {"name": "Switzerland", "code": "CH"},
-            {"name": "Austria", "code": "AT"},
-            {"name": "Portugal", "code": "PT"},
-            {"name": "Greece", "code": "GR"},
-            {"name": "Ireland", "code": "IE"},
-            {"name": "New Zealand", "code": "NZ"},
-            {"name": "Singapore", "code": "SG"},
-            {"name": "Malaysia", "code": "MY"},
-            {"name": "Indonesia", "code": "ID"},
-            {"name": "Thailand", "code": "TH"},
-            {"name": "Vietnam", "code": "VN"},
-            {"name": "Philippines", "code": "PH"},
-            {"name": "South Korea", "code": "KR"},
-            {"name": "Russia", "code": "RU"},
-            {"name": "Saudi Arabia", "code": "SA"},
-            {"name": "United Arab Emirates", "code": "AE"},
-            {"name": "Turkey", "code": "TR"},
-            {"name": "Ukraine", "code": "UA"},
-            {"name": "Poland", "code": "PL"},
-            {"name": "Czech Republic", "code": "CZ"},
-            {"name": "Hungary", "code": "HU"},
-            {"name": "Romania", "code": "RO"},
-            {"name": "Chile", "code": "CL"},
-            {"name": "Colombia", "code": "CO"},
-            {"name": "Peru", "code": "PE"},
-            {"name": "Pakistan", "code": "PK"},
-            {"name": "Bangladesh", "code": "BD"},
-            {"name": "Sri Lanka", "code": "LK"},
-        ]
-        return Response(countries)
+        # We only return countries that actually have profiles in the system.
+        all_countries = COUNTRY_MASTER_LIST
+
+        # Get set of country codes currently used by profiles in either field
+        existing_country_codes = set(
+            Profile.objects.exclude(current_country__isnull=True)
+                           .exclude(current_country="")
+                           .values_list('current_country', flat=True)
+        ) | set(
+            Profile.objects.exclude(origin_country__isnull=True)
+                           .exclude(origin_country="")
+                           .values_list('origin_country', flat=True)
+        )
+
+        # Check for query parameter to filter only countries that have users
+        only_with_users = request.query_params.get('only_with_users', 'false').lower() == 'true'
+
+        if only_with_users:
+            # Only include countries that are actually in our existing_country_codes set
+            available_countries = [
+                c for c in all_countries if c['code'] in existing_country_codes
+            ]
+            # Add custom countries from DB that aren't in master list
+            master_codes = {c['code'] for c in all_countries}
+            for code in existing_country_codes:
+                if code and code not in master_codes:
+                    available_countries.append({"name": code, "code": code})
+        else:
+            # Start with all countries from the master list
+            available_countries = list(all_countries)
+            
+            # Add custom countries that are in the database but not in our master list
+            master_codes = {c['code'] for c in all_countries}
+            master_names = {c['name'].lower() for c in all_countries}
+            
+            for code in existing_country_codes:
+                if not code:
+                    continue
+                # If the code isn't in our master list and doesn't look like an existing country name
+                if code not in master_codes and code.lower() not in master_names:
+                    # Add as a new entry
+                    available_countries.append({"name": code, "code": code})
+        
+        # Sort for better UX
+        available_countries.sort(key=lambda x: x['name'])
+        
+        return Response(available_countries)
 
 
 class ProfessionListView(APIView):
@@ -105,10 +122,14 @@ class RecommendedMatchesView(APIView):
         try:
             profile = request.user.profile
             
-            # Use MatchingService to get top matches
-            # The service handles gender filtering, scoring, and ranking
+            # Use MatchingService to get top matches with fallback logic
             limit = int(request.query_params.get('limit', 5))
-            ranked_matches = MatchingService.get_ranked_recommendations(profile, limit=limit)
+            result = MatchingService.get_ranked_recommendations(profile, limit=limit)
+            
+            # Extract data from result
+            ranked_matches = result['matches']
+            is_fallback = result['is_fallback']
+            fallback_message = result['fallback_message']
             
             # Serialize profiles using ProfileSerializer to apply privacy/masking logic
             profiles = [item['profile'] for item in ranked_matches]
@@ -118,13 +139,23 @@ class RecommendedMatchesView(APIView):
                 context={'request': request}
             )
             
-            # Combine serialized data with their scores
+            # Combine serialized data with their scores and reasons
             data = []
             for i, item in enumerate(serializer.data):
                 item['compatibility_score'] = ranked_matches[i]['score']
+                item['match_reasons'] = ranked_matches[i]['reasons']
                 data.append(item)
+            
+            # Build response with fallback metadata
+            response_data = {
+                'matches': data,
+                'is_fallback': is_fallback
+            }
+            
+            if fallback_message:
+                response_data['fallback_message'] = fallback_message
                 
-            return Response(data)
+            return Response(response_data)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -152,7 +183,7 @@ class ProfileViewSet(viewsets.ModelViewSet):
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
-    parser_classes = (MultiPartParser, FormParser)
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
     pagination_class = PageNumberPagination
 
     def retrieve(self, request, *args, **kwargs):
@@ -200,6 +231,7 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
         if self.action == 'list':
             queryset = queryset.exclude(user=self.request.user)
+            queryset = queryset.filter(is_activated=True)
 
             # Helper to calculate birth year range from age range
             def _get_birth_year_range_from_age(age_range_str):
@@ -244,6 +276,18 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
             if gender_filter:
                 queryset = queryset.filter(gender__iexact=gender_filter)
+            else:
+                # Default to user's "looking_for_gender" preference from survey
+                try:
+                    user_profile = self.request.user.profile
+                    if hasattr(user_profile, 'preference'):
+                        pref = user_profile.preference
+                        if pref.looking_for_gender == 'bride':
+                            queryset = queryset.filter(gender__iexact='female')
+                        elif pref.looking_for_gender == 'groom':
+                            queryset = queryset.filter(gender__iexact='male')
+                except (AttributeError, Profile.DoesNotExist):
+                    pass
 
             if interest_filter:
                 # For now, treat interest_filter as a general text search across relevant fields
@@ -265,10 +309,15 @@ class InterestViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        user_profile = self.request.user.profile
-        return Interest.objects.filter(
-            Q(sender=user_profile) | Q(receiver=user_profile)
-        )
+        if not self.request.user.is_authenticated:
+            return Interest.objects.none()
+        try:
+            user_profile = self.request.user.profile
+            return Interest.objects.filter(
+                Q(sender=user_profile) | Q(receiver=user_profile)
+            )
+        except Profile.DoesNotExist:
+            return Interest.objects.none()
 
     def create(self, request, *args, **kwargs):
         receiver_id = request.data.get('receiver')
@@ -285,29 +334,75 @@ class InterestViewSet(viewsets.ModelViewSet):
         if sender == receiver:
             return Response({"error": "You cannot send an interest to yourself."}, status=status.HTTP_400_BAD_REQUEST)
 
-        interest, created = Interest.objects.get_or_create(
-            sender=sender, receiver=receiver)
+        # --- CREDIT VALIDATION ---
+        from subscription.models import CreditWallet, Transaction
+        
+        INTEREST_COST = 1  # 1 credit per interest request
+        
+        # Get or create wallet
+        wallet, created = CreditWallet.objects.get_or_create(user=request.user)
+        
+        # Check if user has enough credits
+        if wallet.balance < INTEREST_COST:
+            return Response({
+                "error": "Insufficient credits",
+                "message": f"You need {INTEREST_COST} credit to send an interest request. Your current balance: {wallet.balance} credits.",
+                "required_credits": INTEREST_COST,
+                "current_balance": wallet.balance
+            }, status=status.HTTP_402_PAYMENT_REQUIRED)
+        # --- END CREDIT VALIDATION ---
 
+        # --- 1. Get/Initialize Interest ---
+        interest, created = Interest.objects.get_or_create(sender=sender, receiver=receiver)
+
+        # If it's already active, don't allow re-sending or double-charging
         if not created and interest.status in ['sent', 'accepted']:
             return Response({"error": "An interest has already been sent to this user."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not created and interest.status == 'rejected':
-            interest.status = 'sent'
-            interest.save()
+        # --- 2. Deduct Credits (1 Credit per Request) ---
+        wallet.deduct_credits(INTEREST_COST)
+        
+        # Create permanent transaction record
+        Transaction.objects.create(
+            user=request.user,
+            amount=INTEREST_COST,
+            currency='CREDITS',
+            gateway='admin',
+            status='completed',
+            purpose='chat_unlock',
+            metadata={
+                'action': 'interest_request_sent',
+                'receiver_id': receiver.id,
+                'receiver_name': receiver.name,
+                'interest_id': interest.id
+            }
+        )
 
-        # --- Create Notification for Interest Sent ---
-        if created or interest.status == 'sent':
-            Notification.objects.create(
-                recipient=receiver.user,
-                actor_profile=sender,
-                verb="sent you an interest request",
-                target_profile=receiver
-            )
-        # -----------------------------------------
+        # --- 3. Update Status and Notify ---
+        interest.status = 'sent'
+        interest.save()
 
+        # In-app notification
+        Notification.objects.create(
+            recipient=receiver.user,
+            actor_profile=sender,
+            verb="sent you an interest request",
+            target_profile=receiver
+        )
+
+        # Interactive Email Notification
+        try:
+            EmailService.send_interest_request_email(interest)
+        except Exception as e:
+            print(f"Error sending interest email: {e}")
+
+        # --- 4. Success Response ---
         serializer = self.get_serializer(interest)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK, headers=headers)
+        response_data = serializer.data
+        response_data['credits_deducted'] = INTEREST_COST
+        response_data['new_balance'] = wallet.balance
+        
+        return Response(response_data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
     def accept(self, request, pk=None):
@@ -316,6 +411,7 @@ class InterestViewSet(viewsets.ModelViewSet):
             return Response({'error': 'You are not authorized to accept this interest.'}, status=status.HTTP_403_FORBIDDEN)
 
         interest.status = 'accepted'
+        interest.share_type = request.data.get('share_type', 'full')
         interest.save()
         return Response({'status': 'Interest accepted'})
 
@@ -334,8 +430,53 @@ class InterestViewSet(viewsets.ModelViewSet):
         if interest.sender.user != request.user:
             return Response({'error': 'You are not authorized to cancel this interest.'}, status=status.HTTP_403_FORBIDDEN)
 
-        return super().destroy(request, *args, **kwargs)
+        # Mark as cancelled and process refund
+        interest.status = 'cancelled'
+        interest.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny], authentication_classes=[], url_path='respond-email')
+    def respond_email(self, request):
+        """
+        Public endpoint to handle interest responses from signed email links.
+        Uses signature verification instead of standard auth.
+        """
+        token = request.query_params.get('token')
+        if not token:
+            return Response({"error": "No token provided"}, status=400)
+            
+        try:
+            # Verify the signed token
+            data = signing.loads(token, max_age=3600*24*7) # 7 days
+            interest_id = data.get('interest_id')
+            choice = data.get('choice')
+            
+            interest = Interest.objects.get(id=interest_id)
+            
+            # Process the choice
+            if choice == 'reject':
+                interest.status = 'rejected'
+                interest.share_type = 'none'
+                # If you want to refund on rejection, call interest.process_refund() here
+            elif choice == 'full':
+                interest.status = 'accepted'
+                interest.share_type = 'full'
+            elif choice == 'bio_only':
+                interest.status = 'accepted'
+                interest.share_type = 'bio_only'
+                
+            interest.save()
+            
+            # Redirect to a success page on the frontend
+            frontend_url = settings.CORS_ALLOWED_ORIGINS[0] if settings.CORS_ALLOWED_ORIGINS else "http://localhost:3000"
+            return redirect(f"{frontend_url}/interest-confirmed?status={interest.status}&type={interest.share_type}")
+            
+        except (signing.BadSignature, Interest.DoesNotExist) as e:
+            logger.error(f"Invalid or expired response token: {str(e)}")
+            return Response({"error": "Invalid or expired link"}, status=400)
+        except Exception as e:
+            logger.error(f"Error processing email response: {str(e)}")
+            return Response({"error": "Internal server error"}, status=500)
 
 # --- Notification Views ---
 class NotificationListView(generics.ListAPIView):
@@ -525,7 +666,8 @@ def who_viewed_me(request):
     for view in views:
         visitor = view.viewer
         # Calculate match score
-        match_score = MatchingService.calculate_compatibility_score(profile, visitor)
+        result = MatchingService.calculate_compatibility_score(profile, visitor)
+        match_score = result['score'] if result and isinstance(result, dict) else result
         
         # Consistent Name Masking (Match Discover page logic)
         full_name = visitor.name or "Member"
@@ -558,9 +700,19 @@ def who_viewed_me(request):
             latest_work = visitor.work_experience.first()
             profession = latest_work.title if latest_work else None
         
+        # Determine image visibility
+        from .models import Interest
+        is_matched = Interest.objects.filter(
+            (Q(sender=profile, receiver=visitor) | Q(sender=visitor, receiver=profile)),
+            status='accepted'
+        ).exists()
+        
+        # Share the image if it's public OR they are matched
+        show_img = (visitor.profile_image_privacy == 'public') or is_matched
+        
         # Get absolute image URL
         profile_picture = None
-        if visitor.profile_image:
+        if visitor.profile_image and show_img:
             profile_picture = request.build_absolute_uri(visitor.profile_image.url)
         
         viewers.append({
@@ -645,58 +797,26 @@ def get_profile_strength(request):
         'suggestions': suggestions,
         'completion_percentage': strength
     })
-@api_view(['POST'])
-def unlock_profile(request):
+
+
+class TransactionListView(generics.ListAPIView):
     """
-    Unlock a profile by spending credits.
-    Requires mutual interest approval.
+    List all transactions for the current authenticated user.
     """
-    if not request.user.is_authenticated:
-        return Response({'error': 'Authentication required'}, status=401)
+    serializer_class = TransactionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Transaction.objects.filter(user=self.request.user).order_by('-created_at')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
         
-    target_profile_id = request.data.get('profile_id')
-    if not target_profile_id:
-        return Response({'error': 'Profile ID required'}, status=400)
-    
-    target_profile = get_object_or_404(Profile, id=target_profile_id)
-    user_profile = request.user.profile
-    
-    # Check if already unlocked
-    if MatchUnlock.objects.filter(user=request.user, target_profile=target_profile).exists():
-        return Response({'message': 'Profile already unlocked'}, status=200)
-    
-    # Check for mutual interest approval
-    interest = Interest.objects.filter(
-        (Q(sender=user_profile, receiver=target_profile) | 
-         Q(sender=target_profile, receiver=user_profile)),
-        status='accepted'
-    ).first()
-    
-    if not interest:
-        return Response({'error': 'Mutual interest approval required before unlocking.'}, status=400)
-    
-    # Check credits
-    unlock_cost = 10 # Hardcoded for now, can be dynamic
-    
-    from subscription.models import CreditWallet
-    wallet, created = CreditWallet.objects.get_or_create(user=request.user)
-    
-    if wallet.balance < unlock_cost:
-        return Response({'error': f'Insufficient credits. Need {unlock_cost} credits to unlock.'}, status=400)
-    
-    # Process unlock
-    wallet.deduct_credits(unlock_cost)
-    MatchUnlock.objects.create(user=request.user, target_profile=target_profile)
-    
-    # Notify target user (optional but good for engagement)
-    Notification.objects.create(
-        recipient=target_profile.user,
-        actor_profile=user_profile,
-        verb="unlocked your full profile!",
-    )
-    
-    return Response({
-        'message': 'Profile unlocked successfully', 
-        'new_balance': wallet.balance,
-        'unlocked': True
-    })
+        from subscription.models import CreditWallet
+        wallet, _ = CreditWallet.objects.get_or_create(user=request.user)
+        
+        return Response({
+            'transactions': serializer.data,
+            'current_balance': wallet.balance
+        })

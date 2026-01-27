@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { getProfiles, getProfile, sendInterest } from '../services/api';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, MapPin, Filter, XCircle, Zap, User, Grid, List, Heart, Clock, Activity } from 'lucide-react';
+import { Search, MapPin, Filter, XCircle, Zap, User, Grid, List, Heart, Clock, Activity, AlertCircle, ArrowRight } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProfileCardStack from '../components/ProfileCardStack';
 import { useInfiniteQuery } from '@tanstack/react-query';
@@ -256,7 +256,31 @@ const ProfilesListPage = () => {
             </div>
           </div>
 
-          {/* Warning Banner */}
+          {/* Warning Banners */}
+          {currentUserProfile && !currentUserProfile.is_activated && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 mt-4 mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl flex flex-col md:flex-row items-center justify-between shadow-sm gap-4"
+            >
+              <div className="flex items-center text-center md:text-left">
+                <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/40 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
+                  <AlertCircle size={24} className="text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-amber-900 dark:text-amber-100">Your profile is currently hidden</h4>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">Activate your account once for life to become visible and start receiving interests.</p>
+                </div>
+              </div>
+              <Link
+                to="/upgrade"
+                className="w-full md:w-auto px-8 py-3 bg-amber-600 text-white rounded-full font-bold hover:bg-amber-700 transition-all shadow-md flex items-center justify-center gap-2 group"
+              >
+                Activate Profile <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </motion.div>
+          )}
+
           {currentUserProfile && currentUserProfile.compatibility_score === null && (
             <div className="p-3 mt-4 mb-6 bg-purple-800/30 border border-purple-600 rounded-lg flex items-center justify-center shadow-lg">
               <User size={20} className="mr-3 text-purple-300" />

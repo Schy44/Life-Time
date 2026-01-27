@@ -16,7 +16,7 @@ const CreateProfilePage = () => {
     date_of_birth: null,
     gender: 'male',
     profile_image: null,
-    height_cm: '',
+    height_inches: '',
     blood_group: '',
     religion: '',
     alcohol: 'never',

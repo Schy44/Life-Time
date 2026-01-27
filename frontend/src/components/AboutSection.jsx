@@ -59,28 +59,37 @@ const AboutSection = ({ aboutData, onEdit }) => {
             {basicInfo.skin_complexion && <InfoRow label="Skin Complexion" value={formatString(basicInfo.skin_complexion)} />}
             {basicInfo.marital_status && <InfoRow label="Relationship" value={formatString(basicInfo.marital_status)} />}
             {basicInfo.religion && <InfoRow label="Religion" value={formatString(basicInfo.religion)} />}
-            {basicInfo.citizenship && <InfoRow label="Citizenship" value={formatString(basicInfo.citizenship)} />}
+            {/* Moved Blood Group here */}
+            {basics && basics.blood_group && <InfoRow label="Blood group" value={basics.blood_group} />}
           </div>
         </SectionCard>
       )}
 
-      {/* Basics (Blood Group, etc.) */}
-      {basics && Object.keys(basics).filter(k => basics[k]).length > 0 && (
-        <SectionCard title="Basics" icon={<Droplet size={20} className="text-indigo-600" />}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {basics.blood_group && <InfoRow label="Blood group" value={basics.blood_group} />}
-          </div>
-        </SectionCard>
-      )}
+      {/* Basics Card Removed */}
 
       {/* Location & Residency */}
       {locationResidency && Object.keys(locationResidency).filter(k => locationResidency[k]).length > 0 && (
         <SectionCard title="Location & Residency" icon={<MapPin size={20} className="text-indigo-600" />}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {locationResidency.current_city && <InfoRow label="Current city" value={locationResidency.current_city} />}
-            {locationResidency.current_country && <InfoRow label="Current country" value={locationResidency.current_country} />}
-            {locationResidency.origin_city && <InfoRow label="Origin city" value={locationResidency.origin_city} />}
-            {locationResidency.origin_country && <InfoRow label="Origin country" value={locationResidency.origin_country} />}
+            {/* Moved Citizenship here */}
+            {basicInfo.citizenship && <InfoRow label="Citizenship" value={formatString(basicInfo.citizenship)} />}
+
+            {/* Grouped Current Location */}
+            {(locationResidency.current_city || locationResidency.current_country) && (
+              <InfoRow
+                label="Current Location"
+                value={[locationResidency.current_city, locationResidency.current_country].filter(Boolean).join(', ')}
+              />
+            )}
+
+            {/* Grouped Origin Location */}
+            {(locationResidency.origin_city || locationResidency.origin_country) && (
+              <InfoRow
+                label="Origin"
+                value={[locationResidency.origin_city, locationResidency.origin_country].filter(Boolean).join(', ')}
+              />
+            )}
+
             {locationResidency.visa_status && <InfoRow label="Visa status" value={formatString(locationResidency.visa_status)} />}
           </div>
         </SectionCard>

@@ -1,10 +1,18 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaCheckCircle, FaMapMarkerAlt, FaGraduationCap, FaBriefcase, FaHeart, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaCheckCircle, FaMapMarkerAlt, FaGraduationCap, FaBriefcase, FaHeart, FaTimes, FaChevronLeft, FaChevronRight, FaPhone } from 'react-icons/fa';
 import SectionCard from './SectionCard';
 import InfoRow from './InfoRow';
 import Socials from './Socials';
 import FaithTagsSection from './FaithTagsSection';
+import { getCountries } from '../services/api'; // Import getCountries
+import { useQuery } from '@tanstack/react-query';
+
+// Helper for formatting strings
+const formatString = (str) => {
+    if (typeof str !== 'string') return str;
+    return str.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+};
 
 // Image viewer modal component
 function ImageViewer({ images, startIndex = 0, onClose }) {
@@ -79,6 +87,20 @@ const PublicProfileView = ({
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const [viewerOpen, setViewerOpen] = useState(false);
 
+    // Fetch countries for mapping
+    const { data: countries = [] } = useQuery({
+        queryKey: ['countries'],
+        queryFn: getCountries,
+        staleTime: Infinity, // Countries rarely change
+    });
+
+    // Helper to get country name
+    const getCountryName = (code) => {
+        if (!code) return '—';
+        const country = countries.find(c => c.code === code || c.value === code);
+        return country ? country.name : code;
+    };
+
     if (!profileData) return null;
 
     const {
@@ -92,7 +114,7 @@ const PublicProfileView = ({
         looking_for = '',
         profile_for,
         gender,
-        height_cm,
+        height_inches,
         skin_complexion,
         religion,
         alcohol,
@@ -232,23 +254,49 @@ const PublicProfileView = ({
                                 {showInterestControls && onInterestAction && <div>{onInterestAction()}</div>}
                             </div>
 
-                            {/* Faith Tags - Display under photo section */}
+                            {/* Faith Tags */}
                             {faith_tags && faith_tags.length > 0 && (
-                                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                                    <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">My Faith</h3>
+                                <div className="mt-4">
                                     <FaithTagsSection selectedTags={faith_tags} isEditing={false} />
                                 </div>
                             )}
 
-                            {/* Partner Expectations - Display under Faith Tags */}
-                            {looking_for && (
-                                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                                    <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Partner Expectations</h3>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                                        {looking_for}
+                            {/* Looking For Section */}
+                            <div className="mt-4">
+                                <SectionCard
+                                    title="Looking For"
+                                    icon={<FaHeart className="text-red-500" size={14} />}
+                                    className="!bg-rose-50/30 !border-rose-100"
+                                >
+                                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed italic">
+                                        {looking_for ? `"${looking_for}"` : "No special requirements specified yet."}
                                     </p>
-                                </div>
-                            )}
+                                </SectionCard>
+                            </div>
+
+                            {/* Contact Number Section */}
+                            <div className="mt-4">
+                                <SectionCard
+                                    title="Contact Number"
+                                    icon={<FaPhone className="text-emerald-500" size={14} />}
+                                    className="!bg-emerald-50/30 !border-emerald-100"
+                                    isLocked={!profileData.is_unlocked}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
+                                            <FaPhone size={14} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-black text-gray-900 dark:text-white">
+                                                {profileData.is_unlocked ? (profileData.phone || 'Not provided') : 'XXXXXXXXXX'}
+                                            </p>
+                                            {!profileData.is_unlocked && (
+                                                <p className="text-[10px] text-gray-400 font-medium">Connect to view contact</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </SectionCard>
+                            </div>
                         </div>
                     </div>
 
@@ -256,30 +304,38 @@ const PublicProfileView = ({
                     <div className="lg:col-span-2 space-y-4">
                         <SectionCard title="About" icon={<div className="text-indigo-600">•</div>}>
                             <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{about || 'No description provided.'}</p>
-                            <InfoRow label="Full name" value={name} />
-                            {profile_for && <InfoRow label="Profile for" value={profile_for.replace('_', ' ')} />}
-                            <InfoRow label="Gender" value={gender || '—'} />
-                            <InfoRow label="Relationship" value={marital_status || '—'} />
-                            <InfoRow label="Religion" value={religion || '—'} />
-                            <InfoRow label="Height" value={height_cm ? `${height_cm} cm` : '—'} />
-                            {skin_complexion && <InfoRow label="Skin complexion" value={skin_complexion} />}
                         </SectionCard>
 
-                        {/* Basics */}
-                        <SectionCard title="Basics" icon={<div className="text-indigo-600">•</div>}>
+                        {/* Basic Information */}
+                        <SectionCard title="Basic Information" icon={<FaHeart size={20} className="text-indigo-600" />}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <InfoRow label="Blood group" value={blood_group || '—'} />
+                                {profile_for && <InfoRow label="Profile created by" value={profile_for === 'self' || profile_for === 'Self' ? 'Self' : `Parent/Relative (${profile_for})`} />}
+                                {gender && <InfoRow label="Gender" value={formatString(gender)} />}
+                                {height_inches && <InfoRow label="Height" value={`${Math.floor(height_inches / 12)}'${height_inches % 12}"`} />}
+                                {skin_complexion && <InfoRow label="Skin Complexion" value={formatString(skin_complexion)} />}
+                                {marital_status && <InfoRow label="Relationship" value={formatString(marital_status)} />}
+                                {religion && <InfoRow label="Religion" value={formatString(religion)} />}
+                                {blood_group && <InfoRow label="Blood group" value={blood_group} />}
                             </div>
                         </SectionCard>
 
                         {/* Location & Residency */}
                         <SectionCard title="Location & Residency" icon={<FaMapMarkerAlt className="text-gray-700" />}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <InfoRow label="Current city" value={current_city || '—'} />
-                                <InfoRow label="Current country" value={current_country || '—'} />
-                                <InfoRow label="Origin city" value={origin_city || '—'} />
-                                <InfoRow label="Origin country" value={origin_country || '—'} />
-                                <InfoRow label="Visa status" value={visa_status || '—'} />
+                                {citizenship && <InfoRow label="Citizenship" value={formatString(citizenship)} />}
+                                {(current_city || current_country) && (
+                                    <InfoRow
+                                        label="Current Location"
+                                        value={[current_city, getCountryName(current_country)].filter(Boolean).join(', ')}
+                                    />
+                                )}
+                                {(origin_city || origin_country) && (
+                                    <InfoRow
+                                        label="Origin"
+                                        value={[origin_city, getCountryName(origin_country)].filter(Boolean).join(', ')}
+                                    />
+                                )}
+                                {visa_status && <InfoRow label="Visa status" value={formatString(visa_status)} />}
                             </div>
                         </SectionCard>
 
@@ -317,24 +373,7 @@ const PublicProfileView = ({
                             )}
                         </SectionCard>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <SectionCard title="Lifestyle" icon={<div className="text-indigo-600">•</div>}>
-                                <InfoRow label="Alcohol" value={alcohol || '—'} />
-                                <InfoRow label="Smoking" value={smoking || '—'} />
-                            </SectionCard>
 
-                            <SectionCard title="Preferences" icon={<FaHeart className="text-red-500" />}>
-                                {preferences && preferences[0] ? (
-                                    <div className="flex flex-wrap gap-2">
-                                        {Object.entries(preferences[0]).slice(0, 12).map(([k, v]) => (
-                                            <span key={k} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-sm text-gray-800 dark:text-gray-200">{k.replace(/_/g, ' ')}: {String(v)}</span>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-sm text-gray-700 dark:text-gray-400">Not provided</div>
-                                )}
-                            </SectionCard>
-                        </div>
 
                         <SectionCard title="Education" icon={<FaGraduationCap className="text-gray-700" />}>
                             {education.length ? (

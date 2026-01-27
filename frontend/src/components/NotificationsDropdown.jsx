@@ -1,7 +1,7 @@
 // frontend/src/components/NotificationsDropdown.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, Check, EyeOff, ThumbsUp, Mail, Bookmark, User, X } from 'lucide-react';
+import { Bell, Check, ThumbsUp, Mail, Bookmark, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   getNotifications,
@@ -9,6 +9,8 @@ import {
   markAllNotificationsAsRead,
   getUnreadNotificationCount
 } from '../services/api';
+import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthContext';
 
 const timeAgo = (date) => {
   const seconds = Math.floor((new Date() - new Date(date)) / 1000);
@@ -28,14 +30,12 @@ const timeAgo = (date) => {
 const NotificationIcon = ({ verb }) => {
   const iconMap = {
     'liked': <ThumbsUp size={14} className="text-white fill-current" />,
-    'messaged': <Mail size={14} className="text-white fill-current" />,
     'favorited': <Bookmark size={14} className="text-white fill-current" />,
     'viewed your profile': <User size={14} className="text-white" />,
   };
 
   const bgMap = {
     'liked': 'bg-blue-500',
-    'messaged': 'bg-green-500',
     'favorited': 'bg-yellow-500',
     'viewed your profile': 'bg-purple-500',
   }
@@ -48,6 +48,7 @@ const NotificationIcon = ({ verb }) => {
 };
 
 const NotificationsDropdown = () => {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -70,10 +71,32 @@ const NotificationsDropdown = () => {
   };
 
   useEffect(() => {
+    if (!user) return;
+
     fetchNotificationData();
-    const intervalId = setInterval(fetchNotificationData, 30000);
-    return () => clearInterval(intervalId);
-  }, []);
+
+    // Subscribe to real-time notifications
+    const channel = supabase
+      .channel('api_notification_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'api_notification',
+          filter: `recipient_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Real-time notification received:', payload);
+          fetchNotificationData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -230,8 +253,8 @@ const NotificationsDropdown = () => {
         ref={buttonRef}
         onClick={() => setIsOpen(prev => !prev)}
         className={`relative p-2 rounded-lg transition-all focus:outline-none ${isOpen
-            ? 'bg-black/5 dark:bg-white/10 text-black dark:text-white'
-            : 'text-black/50 hover:text-black dark:text-white/50 dark:hover:text-white hover:bg-black/[0.02] dark:hover:bg-white/[0.02]'
+          ? 'bg-black/5 dark:bg-white/10 text-black dark:text-white'
+          : 'text-black/50 hover:text-black dark:text-white/50 dark:hover:text-white hover:bg-black/[0.02] dark:hover:bg-white/[0.02]'
           }`}
         aria-label="Notifications"
       >

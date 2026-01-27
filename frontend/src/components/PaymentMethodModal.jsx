@@ -16,10 +16,20 @@ const PaymentMethodModal = ({ plan, creditAmount, onClose }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
+    const [currency, setCurrency] = useState('BDT');
+
     const getAmountDisplay = () => {
-        if (plan) return `$${plan.price_usd}`;
-        if (creditAmount) return `$${creditAmount}`; // Assuming $1 = 1 Credit or direct mapping
-        return '';
+        if (!plan && !creditAmount) return '';
+        
+        const amountBdt = plan ? plan.price_bdt : 0; // Assuming creditAmount mapping if needed
+        const symbol = currency === 'BDT' ? '৳' : '$';
+        
+        if (currency === 'BDT') return `৳${amountBdt}`;
+        
+        // Simple client-side conversion for UI preview (should match backend CurrencyService)
+        const rate = 0.0085; 
+        const amountUsd = (amountBdt * rate).toFixed(2);
+        return `$${amountUsd}`;
     };
 
     const getTitleDisplay = () => {
@@ -35,12 +45,11 @@ const PaymentMethodModal = ({ plan, creditAmount, onClose }) => {
             // Construct payload
             const payload = {
                 gateway: gateway,
+                currency: currency,
             };
 
             if (plan) {
                 payload.plan_slug = plan.slug;
-            } else if (creditAmount) {
-                payload.credit_amount = parseInt(creditAmount);
             }
 
             console.log("Initiating Payment:", payload);
@@ -93,11 +102,27 @@ const PaymentMethodModal = ({ plan, creditAmount, onClose }) => {
                             <p className="text-sm text-purple-600 dark:text-purple-300 font-medium mb-1">
                                 Purchasing
                             </p>
-                            <div className="flex justify-between items-end">
+                            <div className="flex justify-between items-center mb-2">
                                 <span className="text-lg font-bold text-gray-900 dark:text-white">
                                     {getTitleDisplay()}
                                 </span>
-                                <span className="text-xl font-bold text-purple-600 dark:text-purple-400">
+                                <div className="flex bg-white dark:bg-black/50 rounded-lg p-1 border border-purple-200 dark:border-purple-500/30">
+                                    <button 
+                                        onClick={() => setCurrency('BDT')}
+                                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${currency === 'BDT' ? 'bg-purple-600 text-white' : 'text-gray-500 hover:text-purple-600'}`}
+                                    >
+                                        BDT
+                                    </button>
+                                    <button 
+                                        onClick={() => setCurrency('USD')}
+                                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${currency === 'USD' ? 'bg-purple-600 text-white' : 'text-gray-500 hover:text-purple-600'}`}
+                                    >
+                                        USD
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="flex justify-end">
+                                <span className="text-2xl font-black text-purple-600 dark:text-purple-400">
                                     {getAmountDisplay()}
                                 </span>
                             </div>

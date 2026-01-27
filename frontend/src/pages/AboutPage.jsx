@@ -4,7 +4,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Footer from '../components/Footer';
-import { Shield, Eye, Zap, Users, AlertCircle, Search, Target, Rocket } from 'lucide-react';
+import { Shield, Eye, Zap, Users, AlertCircle, Search, Target, Heart, Sparkles } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -168,7 +168,7 @@ const AboutPage = () => {
                                 <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-xl hover:scale-105 transition-all duration-300 p-8">
                                     {/* Circular Icon Badge - Black */}
                                     <div className="mx-auto mb-6 w-24 h-24 rounded-full border-4 border-gray-900 dark:border-white flex items-center justify-center">
-                                        <Rocket className="w-12 h-12 text-gray-900 dark:text-white" strokeWidth={2} />
+                                        <Heart className="w-12 h-12 text-gray-900 dark:text-white" strokeWidth={2} />
                                     </div>
 
                                     {/* Content */}

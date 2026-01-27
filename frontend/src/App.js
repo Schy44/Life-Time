@@ -5,6 +5,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/Navbar';
 import LoadingSpinner from './components/LoadingSpinner';
+import { useQuery } from '@tanstack/react-query';
+import api from './lib/api';
 
 // Lazy load all page components for code splitting
 const Login = lazy(() => import('./pages/Login'));
@@ -22,10 +24,48 @@ const PricingPage = lazy(() => import('./components/PricingPage')); // Assuming 
 const AnalyticsDashboard = lazy(() => import('./pages/AnalyticsDashboard'));
 const SurveyPage = lazy(() => import('./pages/SurveyPage'));
 const MatchPreviewPage = lazy(() => import('./pages/MatchPreviewPage'));
+const OnboardingPage = lazy(() => import('./pages/OnboardingPage'));
+const CreditHistoryPage = lazy(() => import('./pages/CreditHistoryPage'));
+const InterestsPage = lazy(() => import('./pages/InterestsPage'));
+const InterestConfirmedPage = lazy(() => import('./pages/InterestConfirmedPage'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 
 const PrivateRoute = ({ children }) => {
   const { user } = useAuth();
   return user ? children : <Navigate to="/login" />;
+};
+
+// New component to protect routes that require activation
+const ActivationRoute = ({ children }) => {
+  const { user } = useAuth();
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ['me'],
+    queryFn: async () => {
+      const response = await api.get('/profile/');
+      return response.data;
+    },
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5, // 5 minutes cache
+    refetchOnWindowFocus: false, // Prevent refetch on window focus
+  });
+
+  console.log("DEBUG: ActivationRoute Check", { user: !!user, isLoading, profile });
+
+  if (!user) return <Navigate to="/login" />;
+  if (isLoading) return <LoadingSpinner size="fullscreen" message="Checking activation status..." />;
+
+  // If user is logged in but not activated, redirect to onboarding
+  // We allow access to 'profile' for editing, but hide Discover/Analytics
+  if (profile) {
+    console.log("DEBUG: Profile Loaded. is_activated =", profile.is_activated);
+    if (!profile.is_activated) {
+      console.warn("DEBUG: Redirecting to /onboarding because is_activated is false");
+      return <Navigate to="/onboarding" />;
+    }
+  }
+
+  return children;
 };
 
 function App() {
@@ -48,6 +88,14 @@ function App() {
                   </PrivateRoute>
                 }
               />
+              <Route
+                path="/onboarding"
+                element={
+                  <PrivateRoute>
+                    <OnboardingPage />
+                  </PrivateRoute>
+                }
+              />
               {/* Redirect old edit route to profile page (now has inline editing) */}
               <Route
                 path="/profile/edit/:id"
@@ -64,55 +112,74 @@ function App() {
               <Route
                 path="/profiles"
                 element={
-                  <PrivateRoute>
+                  <ActivationRoute>
                     <ProfilesListPage />
-                  </PrivateRoute>
+                  </ActivationRoute>
                 }
               />
 
               <Route
                 path="/profiles/:id"
                 element={
-                  <PrivateRoute>
+                  <ActivationRoute>
                     <PublicProfilePage />
-                  </PrivateRoute>
+                  </ActivationRoute>
                 }
               />
 
               <Route
                 path="/analytics"
                 element={
-                  <PrivateRoute>
+                  <ActivationRoute>
                     <AnalyticsDashboard />
-                  </PrivateRoute>
+                  </ActivationRoute>
                 }
               />
               <Route
                 path="/survey"
                 element={
-                  <PrivateRoute>
+                  <ActivationRoute>
                     <SurveyPage />
-                  </PrivateRoute>
+                  </ActivationRoute>
                 }
               />
 
               <Route
                 path="/match-preview"
                 element={
-                  <PrivateRoute>
+                  <ActivationRoute>
                     <MatchPreviewPage />
-                  </PrivateRoute>
+                  </ActivationRoute>
                 }
               />
 
               <Route
                 path="/upgrade"
                 element={
-                  <PrivateRoute>
+                  <ActivationRoute>
                     <PricingPage />
-                  </PrivateRoute>
+                  </ActivationRoute>
                 }
               />
+              <Route
+                path="/credit-history"
+                element={
+                  <ActivationRoute>
+                    <CreditHistoryPage />
+                  </ActivationRoute>
+                }
+              />
+              <Route
+                path="/interests"
+                element={
+                  <ActivationRoute>
+                    <InterestsPage />
+                  </ActivationRoute>
+                }
+              />
+              <Route path="/interest-confirmed" element={<InterestConfirmedPage />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
 
               <Route path="/payment/success" element={<PaymentSuccessPage />} />
               <Route path="/payment/fail" element={<PaymentFailPage />} />
