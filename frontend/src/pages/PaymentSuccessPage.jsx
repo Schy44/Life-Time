@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { CheckCircle, ArrowRight, Loader2, Receipt, HelpCircle, ExternalLink, Sparkles, User, Lock, MapPin, Mail } from 'lucide-react';
+import { CheckCircle, ArrowRight, Loader2, Receipt, User, Mail } from 'lucide-react';
 import Confetti from 'react-confetti';
 import apiClient from '../lib/api';
 import Logo from '../assets/images/Logo.png';

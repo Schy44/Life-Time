@@ -80,6 +80,45 @@ class NestedProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = ('id', 'name', 'profile_image')
+    
+    def to_representation(self, instance):
+        """Apply privacy logic to nested profile data"""
+        representation = super().to_representation(instance)
+        request = self.context.get('request')
+        
+        # Initialize defaults
+        is_owner = False
+        has_accepted_interest = False
+        share_type = 'none'
+        
+        if request and request.user.is_authenticated:
+            try:
+                user_profile = request.user.profile
+                is_owner = (user_profile == instance)
+                
+                # Check for accepted interest between the two profiles
+                active_interest = Interest.objects.filter(
+                    (models.Q(sender=user_profile, receiver=instance) |
+                     models.Q(sender=instance, receiver=user_profile)),
+                    status='accepted'
+                ).first()
+                
+                if active_interest:
+                    has_accepted_interest = True
+                    share_type = active_interest.share_type
+            except (AttributeError, Profile.DoesNotExist):
+                pass
+        
+        # Apply image visibility logic
+        # Show profile image if: owner, OR (matched AND share_type is full), OR privacy is public
+        show_profile_image = is_owner or \
+                            (has_accepted_interest and share_type == 'full') or \
+                            (instance.profile_image_privacy == 'public')
+        
+        if not show_profile_image:
+            representation['profile_image'] = None
+        
+        return representation
 
 
 class InterestSerializer(serializers.ModelSerializer):

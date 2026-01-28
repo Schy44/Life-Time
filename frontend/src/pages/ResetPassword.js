@@ -163,7 +163,7 @@ const ResetPassword = () => {
 
                         <button
                             type="submit"
-                            disabled={loading || !!error && !password}
+                            disabled={loading || (!!error && !password)}
                             className={`w-full p-3 rounded-xl bg-lavender-600 text-white font-bold text-lg 
                             transition duration-300 shadow-md flex items-center justify-center ${loading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-lavender-700'
                                 }`}
