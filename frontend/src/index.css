@@ -95,3 +95,14 @@ html.dark {
 .bg-size-200 {
   background-size: 200% 200%;
 }
+
+/* Fix Leaflet divIcon markers */
+.leaflet-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.leaflet-marker-icon {
+  background: transparent !important;
+  border: none !important;
+}

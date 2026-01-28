@@ -16,12 +16,16 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+// Placeholder avatar as data URI to avoid 404 requests
+const PLACEHOLDER_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23e5e7eb' width='100' height='100'/%3E%3Ctext fill='%239ca3af' font-family='sans-serif' font-size='50' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3E%3F%3C/text%3E%3C/svg%3E";
+
 const ProfileMarker = ({ profile, position }) => {
     const coordinates = position || getCityCoordinates(profile.current_city, profile.current_country);
+    const profileImg = profile.profile_image || PLACEHOLDER_AVATAR;
 
     const avatarIcon = L.divIcon({
         className: 'custom-avatar-marker',
-        html: `<div style="position: relative;"><div style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; border: 3px solid #7c3aed; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"><img src="${profile.profile_image || '/placeholder-profile.png'}" alt="${profile.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/placeholder-profile.png'" /></div></div>`,
+        html: `<div style="position: relative;"><div style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; border: 3px solid #7c3aed; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"><img src="${profileImg}" alt="${profile.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='${PLACEHOLDER_AVATAR}'" /></div></div>`,
         iconSize: [40, 40],
         iconAnchor: [20, 20],
         popupAnchor: [0, -20],
@@ -32,7 +36,7 @@ const ProfileMarker = ({ profile, position }) => {
             <Popup>
                 <Link to={`/profiles/${profile.id}`} className="block">
                     <div className="text-center p-2" style={{ minWidth: '150px' }}>
-                        <img src={profile.profile_image || '/placeholder-profile.png'} alt={profile.name} className="w-16 h-16 rounded-full mx-auto mb-2 object-cover" onError={(e) => e.target.src = '/placeholder-profile.png'} />
+                        <img src={profileImg} alt={profile.name} className="w-16 h-16 rounded-full mx-auto mb-2 object-cover" onError={(e) => e.target.src = PLACEHOLDER_AVATAR} />
                         <h3 className="font-bold text-gray-900">{profile.name}</h3>
                         {profile.age && <p className="text-sm text-gray-600">{profile.age} years old</p>}
                         <p className="text-xs text-gray-500 mt-1">{profile.current_city}, {profile.current_country === 'GB' ? 'UK' : profile.current_country}</p>
@@ -44,16 +48,18 @@ const ProfileMarker = ({ profile, position }) => {
     );
 };
 
+
 const ClusterMarker = ({ profiles, position }) => {
     const map = useMap();
     const count = profiles.length;
     const clusterIcon = L.divIcon({
-        className: 'custom-cluster-marker',
+        className: '',
         html: `<div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); border: 4px solid white; box-shadow: 0 3px 12px rgba(124, 58, 237, 0.5); display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 16px; cursor: pointer;">${count}+</div>`,
         iconSize: [50, 50],
         iconAnchor: [25, 25],
         popupAnchor: [0, -25],
     });
+
 
     return (
         <Marker position={position} icon={clusterIcon} eventHandlers={{ click: () => map.setView(position, 6, { animate: true }) }}>
