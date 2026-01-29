@@ -235,6 +235,11 @@ const ProfilesListPage = () => {
                       alt="Next"
                       loading="lazy"
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        if (e.target.src !== window.location.origin + '/placeholder-profile.png') {
+                          e.target.src = '/placeholder-profile.png';
+                        }
+                      }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   </div>
@@ -449,6 +454,11 @@ const ProfilesListPage = () => {
                               loading="lazy"      // OPTIMIZATION: Lazy load
                               decoding="async"    // OPTIMIZATION: Async decode
                               className="w-full h-full object-cover"
+                              onError={(e) => {
+                                if (e.target.src !== window.location.origin + '/placeholder-profile.png') {
+                                  e.target.src = '/placeholder-profile.png';
+                                }
+                              }}
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center"><User size={64} className="text-gray-400" /></div>

@@ -1,10 +1,9 @@
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { motion } from 'framer-motion';
 import AnimatedBackground from '../components/AnimatedBackground';
-import GlassCard from '../components/GlassCard';
 import { useAuth } from '../context/AuthContext';
 import { Users, Zap, Heart, Sparkles, MapPin } from 'lucide-react';
 import FaqsPage from '../components/FaqsPage';

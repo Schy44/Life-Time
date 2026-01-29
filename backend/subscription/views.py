@@ -7,7 +7,6 @@ from .models import SubscriptionPlan, UserSubscription, CreditWallet, Transactio
 from .gateways.stripe_gateway import StripeGateway
 from .gateways.sslcommerz_gateway import SSLCommerzGateway
 from api.utils.currency import CurrencyService
-from api.utils.currency import CurrencyService
 from api.services.email_service import EmailService
 import uuid
 
@@ -143,82 +142,83 @@ class PaymentCallbackView(APIView):
                          return Response({"error": "Transaction not found"}, status=404)
 
                      if transaction.status == 'completed':
-                         return Response({"message": "Already processed"})
-
-                     transaction.status = 'completed'
-                     transaction.save()
+                         pass # Continue to return transaction info below
+                     else:
+                         transaction.status = 'completed'
+                         transaction.save()
             
-                     # Application Logic
-                     print(f"DEBUG: Processing transaction {transaction.transaction_id} purpose={transaction.purpose}")
-                     print(f"DEBUG: Metadata: {transaction.metadata}")
-                     
-                     if transaction.purpose == 'subscription':
-                         plan_slug = transaction.metadata.get('plan_slug')
-                         if plan_slug:
-                              plan = SubscriptionPlan.objects.get(slug=plan_slug)
-                              print(f"DEBUG: Plan {plan.slug} credits={plan.credit_amount}")
-                              
-                              sub, _ = UserSubscription.objects.get_or_create(user=transaction.user, defaults={'plan': plan})
-                              sub.plan = plan
-                              sub.is_active = True
-                              sub.start_date = timezone.now()
-                              if plan.duration_days > 0:
-                                   sub.end_date = timezone.now() + timedelta(days=plan.duration_days)
-                              sub.end_date = None
-                              sub.save()
-                              
-                              # Update Profile Feature Flags (Badge, etc.)
-                              try:
-                                  profile = transaction.user.profile
-                                  # features = plan.features 
-                                  # is_verified is ONLY for manual ID verification. 
-                                  # TODO: Implement is_premium or subscription_tier field on Profile model.
-                                  pass # Placeholder until model update
+                         # Application Logic
+                         print(f"DEBUG: Processing transaction {transaction.transaction_id} purpose={transaction.purpose}")
+                         print(f"DEBUG: Metadata: {transaction.metadata}")
+                         
+                         if transaction.purpose == 'subscription':
+                             plan_slug = transaction.metadata.get('plan_slug')
+                             if plan_slug:
+                                  plan = SubscriptionPlan.objects.get(slug=plan_slug)
+                                  print(f"DEBUG: Plan {plan.slug} credits={plan.credit_amount}")
                                   
-                                  # profile.save() 
-                              except Exception as prof_err:
-                                  print(f"ERROR updating profile features: {prof_err}")
-                              
-                              # Credits from Plan
-                              if plan.credit_amount > 0:
-                                  wallet, _ = CreditWallet.objects.get_or_create(user=transaction.user)
-                                  previous_balance = wallet.balance
-                                  wallet.add_credits(plan.credit_amount)
-                                  print(f"DEBUG: Added {plan.credit_amount} credits. New Balance: {wallet.balance}")
+                                  sub, _ = UserSubscription.objects.get_or_create(user=transaction.user, defaults={'plan': plan})
+                                  sub.plan = plan
+                                  sub.is_active = True
+                                  sub.start_date = timezone.now()
+                                  if plan.duration_days > 0:
+                                       sub.end_date = timezone.now() + timedelta(days=plan.duration_days)
+                                  sub.end_date = None
+                                  sub.save()
+                                  
+                                  # Update Profile Feature Flags (Badge, etc.)
+                                  try:
+                                      profile = transaction.user.profile
+                                      # features = plan.features 
+                                      # is_verified is ONLY for manual ID verification. 
+                                      # TODO: Implement is_premium or subscription_tier field on Profile model.
+                                      pass # Placeholder until model update
+                                      
+                                      # profile.save() 
+                                  except Exception as prof_err:
+                                      print(f"ERROR updating profile features: {prof_err}")
+                                  
+                                  # Credits from Plan
+                                  if plan.credit_amount > 0:
+                                      wallet, _ = CreditWallet.objects.get_or_create(user=transaction.user)
+                                      previous_balance = wallet.balance
+                                      wallet.add_credits(plan.credit_amount)
+                                      print(f"DEBUG: Added {plan.credit_amount} credits. New Balance: {wallet.balance}")
 
-                     elif transaction.purpose == 'credit_topup':
-                         credits_to_add = transaction.metadata.get('credits_to_add', 0)
-                         print(f"DEBUG: Topup credits: {credits_to_add}")
-                         if credits_to_add > 0:
-                             wallet, _ = CreditWallet.objects.get_or_create(user=transaction.user)
-                             previous_balance = wallet.balance
-                             wallet.add_credits(credits_to_add)
-                             print(f"DEBUG: Added {credits_to_add} credits. New Balance: {wallet.balance}")
+                         elif transaction.purpose == 'credit_topup':
+                             credits_to_add = transaction.metadata.get('credits_to_add', 0)
+                             print(f"DEBUG: Topup credits: {credits_to_add}")
+                             if credits_to_add > 0:
+                                 wallet, _ = CreditWallet.objects.get_or_create(user=transaction.user)
+                                 previous_balance = wallet.balance
+                                 wallet.add_credits(credits_to_add)
+                                 print(f"DEBUG: Added {credits_to_add} credits. New Balance: {wallet.balance}")
 
-                     elif transaction.purpose == 'profile_activation':
-                         print("DEBUG: Activating User Profile...")
+                         elif transaction.purpose == 'profile_activation':
+                             print("DEBUG: Activating User Profile...")
+                             try:
+                                 profile = transaction.user.profile
+                                 profile.is_activated = True
+                                 profile.save()
+                                 print(f"DEBUG: Profile activated for user {transaction.user.email}")
+                             except Exception as act_err:
+                                 print(f"ERROR activating profile: {act_err}")
+                                 
+                         # Send Email Notification
                          try:
-                             profile = transaction.user.profile
-                             profile.is_activated = True
-                             profile.save()
-                             print(f"DEBUG: Profile activated for user {transaction.user.email}")
-                         except Exception as act_err:
-                             print(f"ERROR activating profile: {act_err}")
-                             
-                             print(f"ERROR activating profile: {act_err}")
-                             
-                     # Send Email Notification
-                     try:
-                         EmailService.send_payment_confirmation_email(transaction)
-                     except Exception as email_err:
-                         print(f"ERROR sending email: {email_err}")
+                             EmailService.send_payment_confirmation_email(transaction)
+                         except Exception as email_err:
+                             print(f"ERROR sending email: {email_err}")
 
                      return Response({
-                         "status": "Payment Successful", 
+                         "status": "Payment Successful",
+                         "message": "Already processed" if transaction.status == 'completed' else None,
                          "transaction": transaction.transaction_id,
                          "purpose": transaction.purpose.replace('_', ' ').title(),
                          "amount": float(transaction.amount),
-                         "currency": transaction.currency
+                         "currency": transaction.currency,
+                         "user_name": transaction.user.profile.name if hasattr(transaction.user, 'profile') else transaction.user.username,
+                         "user_email": transaction.user.email
                      })
 
              except Exception as e:

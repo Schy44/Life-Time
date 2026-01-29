@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
+import { Link, useNavigate } from 'react-router-dom';
+import authService from '../services/authService';
 import Logo from '../assets/images/Logo.png';
 import { Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 
@@ -9,6 +9,7 @@ const ForgotPassword = () => {
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const [error, setError] = useState(null);
+    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -16,15 +17,15 @@ const ForgotPassword = () => {
         setError(null);
 
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                // Ensure this matches your route in App.js
-                redirectTo: `${window.location.origin}/reset-password`,
-            });
-            if (error) throw error;
+            await authService.requestPasswordReset(email);
             setSubmitted(true);
+            // Redirect to reset password page after 2 seconds
+            setTimeout(() => {
+                navigate('/reset-password', { state: { email } });
+            }, 2000);
         } catch (err) {
             console.error('Password reset error:', err);
-            setError(err.message);
+            setError(err.response?.data?.error || 'Failed to send reset code. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -40,16 +41,12 @@ const ForgotPassword = () => {
                     <div>
                         <h2 className="text-2xl font-bold text-gray-900">Check your email</h2>
                         <p className="mt-2 text-gray-600">
-                            We've sent a password recovery link to <span className="font-semibold">{email}</span>.
+                            We've sent a 6-digit verification code to <span className="font-semibold">{email}</span>.
+                        </p>
+                        <p className="mt-2 text-sm text-gray-500">
+                            Redirecting to password reset page...
                         </p>
                     </div>
-                    <Link
-                        to="/login"
-                        className="inline-flex items-center gap-2 text-lavender-600 font-semibold hover:text-lavender-700 transition-colors"
-                    >
-                        <ArrowLeft size={18} />
-                        Back to Login
-                    </Link>
                 </div>
             </div>
         );
@@ -82,7 +79,7 @@ const ForgotPassword = () => {
                         Reset Password
                     </h2>
                     <p className="text-gray-600 mb-8">
-                        Enter your email address and we'll send you a link to reset your password.
+                        Enter your email address and we'll send you a verification code to reset your password.
                     </p>
 
                     {error && (
@@ -123,7 +120,7 @@ const ForgotPassword = () => {
                             {loading ? (
                                 <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                             ) : (
-                                'Send Recovery Link'
+                                'Send Verification Code'
                             )}
                         </button>
                     </form>

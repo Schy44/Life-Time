@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import api from '../lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Socials from '../components/Socials';
@@ -16,12 +15,10 @@ import {
   acceptInterest,
   rejectInterest,
   cancelInterest,
-  getCountries, // Import getCountries
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { FaCheckCircle, FaMapMarkerAlt, FaGraduationCap, FaBriefcase, FaHeart, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { useQuery } from '@tanstack/react-query';
-import { jsPDF } from 'jspdf';
 
 // InfoRow and SectionCard components now imported from separate files
 
@@ -657,6 +654,11 @@ export default function PublicProfilePage() {
                               className={`w-full h-72 object-cover rounded-xl transition-all duration-500 ${!canSeeProfileImage ? 'profile-image-blurred scale-105' : ''}`}
                               loading="lazy"
                               style={canSeeProfileImage ? noBlurStyle : {}}
+                              onError={(e) => {
+                                if (e.target.src !== window.location.origin + '/placeholder-profile.png') {
+                                  e.target.src = '/placeholder-profile.png';
+                                }
+                              }}
                             />
 
                             {!canSeeProfileImage && (

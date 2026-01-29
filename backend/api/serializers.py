@@ -167,7 +167,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             'siblings_details', 'paternal_family_details', 'maternal_family_details',
             'willing_to_relocate', 'lifestyle_priority',
             'about', 'looking_for', 'email', 'phone',
-            'facebook_profile', 'instagram_profile', 'linkedin_profile', 'is_verified', 'is_activated',
+            'facebook_profile', 'instagram_profile', 'linkedin_profile', 'is_verified', 'is_activated', 'onboarding_completed',
             'profile_image_privacy', 'additional_images_privacy', 'is_deleted', 'created_at', 'updated_at',
             'education', 'work_experience', 'preference', 'uploaded_images', 'additional_images_to_keep',
             'compatibility_score', 'interest', 'faith_tags', 'clear_profile_image', 'credits',
@@ -181,8 +181,6 @@ class ProfileSerializer(serializers.ModelSerializer):
             return obj.user.wallet.balance
         except:
             return 0
-
-        return super().to_internal_value(data_copy)
 
     def to_internal_value(self, data):
         # Create a mutable copy of the data

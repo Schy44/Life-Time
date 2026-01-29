@@ -118,6 +118,9 @@ const OnboardingPage = () => {
                         phone: profileRes.data.phone || '',
                     }));
                     setActivationStatus(profileRes.data.is_activated);
+                    if (profileRes.data.onboarding_completed && !profileRes.data.is_activated) {
+                        setStep(4);
+                    }
                 }
             } catch (error) {
                 console.error("Error fetching onboarding data:", error);
@@ -191,6 +194,7 @@ const OnboardingPage = () => {
                     education_simple: formData.education,
                     profession_simple: formData.profession,
                     phone: formData.phone,
+                    onboarding_completed: true,
                 };
                 await api.patch('/profile/', payload);
                 nextStep();

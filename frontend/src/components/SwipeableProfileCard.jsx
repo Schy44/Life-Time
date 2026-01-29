@@ -158,6 +158,11 @@ const SwipeableProfileCard = ({
                         alt={name}
                         className="w-full h-full object-cover"
                         draggable="false"
+                        onError={(e) => {
+                            if (e.target.src !== window.location.origin + '/placeholder-profile.png') {
+                                e.target.src = '/placeholder-profile.png';
+                            }
+                        }}
                     />
 
                     {/* Gradient Overlay */}
@@ -170,8 +175,8 @@ const SwipeableProfileCard = ({
                                 <div
                                     key={idx}
                                     className={`flex-1 h-1 rounded-full transition-all ${idx === currentImageIndex
-                                            ? 'bg-white'
-                                            : 'bg-white/30'
+                                        ? 'bg-white'
+                                        : 'bg-white/30'
                                         }`}
                                 />
                             ))}

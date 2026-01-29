@@ -252,6 +252,23 @@ const AnalyticsDashboard = () => {
                 </div>
             </div>
 
+            {/* Activation Warning for unactivated users */}
+            {profile && !profile.is_activated && (
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="max-w-7xl mx-auto mb-8 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-center justify-between shadow-sm"
+                >
+                    <div className="flex items-center gap-3 text-amber-800">
+                        <Zap className="text-amber-500 w-5 h-5 flex-shrink-0" />
+                        <div>
+                            <p className="text-sm font-bold">Your profile is currently hidden</p>
+                            <p className="text-xs opacity-80">Activate your profile to appear in searches and start receiving interests.</p>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+
             <BentoGrid>
 
                 {/* --- ROW 1: High Level Metrics --- */}
@@ -299,7 +316,7 @@ const AnalyticsDashboard = () => {
                 <BentoCard colSpan="md:col-span-4" className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-none">
                     <div className="flex justify-between items-start">
                         <div>
-                            <h3 className="font-bold text-lg opacity-90">Trust Score</h3>
+                            <h3 className="font-bold text-lg opacity-90">Visibility Score</h3>
                             <p className="text-emerald-100 text-xs mt-1">
                                 {profile?.is_verified ? 'Verified profile' : 'Get verified for 3x matches'}
                             </p>
@@ -362,7 +379,7 @@ const AnalyticsDashboard = () => {
                 {/* 4. Profile Radar (Health Check) */}
                 <BentoCard colSpan="md:col-span-4">
                     <div className="flex justify-between items-center mb-2">
-                        <h3 className="font-bold text-lg text-slate-800">Biodata Quality</h3>
+                        <h3 className="font-bold text-lg text-slate-800">Profile Strength</h3>
                         <div className="p-1.5 bg-orange-50 text-orange-600 rounded-lg">
                             <Zap className="w-4 h-4" />
                         </div>

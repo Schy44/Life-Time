@@ -143,6 +143,7 @@ class Profile(models.Model):
     is_activated = models.BooleanField(default=False, help_text="User has paid the activation fee")
     is_premium = models.BooleanField(default=False) # Gold/Platinum status (legacy)
     subscription_plan = models.CharField(max_length=50, blank=True, null=True) # e.g. 'gold', 'platinum'
+    onboarding_completed = models.BooleanField(default=False, help_text="User has completed the onboarding flow")
 
     # Privacy
     profile_image_privacy = models.CharField(max_length=20, choices=PRIVACY_CHOICES, default='public')
@@ -575,5 +576,69 @@ class AppConfig(models.Model):
         return config
 
 
+# ==================== AUTHENTICATION OTP MODELS ====================
+
+class EmailVerification(models.Model):
+    """
+    Store OTP codes for email verification during registration.
+    OTPs expire after 5 minutes and can only be used once.
+    """
+    email = models.EmailField(db_index=True)
+    otp_code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['email', 'is_used']),
+        ]
+    
+    def __str__(self):
+        return f"OTP for {self.email} - {'Used' if self.is_used else 'Active'}"
+    
+    def is_valid(self):
+        """Check if OTP is still valid (not expired and not used)"""
+        from django.utils import timezone
+        return not self.is_used and timezone.now() < self.expires_at
+    
+    def mark_as_used(self):
+        """Mark OTP as used"""
+        self.is_used = True
+        self.save(update_fields=['is_used'])
 
 
+class PasswordResetOTP(models.Model):
+    """
+    Store OTP codes for password reset requests.
+    OTPs expire after 5 minutes and can only be used once.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='password_reset_otps'
+    )
+    otp_code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'is_used']),
+        ]
+    
+    def __str__(self):
+        return f"Password Reset OTP for {self.user.username} - {'Used' if self.is_used else 'Active'}"
+    
+    def is_valid(self):
+        """Check if OTP is still valid (not expired and not used)"""
+        from django.utils import timezone
+        return not self.is_used and timezone.now() < self.expires_at
+    
+    def mark_as_used(self):
+        """Mark OTP as used"""
+        self.is_used = True
+        self.save(update_fields=['is_used'])

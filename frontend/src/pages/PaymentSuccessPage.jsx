@@ -81,19 +81,7 @@ const PaymentSuccessPage = () => {
         <div className="min-h-screen bg-white dark:bg-[#050505] text-gray-900 dark:text-gray-100 selection:bg-indigo-100 dark:selection:bg-indigo-900/40">
             {verified && <Confetti width={windowSize.width} height={windowSize.height} recycle={false} numberOfPieces={300} gravity={0.1} />}
 
-            {/* Top Bar with Logo on the Side */}
-            <nav className="fixed top-0 left-0 right-0 p-8 flex justify-between items-center z-50">
-                <Link to="/">
-                    <img src={Logo} alt="Life-Time" className="h-10 hover:opacity-80 transition-opacity" />
-                </Link>
-                <div className="flex gap-6 items-center">
-                    <a href="mailto:lifetimehere00@gmail.com" className="text-sm font-bold tracking-tight hover:text-indigo-600 transition-colors flex items-center gap-2 text-gray-400 hover:text-gray-900 dark:hover:text-white">
-                        <Mail size={16} /> <span>Support</span>
-                    </a>
-                </div>
-            </nav>
-
-            <main className="max-w-6xl mx-auto pt-32 px-6 pb-20">
+            <main className="max-w-6xl mx-auto px-6 pt-24 pb-20">
                 {verifying ? (
                     <div className="flex flex-col items-center justify-center min-h-[40vh]">
                         <Loader2 className="w-12 h-12 text-indigo-500 animate-spin mb-6" />
@@ -102,7 +90,7 @@ const PaymentSuccessPage = () => {
                 ) : verified ? (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
                         {/* Hero Section */}
-                        <div className="lg:col-span-7 space-y-12">
+                        <div className="lg:col-span-7 space-y-12 print:hidden">
                             <div className="space-y-6">
                                 <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center shadow-xl shadow-green-500/20">
                                     <CheckCircle className="text-white w-8 h-8" />
@@ -137,7 +125,7 @@ const PaymentSuccessPage = () => {
                                 </div>
                             </div>
 
-                            <button onClick={() => navigate('/match-preview')} className="group flex items-center gap-4 py-6 px-10 bg-black dark:bg-white text-white dark:text-black rounded-full font-black text-lg hover:scale-[1.02] transition-all active:scale-95">
+                            <button onClick={() => navigate('/match-preview')} className="group flex items-center gap-4 py-6 px-10 bg-black dark:bg-white text-white dark:text-black rounded-full font-black text-lg hover:scale-[1.02] transition-all active:scale-95 print:hidden">
                                 VIEW YOUR TOP MATCHES <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                             </button>
                         </div>
@@ -162,7 +150,7 @@ const PaymentSuccessPage = () => {
                                 </div>
                             </div>
 
-                            <div className="flex flex-col gap-4">
+                            <div className="flex flex-col gap-4 print:hidden">
                                 <button onClick={() => window.print()} className="flex items-center gap-3 py-4 px-6 border-2 border-gray-100 dark:border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                                     <Receipt size={16} /> Receipt
                                 </button>
@@ -171,7 +159,7 @@ const PaymentSuccessPage = () => {
                                 </Link>
                             </div>
 
-                            <div className="py-10 border-t border-gray-100 dark:border-white/5">
+                            <div className="py-10 border-t border-gray-100 dark:border-white/5 print:hidden">
                                 <p className="text-base font-bold leading-relaxed mb-8 text-gray-600 dark:text-gray-400">Need help with your account or found a discrepancy? Our team is here to help.</p>
                                 <a href="mailto:lifetimehere00@gmail.com" className="inline-flex items-center gap-3 py-5 px-12 bg-indigo-600 text-white rounded-full font-black text-xs uppercase tracking-[0.2em] hover:bg-indigo-700 hover:shadow-2xl hover:shadow-indigo-600/20 transition-all">
                                     <Mail size={16} /> Contact Support
@@ -193,6 +181,56 @@ const PaymentSuccessPage = () => {
                     </div>
                 )}
             </main>
+
+            {/* Print Only Receipt */}
+            <div className="hidden print:block p-12 text-black bg-white min-h-screen">
+                <div className="flex justify-between items-start mb-16">
+                    <img src={Logo} alt="Life-Time" className="h-12" />
+                    <div className="text-right">
+                        <h1 className="text-3xl font-black uppercase tracking-tighter">Official Receipt</h1>
+                        <p className="text-sm font-bold text-gray-500 mt-1">Life-Time Inc. Payment Confirmation</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-12 mb-16">
+                    <div className="space-y-4">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Billed To</p>
+                        <p className="font-bold text-lg">{paymentDetails?.user_name || 'Valued Customer'}</p>
+                        <p className="text-sm text-gray-600">{paymentDetails?.user_email}</p>
+                    </div>
+                    <div className="space-y-4 text-right">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Receipt Info</p>
+                        <p className="text-sm"><strong>Reference:</strong> #{paymentDetails?.transaction}</p>
+                        <p className="text-sm text-gray-600"><strong>Date:</strong> {new Date().toLocaleDateString()}</p>
+                    </div>
+                </div>
+
+                <div className="border-t-2 border-b-2 border-black py-8 mb-16">
+                    <div className="flex justify-between items-center text-black">
+                        <div className="space-y-1">
+                            <p className="font-black text-xl uppercase tracking-tight">Service: {paymentDetails?.purpose || 'Subscription'}</p>
+                            <p className="text-sm text-gray-500">Profile Activation & Lifetime Access</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Total Amount</p>
+                            <p className="text-3xl font-black">{paymentDetails?.currency} {paymentDetails?.amount}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="space-y-8">
+                    <div className="bg-gray-50 p-6 rounded-2xl">
+                        <p className="text-xs font-bold leading-relaxed text-gray-600">
+                            Thank you for your trust in Life-Time. This receipt confirms your contribution to our community.
+                            If you have any questions regarding this transaction, please contact us at support@lifetimehere00@gmail.com
+                        </p>
+                    </div>
+
+                    <div className="text-center pt-20">
+                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-300">Generated by Life-Time HQ</p>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };

@@ -30,6 +30,7 @@ const InterestsPage = lazy(() => import('./pages/InterestsPage'));
 const InterestConfirmedPage = lazy(() => import('./pages/InterestConfirmedPage'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
 
 const PrivateRoute = ({ children }) => {
   const { user } = useAuth();
@@ -58,9 +59,9 @@ const ActivationRoute = ({ children }) => {
   // If user is logged in but not activated, redirect to onboarding
   // We allow access to 'profile' for editing, but hide Discover/Analytics
   if (profile) {
-    console.log("DEBUG: Profile Loaded. is_activated =", profile.is_activated);
-    if (!profile.is_activated) {
-      console.warn("DEBUG: Redirecting to /onboarding because is_activated is false");
+    console.log("DEBUG: Profile Loaded. onboarding_completed =", profile.onboarding_completed);
+    if (!profile.onboarding_completed) {
+      console.warn("DEBUG: Redirecting to /onboarding because onboarding_completed is false");
       return <Navigate to="/onboarding" />;
     }
   }
@@ -80,6 +81,7 @@ function App() {
               <Route path="/about" element={<AboutPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
               <Route
                 path="/profile"
                 element={
@@ -130,9 +132,9 @@ function App() {
               <Route
                 path="/analytics"
                 element={
-                  <ActivationRoute>
+                  <PrivateRoute>
                     <AnalyticsDashboard />
-                  </ActivationRoute>
+                  </PrivateRoute>
                 }
               />
               <Route

@@ -9,8 +9,6 @@ from django.urls import reverse
 
 logger = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__)
-
 class EmailService:
     @staticmethod
     def get_base_context():

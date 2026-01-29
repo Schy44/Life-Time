@@ -1,44 +1,59 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import authService from '../services/authService';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    };
+    // Check if user is authenticated on mount
+    const initializeAuth = () => {
+      try {
+        const accessToken = authService.getAccessToken();
+        const storedUser = localStorage.getItem('user');
 
-    getSession();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+        if (accessToken && storedUser) {
+          setUser(JSON.parse(storedUser));
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        setUser(null);
+      } finally {
         setLoading(false);
       }
-    );
-
-    return () => {
-      authListener?.subscription.unsubscribe();
     };
+
+    initializeAuth();
   }, []);
 
+  const login = async (email, password) => {
+    const response = await authService.login(email, password);
+    setUser(response.user);
+    localStorage.setItem('user', JSON.stringify(response.user));
+    return response;
+  };
+
   const logout = async () => {
-    await supabase.auth.signOut();
+    await authService.logout();
+    setUser(null);
+    localStorage.removeItem('user');
+  };
+
+  const updateUser = (userData) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
   };
 
   const value = {
-    session,
     user,
+    login,
     logout,
+    updateUser,
+    isAuthenticated: !!user,
   };
 
   return (

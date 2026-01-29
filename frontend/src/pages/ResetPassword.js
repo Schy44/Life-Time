@@ -1,29 +1,67 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import authService from '../services/authService';
 import Logo from '../assets/images/Logo.png';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react';
 
 const ResetPassword = () => {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const { email } = location.state || {};
+
+    const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const [error, setError] = useState(null);
-    const navigate = useNavigate();
 
     useEffect(() => {
-        // Basic check: is the user actually in a recovery session?
-        // Supabase sets a session automatically when you click the email link.
-        const checkSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                setError("No active recovery session found. Please request a new link.");
-            }
-        };
-        checkSession();
-    }, []);
+        // Redirect if no email in state
+        if (!email) {
+            navigate('/forgot-password');
+        }
+    }, [email, navigate]);
+
+    const handleOtpChange = (index, value) => {
+        if (value.length > 1) {
+            value = value[0];
+        }
+
+        if (!/^\d*$/.test(value)) {
+            return;
+        }
+
+        const newOtp = [...otp];
+        newOtp[index] = value;
+        setOtp(newOtp);
+
+        // Auto-focus next input
+        if (value && index < 5) {
+            document.getElementById(`otp-${index + 1}`)?.focus();
+        }
+    };
+
+    const handleKeyDown = (index, e) => {
+        if (e.key === 'Backspace' && !otp[index] && index > 0) {
+            document.getElementById(`otp-${index - 1}`)?.focus();
+        }
+    };
+
+    const handlePaste = (e) => {
+        e.preventDefault();
+        const pastedData = e.clipboardData.getData('text').slice(0, 6);
+        if (!/^\d+$/.test(pastedData)) {
+            return;
+        }
+
+        const newOtp = pastedData.split('');
+        while (newOtp.length < 6) {
+            newOtp.push('');
+        }
+        setOtp(newOtp);
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -36,12 +74,16 @@ const ResetPassword = () => {
             return setError("Password must be at least 6 characters.");
         }
 
+        const otpCode = otp.join('');
+        if (otpCode.length !== 6) {
+            return setError("Please enter the complete 6-digit code.");
+        }
+
         setLoading(true);
         setError(null);
 
         try {
-            const { error } = await supabase.auth.updateUser({ password });
-            if (error) throw error;
+            await authService.confirmPasswordReset(email, otpCode, password);
             setSubmitted(true);
 
             // Redirect to login after 3 seconds
@@ -49,8 +91,10 @@ const ResetPassword = () => {
                 navigate('/login');
             }, 3000);
         } catch (err) {
-            console.error('Password update error:', err);
-            setError(err.message);
+            console.error('Password reset error:', err);
+            setError(err.response?.data?.error || 'Invalid or expired code. Please try again.');
+            setOtp(['', '', '', '', '', '']);
+            document.getElementById('otp-0')?.focus();
         } finally {
             setLoading(false);
         }
@@ -71,7 +115,7 @@ const ResetPassword = () => {
                     </div>
                     <Link
                         to="/login"
-                        className="w-full inline-block p-3 rounded-xl bg-lavender-600 text-white font-bold text-center"
+                        className="w-full inline-block p-3 rounded-xl bg-lavender-600 text-white font-bold text-center hover:bg-lavender-700 transition"
                     >
                         Login Now
                     </Link>
@@ -99,7 +143,7 @@ const ResetPassword = () => {
                         Set New Password
                     </h2>
                     <p className="text-gray-600 mb-8">
-                        Please enter your new secure password below.
+                        Enter the verification code sent to <span className="font-semibold text-lavender-600">{email}</span> and your new password.
                     </p>
 
                     {error && (
@@ -110,6 +154,29 @@ const ResetPassword = () => {
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* OTP Input */}
+                        <div>
+                            <label className="text-sm font-medium text-gray-700 block mb-3">
+                                Verification Code
+                            </label>
+                            <div className="flex justify-center gap-2">
+                                {otp.map((digit, index) => (
+                                    <input
+                                        key={index}
+                                        id={`otp-${index}`}
+                                        type="text"
+                                        maxLength="1"
+                                        className="w-12 h-14 text-center text-2xl font-bold rounded-xl border-2 border-gray-200 
+                                        focus:border-lavender-500 focus:ring-2 focus:ring-lavender-200 outline-none transition-all"
+                                        value={digit}
+                                        onChange={(e) => handleOtpChange(index, e.target.value)}
+                                        onKeyDown={(e) => handleKeyDown(index, e)}
+                                        onPaste={handlePaste}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+
                         {/* New Password */}
                         <div>
                             <label className="text-sm font-medium text-gray-700 block mb-1">
@@ -163,7 +230,7 @@ const ResetPassword = () => {
 
                         <button
                             type="submit"
-                            disabled={loading || (!!error && !password)}
+                            disabled={loading}
                             className={`w-full p-3 rounded-xl bg-lavender-600 text-white font-bold text-lg 
                             transition duration-300 shadow-md flex items-center justify-center ${loading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-lavender-700'
                                 }`}
@@ -175,6 +242,15 @@ const ResetPassword = () => {
                             )}
                         </button>
                     </form>
+
+                    <div className="mt-6 text-center">
+                        <Link
+                            to="/forgot-password"
+                            className="text-sm text-lavender-600 hover:text-lavender-700 hover:underline"
+                        >
+                            Didn't receive a code? Request a new one
+                        </Link>
+                    </div>
                 </div>
             </div>
         </div>

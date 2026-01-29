@@ -18,7 +18,10 @@ router.register('verification-documents', VerificationDocumentViewSet, basename=
 router.register('admin/verification-documents', AdminVerificationDocumentViewSet, basename='admin-verification-document')
 
 urlpatterns = [
-    # Authentication now handled by Supabase on frontend
+    # Authentication endpoints (Django JWT)
+    path('auth/', include('api.auth_urls')),
+    
+    # User & Profile
     path('user/', UserView.as_view(), name='user'),
     path('profile/', ProfileDetailView.as_view(), name='profile-detail'),
     path('countries/', CountryListView.as_view(), name='country-list'),

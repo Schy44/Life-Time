@@ -39,7 +39,6 @@ from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.pagination import PageNumberPagination
 from .services.matching_service import MatchingService
-from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from datetime import date, timedelta
 from django.utils import timezone

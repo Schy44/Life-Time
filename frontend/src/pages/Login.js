@@ -1,132 +1,145 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 import Logo from '../assets/images/Logo.png';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react';
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    const { login } = useAuth();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
+        setLoading(true);
+
         try {
-            const { error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
-
-            if (error) throw error;
-
-            navigate('/onboarding');
+            const response = await login(email, password);
+            if (response.user?.onboarding_completed) {
+                navigate('/match-preview');
+            } else {
+                navigate('/onboarding');
+            }
         } catch (error) {
             console.error('Login failed', error);
-            alert(`Login failed: ${error.message}`);
+            const data = error.response?.data;
+            setError(data?.error || data?.detail || 'Invalid email or password. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen flex w-full bg-white">
-            {/* Left Side - Logo/Image (50%) */}
-            <div className="hidden md:block md:w-1/2 relative">
-                <img
-                    src={Logo}
-                    alt="Life Time Logo"
-                    className="absolute inset-0 w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black bg-opacity-20"></div>
+        <div className="min-h-screen flex w-full bg-slate-50">
+            {/* Left Side - Hero (60%) */}
+            <div className="hidden lg:block lg:w-[60%] relative overflow-hidden">
+                <img src={Logo} alt="Life Time Hero"
+                    className="absolute inset-0 w-full h-full object-cover scale-105" />
+                <div className="absolute inset-0 bg-gradient-to-tr from-black/60 via-black/20 to-transparent"></div>
+                <div className="absolute bottom-20 left-20 text-white max-w-lg">
+                    <h1 className="text-6xl font-black leading-tight mb-6">Welcome Back.</h1>
+                    <p className="text-xl text-gray-200 font-medium">Continue your journey and connect with your perfect match today.</p>
+                </div>
             </div>
 
-            {/* Right Side - Login Form (50%) */}
-            <div className="w-full md:w-1/2 flex items-center justify-center p-8 md:p-12 lg:p-16">
-                <div className="w-full max-w-md">
-                    <h2 className="text-3xl font-bold text-gray-800 mb-4 text-center">
-                        Login to Your Account
-                    </h2>
-                    <p className="text-gray-600 mb-8 text-center">
-                        Enter your details below
-                    </p>
-
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Email */}
-                        <div>
-                            <label className="text-sm font-medium text-gray-700 block mb-1">
-                                Email Address
-                            </label>
-                            <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-lavender-500 transition-colors" />
-                                </div>
-                                <input
-                                    type="email"
-                                    placeholder="name@example.com"
-                                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 
-                                    focus:bg-white focus:border-lavender-500 focus:ring-2 focus:ring-lavender-200 
-                                    outline-none transition-all duration-200"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        {/* Password */}
-                        <div>
-                            <div className="flex justify-between items-center">
-                                <label className="text-sm font-medium text-gray-700 block mb-1">
-                                    Password
-                                </label>
-                                <Link
-                                    to="/forgot-password"
-                                    className="text-xs font-medium text-lavender-600 hover:text-lavender-700 hover:underline"
-                                >
-                                    Forgot password?
-                                </Link>
-                            </div>
-
-                            <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-lavender-500 transition-colors" />
-                                </div>
-                                <input
-                                    type={showPassword ? "text" : "password"}
-                                    placeholder="Password"
-                                    className="w-full pl-10 pr-12 py-3 rounded-xl border border-gray-200 bg-gray-50 
-                                    focus:bg-white focus:border-lavender-500 focus:ring-2 focus:ring-lavender-200 
-                                    outline-none transition-all duration-200"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                                >
-                                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Submit Button */}
-                        <button
-                            type="submit"
-                            className="w-full p-3 rounded-xl bg-lavender-600 text-white font-bold text-lg 
-                            hover:bg-lavender-700 transition duration-300 shadow-md"
-                        >
+            {/* Right Side - Form (40%) */}
+            <div className="w-full lg:w-[40%] flex items-center justify-center p-6 md:p-12 bg-white shadow-2xl z-10">
+                <div className="w-full max-w-md space-y-8">
+                    <div className="text-center md:text-left">
+                        <Link to="/" className="lg:hidden inline-block mb-8">
+                            <img src={Logo} alt="Logo" className="h-8" />
+                        </Link>
+                        <h2 className="text-4xl font-black text-gray-900 tracking-tight mb-2">
                             Login
-                        </button>
+                        </h2>
+                        <p className="text-gray-500 font-medium">
+                            Enter your credentials to access your account.
+                        </p>
+                    </div>
+
+                    <AnimatePresence>
+                        {error && (
+                            <motion.div
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                className="p-4 rounded-2xl bg-red-50 border border-red-100 flex items-center gap-3 text-red-600 shadow-sm"
+                            >
+                                <AlertCircle className="shrink-0" size={20} />
+                                <p className="text-sm font-bold">{error}</p>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <InputField
+                            label="Email Address"
+                            icon={Mail}
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="hello@example.com"
+                            error={error && !email.includes('@')}
+                        />
+
+                        <InputField
+                            label="Password"
+                            icon={Lock}
+                            type={showPassword ? "text" : "password"}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••"
+                            error={error}
+                        >
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-lavender-600 transition-colors"
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                        </InputField>
+
+                        <div className="flex justify-end">
+                            <Link
+                                to="/forgot-password"
+                                className="text-xs font-black text-lavender-600 hover:text-lavender-700 uppercase tracking-wider"
+                            >
+                                Forgot password?
+                            </Link>
+                        </div>
+
+                        <div className="pt-2">
+                            <motion.button
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.98 }}
+                                type="submit"
+                                disabled={loading}
+                                className="w-full py-4 px-6 bg-lavender-600 hover:bg-lavender-700 text-white font-black 
+                                rounded-2xl shadow-xl shadow-lavender-200 hover:shadow-lavender-300 transition-all duration-300 
+                                flex items-center justify-center gap-3 disabled:opacity-70 disabled:grayscale"
+                            >
+                                {loading ? (
+                                    <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    "Log In"
+                                )}
+                            </motion.button>
+                        </div>
                     </form>
 
-                    {/* Footer */}
-                    <div className="mt-8 text-center">
-                        <p className="text-gray-600">
+                    <div className="text-center pt-4">
+                        <p className="text-gray-500 font-medium">
                             Don't have an account?{' '}
                             <Link
                                 to="/register"
-                                className="font-bold text-lavender-600 hover:text-lavender-700 hover:underline"
+                                className="font-black text-lavender-600 hover:text-lavender-700 transition-colors"
                             >
                                 Create Account
                             </Link>
@@ -139,3 +152,28 @@ const Login = () => {
 };
 
 export default Login;
+
+const InputField = ({ label, icon: Icon, type, value, onChange, placeholder, error, children }) => (
+    <div className="space-y-1">
+        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">
+            {label}
+        </label>
+        <div className="relative group">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Icon className={`h-5 w-5 transition-colors ${error ? 'text-red-400' : 'text-gray-400 group-focus-within:text-lavender-500'}`} />
+            </div>
+            <input
+                type={type}
+                value={value}
+                onChange={onChange}
+                placeholder={placeholder}
+                className={`w-full pl-11 pr-4 py-3.5 rounded-2xl border bg-gray-50 focus:bg-white focus:ring-4 outline-none transition-all duration-300 ${error
+                    ? 'border-red-200 focus:border-red-500 focus:ring-red-100'
+                    : 'border-gray-100 focus:border-lavender-500 focus:ring-lavender-100'
+                    }`}
+                required
+            />
+            {children}
+        </div>
+    </div>
+);
