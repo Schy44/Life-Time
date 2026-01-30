@@ -14,12 +14,18 @@ class EmailService:
     def get_base_context():
         """Returns common context variables for all emails"""
         frontend_url = settings.CORS_ALLOWED_ORIGINS[0] if settings.CORS_ALLOWED_ORIGINS else "http://localhost:3000"
-        # Use the logo from the hosted frontend public folder
-        logo_url = f"{frontend_url}/logo-email.png"
+        # Use the logo from Supabase Storage for better reliability
+        try:
+            # Use the specific logo requested by the user
+            # Assuming frontend is hosted and public folder is accessible at root
+            logo_url = f"{frontend_url}/EmailLogo.png"
+        except Exception:
+             logo_url = f"{frontend_url}/EmailLogo.png"
         return {
             'frontend_url': frontend_url,
             'logo_url': logo_url,
-            'YEAR': timezone.now().year
+            'YEAR': timezone.now().year,
+            'email_ref_id': str(int(timezone.now().timestamp()))
         }
 
     @staticmethod

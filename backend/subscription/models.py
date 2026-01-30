@@ -72,7 +72,7 @@ class Transaction(models.Model):
         ('subscription', 'Subscription (Legacy)'),
         ('profile_activation', 'Profile Activation'),
         ('credit_topup', 'Credit Top-up'),
-        ('chat_unlock', 'Chat Unlock'),
+        ('interest_fee', 'Interest Fee'),
     )
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='transactions')

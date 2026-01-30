@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -14,7 +14,12 @@ import {
     Wallet,
     Calendar,
     ChevronRight,
-    History
+    History,
+    TrendingUp,
+    PieChart,
+    DollarSign,
+    Lock,
+    Users
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
@@ -26,6 +31,7 @@ const CreditHistoryPage = () => {
     const { theme } = useTheme();
     const [filter, setFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
+    const isDark = theme === 'dark';
 
     const { data, isLoading, refetch, isFetching } = useQuery({
         queryKey: ['transactions'],
@@ -36,7 +42,71 @@ const CreditHistoryPage = () => {
     });
 
     const transactions = data?.transactions || [];
-    const currentBalance = data?.current_balance ?? '--';
+    const currentBalance = data?.current_balance ?? 0;
+
+    // --- Analytics Calculations ---
+    const stats = useMemo(() => {
+        let totalSpentMoney = 0;
+        let totalCreditsUsed = 0;
+        let totalCreditsPurchased = 0;
+
+        // Usage breakdown
+        const usage = {
+            connections: 0, // Interest fees
+            unlocks: 0,     // Legacy profile unlocks
+            refunds: 0      // Credits refunded
+        };
+
+        transactions.forEach(tx => {
+            const amount = parseFloat(tx.amount);
+
+            // 1. Total Money Spent (Real Currency)
+            if (tx.currency !== 'CREDITS' && tx.status === 'completed') {
+                totalSpentMoney += amount;
+                // Note: Assuming amount is in BDT. If mixed, we might need normalization, 
+                // but usually user pays in one currency. 
+                // Plan prices are BDT.
+            }
+
+            // 2. Credit Usage (Outbound)
+            if (tx.currency === 'CREDITS' && tx.status === 'completed') {
+                // Check if it's spending (not refund/topup)
+                if (tx.purpose === 'interest_fee' || tx.purpose === 'chat_unlock') {
+                    totalCreditsUsed += amount;
+                    usage.connections += amount;
+                } else if (tx.purpose === 'profile_unlock' || tx.purpose === 'bundle_single') {
+                    // Legacy purposes
+                    totalCreditsUsed += amount;
+                    usage.unlocks += amount;
+                }
+            }
+
+            // 3. Credits Added (Inbound)
+            if (tx.purpose === 'credit_topup' || tx.purpose === 'subscription') {
+                // We need to parse credits added from metadata if available, 
+                // or infer from plan. For now, we trust the wallet specific transactions 
+                // or just track money spent as primary metric.
+                if (tx.metadata?.credits_to_add) {
+                    totalCreditsPurchased += parseInt(tx.metadata.credits_to_add);
+                }
+            }
+        });
+
+        // Calculate percentages
+        const totalUsage = usage.connections + usage.unlocks; // Avoid div by zero
+        const percentages = {
+            connections: totalUsage ? Math.round((usage.connections / totalUsage) * 100) : 0,
+            unlocks: totalUsage ? Math.round((usage.unlocks / totalUsage) * 100) : 0
+        };
+
+        return {
+            totalSpentMoney,
+            totalCreditsUsed,
+            usage,
+            percentages
+        };
+    }, [transactions]);
+
 
     const filteredTransactions = transactions?.filter(tx => {
         const matchesSearch = tx.purpose.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -45,63 +115,34 @@ const CreditHistoryPage = () => {
             (tx.metadata?.receiver_name && tx.metadata.receiver_name.toLowerCase().includes(searchTerm.toLowerCase()));
 
         if (filter === 'all') return matchesSearch;
-        const isTxCredit = tx.purpose === 'credit_topup' || (tx.metadata?.action === 'interest_refund');
+        const isTxCredit = tx.purpose === 'credit_topup' || (tx.metadata?.action === 'interest_refund') || tx.purpose === 'subscription';
         if (filter === 'credit') return matchesSearch && isTxCredit;
         if (filter === 'debit') return matchesSearch && !isTxCredit;
         return matchesSearch;
     });
 
-    const getRelativeTime = (dateString) => {
-        const now = new Date();
-        const past = new Date(dateString);
-        const diffInMs = now - past;
-        const diffInMins = Math.floor(diffInMs / (1000 * 60));
-        const diffInHours = Math.floor(diffInMins / 60);
-        const diffInDays = Math.floor(diffInHours / 24);
-
-        if (diffInMins < 1) return 'Just now';
-        if (diffInMins < 60) return `${diffInMins}m ago`;
-        if (diffInHours < 24) return `${diffInHours}h ago`;
-        if (diffInDays < 7) return `${diffInDays}d ago`;
-
-        return past.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    };
-
-    const formatDate = (dateString) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric'
-        });
-    };
-
     const getPurposeLabel = (tx) => {
         if (tx.metadata?.action === 'interest_refund') return 'Refund Received';
+        if (tx.purpose === 'interest_fee') return 'Connection Fee';
 
         const labels = {
             'subscription': 'Subscription Plan',
             'profile_activation': 'Account Activation',
             'credit_topup': 'Credits Purchased',
-            'chat_unlock': 'Interest Sent'
+            'chat_unlock': 'Connection Fee', // Legacy mapping
+            'profile_unlock': 'Profile Unlock' // Legacy
         };
-        return labels[tx.purpose] || tx.purpose.replace('_', ' ');
+        return labels[tx.purpose] || tx.purpose.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     };
 
-    const getStatusInfo = (status) => {
-        const s = status.toLowerCase();
-        switch (s) {
-            case 'completed': return { label: 'Settled', color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' };
-            case 'pending': return { label: 'Processing', color: 'text-amber-500 bg-amber-500/10 border-amber-500/20' };
-            case 'failed': return { label: 'Failed', color: 'text-rose-500 bg-rose-500/10 border-rose-500/20' };
-            default: return { label: status, color: 'text-gray-500 bg-gray-500/10 border-gray-500/20' };
-        }
+    const isCreditEntry = (tx) => {
+        // Returns true if credits were ADDED to wallet
+        return tx.purpose === 'credit_topup' ||
+            tx.purpose === 'subscription' ||
+            (tx.metadata?.action === 'interest_refund');
     };
 
-    const isCredit = (tx) => tx.purpose === 'credit_topup' || (tx.metadata?.action === 'interest_refund');
-
-    if (isLoading) return <LoadingSpinner size="fullscreen" message="Accessing secure ledger..." />;
-
-    const isDark = theme === 'dark';
+    if (isLoading) return <LoadingSpinner size="fullscreen" message="Analyzing financial data..." />;
 
     return (
         <div className={`min-h-screen pt-20 pb-20 px-4 sm:px-6 lg:px-8 transition-colors duration-500 ${isDark ? 'bg-[#030712] text-white' : 'bg-[#f8fafc] text-slate-900'}`}>
@@ -114,254 +155,181 @@ const CreditHistoryPage = () => {
 
             <div className="max-w-6xl mx-auto relative z-10">
 
-                {/* Header Section */}
-                <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-12">
-                    <div className="flex-1">
-                        <motion.button
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
+                {/* Header */}
+                <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10">
+                    <div>
+                        <button
                             onClick={() => navigate('/upgrade')}
-                            className={`flex items-center text-sm font-semibold transition-all mb-6 group ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
+                            className={`flex items-center text-sm font-semibold mb-4 group ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
                         >
                             <ArrowLeft size={16} className="mr-2 group-hover:-translate-x-1 transition-transform" />
                             Back to Store
-                        </motion.button>
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                        >
-                            <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
-                                Credit Ledger
-                            </h1>
-                            <p className={`text-lg max-w-2xl font-medium leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                Detailed audit trail of your credit movements, purchases, and system refunds.
-                            </p>
-                        </motion.div>
+                        </button>
+                        <h1 className="text-3xl sm:text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-indigo-600">
+                            Credit History
+                        </h1>
+                        <p className={`mt-2 font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                            Track your spending, usage, and balance.
+                        </p>
                     </div>
 
-                    {/* Balance Card - Ultra Clean */}
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className={`relative group overflow-hidden p-6 sm:p-8 rounded-[2.5rem] border transition-all duration-500 ${isDark
-                                ? 'bg-slate-900/40 border-slate-800 hover:border-blue-500/30'
-                                : 'bg-white border-slate-200 shadow-xl shadow-slate-200/50 hover:border-blue-200'
-                            }`}
+                    <button
+                        onClick={() => refetch()}
+                        className={`p-3 rounded-full transition-all ${isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-white hover:bg-slate-50 text-slate-600 shadow-sm'}`}
                     >
-                        {/* Interactive Spark Gradient */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                        <div className="relative flex items-center gap-6">
-                            <div className={`p-4 rounded-3xl ${isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600 shadow-inner'}`}>
-                                <Wallet size={32} strokeWidth={2.5} />
-                            </div>
-                            <div>
-                                <p className={`text-[11px] font-black uppercase tracking-[0.2em] mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Available Portfolio</p>
-                                <div className="flex items-baseline gap-2">
-                                    <span className={`text-4xl font-black tracking-tighter ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                        {currentBalance}
-                                    </span>
-                                    <span className="text-sm font-bold uppercase tracking-widest text-blue-500 opacity-80">Credits</span>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => refetch()}
-                                className={`ml-4 p-3 rounded-2xl transition-all ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}
-                            >
-                                <RefreshCcw size={20} className={`${isFetching ? 'animate-spin text-blue-500' : 'text-slate-400'}`} />
-                            </button>
-                        </div>
-                    </motion.div>
+                        <RefreshCcw size={20} className={`${isFetching ? 'animate-spin text-blue-500' : ''}`} />
+                    </button>
                 </div>
 
-                {/* Controls Bar */}
-                <div className="flex flex-col md:flex-row gap-4 mb-10 items-center">
+                {/* Dashboard Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                    {/* Card 1: Balance */}
+                    <div className={`p-6 rounded-[2rem] border relative overflow-hidden group ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-lg shadow-slate-100'}`}>
+                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                            <Wallet size={80} className="text-blue-500" />
+                        </div>
+                        <p className={`text-xs font-black uppercase tracking-widest mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Current Balance</p>
+                        <div className="flex items-baseline gap-2">
+                            <span className={`text-4xl font-black tracking-tighter ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                {currentBalance}
+                            </span>
+                            <span className="text-sm font-bold text-blue-500">Credits</span>
+                        </div>
+                    </div>
+
+                    {/* Card 2: Total Spent */}
+                    <div className={`p-6 rounded-[2rem] border relative overflow-hidden group ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-lg shadow-slate-100'}`}>
+                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                            <DollarSign size={80} className="text-emerald-500" />
+                        </div>
+                        <p className={`text-xs font-black uppercase tracking-widest mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Total Money Spent</p>
+                        <div className="flex items-baseline gap-2">
+                            <span className={`text-4xl font-black tracking-tighter ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                ৳{stats.totalSpentMoney.toLocaleString()}
+                            </span>
+                            <span className="text-xs font-bold text-slate-500">BDT</span>
+                        </div>
+                    </div>
+
+                    {/* Card 3: Usage Breakdown */}
+                    <div className={`p-6 rounded-[2rem] border relative overflow-hidden group ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-lg shadow-slate-100'}`}>
+                        <p className={`text-xs font-black uppercase tracking-widest mb-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Where Credits Went</p>
+
+                        <div className="space-y-3">
+                            {/* Connections Bar */}
+                            <div>
+                                <div className="flex justify-between text-xs font-bold mb-1">
+                                    <span className="flex items-center gap-1.5"><Users size={12} className="text-indigo-500" /> Connections</span>
+                                    <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{stats.percentages.connections}% ({stats.usage.connections} Cr)</span>
+                                </div>
+                                <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                    <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${stats.percentages.connections}%` }} />
+                                </div>
+                            </div>
+
+                            {/* Unlocks Bar (if any legacy exists) */}
+                            {stats.usage.unlocks > 0 && (
+                                <div>
+                                    <div className="flex justify-between text-xs font-bold mb-1">
+                                        <span className="flex items-center gap-1.5"><Lock size={12} className="text-orange-500" /> Profile Unlocks</span>
+                                        <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{stats.percentages.unlocks}% ({stats.usage.unlocks} Cr)</span>
+                                    </div>
+                                    <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                        <div className="h-full bg-orange-500 rounded-full" style={{ width: `${stats.percentages.unlocks}%` }} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Filters & Search */}
+                <div className="flex flex-col md:flex-row gap-4 mb-6 items-center">
                     <div className="relative flex-1 group w-full">
-                        <Search className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors ${isDark ? 'text-slate-500 group-focus-within:text-blue-400' : 'text-slate-400 group-focus-within:text-blue-600'}`} size={20} />
+                        <Search className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors ${isDark ? 'text-slate-500 group-focus-within:text-blue-400' : 'text-slate-400 group-focus-within:text-blue-600'}`} size={18} />
                         <input
                             type="text"
-                            placeholder="Filter by recipient, status, or transaction type..."
+                            placeholder="Search transactions..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className={`w-full border rounded-[1.5rem] py-4 pl-14 pr-6 focus:outline-none focus:ring-4 transition-all text-sm font-semibold ${isDark
-                                    ? 'bg-slate-900/50 border-slate-800 focus:ring-blue-500/10 focus:border-blue-500/50 text-white placeholder:text-slate-600'
-                                    : 'bg-white border-slate-200 focus:ring-blue-50 focus:border-blue-400 text-slate-900 placeholder:text-slate-400 shadow-sm'
+                            className={`w-full border rounded-[1.2rem] py-3 pl-12 pr-6 focus:outline-none focus:ring-2 transition-all text-sm font-semibold ${isDark
+                                ? 'bg-slate-900/50 border-slate-800 focus:ring-blue-500/20 text-white placeholder:text-slate-600'
+                                : 'bg-white border-slate-200 focus:ring-blue-400/20 text-slate-900 placeholder:text-slate-400'
                                 }`}
                         />
                     </div>
-
-                    <div className={`p-1.5 flex gap-1 border rounded-[1.5rem] ${isDark ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
-                        {[
-                            { id: 'all', label: 'Overview', icon: History },
-                            { id: 'credit', label: 'Credits Added', icon: ArrowDownLeft },
-                            { id: 'debit', label: 'Usage', icon: ArrowUpRight }
-                        ].map((f) => (
+                    <div className={`p-1 flex gap-1 border rounded-[1rem] ${isDark ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200'}`}>
+                        {['all', 'credit', 'debit'].map((f) => (
                             <button
-                                key={f.id}
-                                onClick={() => setFilter(f.id)}
-                                className={`flex items-center gap-2 py-2.5 px-6 rounded-[1rem] transition-all text-xs font-black uppercase tracking-widest ${filter === f.id
-                                        ? (isDark ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'bg-slate-900 text-white shadow-lg shadow-slate-900/20')
-                                        : (isDark ? 'text-slate-500 hover:text-slate-300 hover:bg-white/5' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50')
+                                key={f}
+                                onClick={() => setFilter(f)}
+                                className={`px-4 py-2 rounded-[0.8rem] text-xs font-bold uppercase tracking-wide transition-all ${filter === f
+                                    ? (isDark ? 'bg-blue-600 text-white' : 'bg-slate-900 text-white')
+                                    : (isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-500 hover:text-slate-900')
                                     }`}
                             >
-                                <f.icon size={14} />
-                                <span className="hidden sm:inline">{f.label}</span>
+                                {f === 'all' ? 'All' : f === 'credit' ? 'In' : 'Out'}
                             </button>
                         ))}
                     </div>
                 </div>
 
-                {/* Ledger Content */}
-                <div className="space-y-4">
-                    <AnimatePresence mode="popLayout" initial={false}>
-                        {filteredTransactions?.length > 0 ? (
-                            filteredTransactions.map((tx, index) => (
-                                <motion.div
-                                    key={tx.id}
-                                    layout
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.98 }}
-                                    transition={{
-                                        type: "spring",
-                                        stiffness: 400,
-                                        damping: 30,
-                                        delay: Math.min(index * 0.05, 0.5)
-                                    }}
-                                    className={`relative group overflow-hidden p-5 sm:p-7 rounded-[2rem] border transition-all duration-300 ${isDark
-                                            ? 'bg-slate-900/40 border-slate-800 hover:border-slate-700'
-                                            : 'bg-white border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300'
-                                        }`}
-                                >
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                                        <div className="flex items-center gap-5">
-                                            {/* Icon Indicator */}
-                                            <div className={`flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center border transition-transform group-hover:scale-110 ${isCredit(tx)
-                                                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
-                                                    : 'bg-blue-500/10 border-blue-500/20 text-blue-500'
-                                                }`}>
-                                                {isCredit(tx) ? <ArrowDownLeft size={24} strokeWidth={2.5} /> : <ArrowUpRight size={24} strokeWidth={2.5} />}
-                                            </div>
-
-                                            <div>
-                                                <div className="flex items-center gap-3 mb-1">
-                                                    <h3 className={`font-black text-xl tracking-tight transition-colors ${isDark ? 'text-white group-hover:text-blue-400' : 'text-slate-900 group-hover:text-blue-600'}`}>
-                                                        {getPurposeLabel(tx)}
-                                                    </h3>
-                                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusInfo(tx.status).color}`}>
-                                                        {getStatusInfo(tx.status).label}
-                                                    </span>
+                {/* Transaction List (Table Style) */}
+                <div className={`rounded-[2rem] border overflow-hidden ${isDark ? 'bg-slate-900/40 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+                    {filteredTransactions.length > 0 ? (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm">
+                                <thead className={`last:border-b-0 ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-50 text-slate-500'}`}>
+                                    <tr>
+                                        <th className="p-5 font-black uppercase tracking-wider text-[10px]">Description</th>
+                                        <th className="p-5 font-black uppercase tracking-wider text-[10px]">Date</th>
+                                        <th className="p-5 font-black uppercase tracking-wider text-[10px]">Status</th>
+                                        <th className="p-5 font-black uppercase tracking-wider text-[10px] text-right">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
+                                    {filteredTransactions.map((tx) => (
+                                        <tr key={tx.id} className={`group transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50/50'}`}>
+                                            <td className="p-5">
+                                                <div className="font-bold text-base flex items-center gap-2">
+                                                    {getPurposeLabel(tx)}
+                                                    {tx.metadata?.receiver_name && <span className="text-xs font-normal opacity-60">• {tx.metadata.receiver_name}</span>}
                                                 </div>
-
-                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                                                    {tx.metadata?.receiver_name && (
-                                                        <p className="text-sm font-bold text-blue-500 uppercase tracking-wide flex items-center gap-1.5">
-                                                            <Receipt size={14} className="opacity-50" />
-                                                            {tx.metadata.receiver_name}
-                                                        </p>
-                                                    )}
-                                                    <p className={`text-xs font-semibold flex items-center gap-1.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                        <Calendar size={14} className="opacity-50" />
-                                                        {formatDate(tx.created_at)}
-                                                    </p>
-                                                    {tx.transaction_id && (
-                                                        <p className={`text-[10px] font-mono opacity-40 hidden md:block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                            ID: {tx.transaction_id.slice(0, 8)}...
-                                                        </p>
-                                                    )}
+                                                <div className="text-[10px] font-mono opacity-40 mt-1">{(tx.transaction_id || String(tx.id)).slice(0, 12)}...</div>
+                                            </td>
+                                            <td className="p-5 font-medium opacity-80 whitespace-nowrap">
+                                                <div className="flex flex-col">
+                                                    <span>{new Date(tx.created_at).toLocaleDateString()}</span>
+                                                    <span className="text-[10px] opacity-60">{new Date(tx.created_at).toLocaleTimeString()}</span>
                                                 </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center justify-between sm:justify-end sm:gap-8 border-t sm:border-t-0 pt-4 sm:pt-0 border-slate-100 dark:border-slate-800">
-                                            <div className="flex flex-col items-start sm:items-end">
-                                                <span className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                    Timestamp
-                                                </span>
-                                                <span className={`text-sm font-bold flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                                                    <Clock size={14} className="text-blue-500/50" />
-                                                    {getRelativeTime(tx.created_at)}
-                                                </span>
-                                            </div>
-
-                                            <div className="text-right min-w-[120px]">
-                                                <p className={`text-3xl font-black tracking-tighter ${isCredit(tx)
-                                                        ? 'text-emerald-500'
-                                                        : (isDark ? 'text-white' : 'text-slate-900')
+                                            </td>
+                                            <td className="p-5">
+                                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${tx.status === 'completed' ? 'text-emerald-500 border-emerald-500/20 bg-emerald-500/10' :
+                                                    tx.status === 'pending' ? 'text-amber-500 border-amber-500/20 bg-amber-500/10' :
+                                                        'text-rose-500 border-rose-500/20 bg-rose-500/10'
                                                     }`}>
-                                                    {isCredit(tx) ? '+' : '-'}{(() => {
-                                                        const amount = parseFloat(tx.amount);
-                                                        return tx.currency === 'BDT' ? (amount / 1500).toFixed(0) : amount.toFixed(0);
-                                                    })()}
-                                                    <span className="ml-1 text-[11px] font-bold uppercase tracking-widest opacity-40">CR</span>
-                                                </p>
-                                                {tx.metadata?.reason && (
-                                                    <p className="text-[10px] text-slate-500 mt-1 font-bold italic tracking-tighter">
-                                                        {tx.metadata.reason}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Hover Detail Indicator */}
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-slate-400 hidden lg:block">
-                                        <ChevronRight size={24} />
-                                    </div>
-                                </motion.div>
-                            ))
-                        ) : (
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                className={`p-20 text-center rounded-[3rem] border-2 border-dashed ${isDark ? 'border-slate-800 bg-white/[0.02]' : 'border-slate-200 bg-white'}`}
-                            >
-                                <div className="max-w-xs mx-auto flex flex-col items-center gap-6">
-                                    <div className={`w-24 h-24 rounded-full flex items-center justify-center ${isDark ? 'bg-slate-900 text-slate-700' : 'bg-slate-50 text-slate-300'}`}>
-                                        <Receipt size={48} strokeWidth={1} />
-                                    </div>
-                                    <div>
-                                        <h3 className={`text-xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>No Data Tracks</h3>
-                                        <p className={`text-sm font-medium ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                            Your financial footprint on the system is currently clean. Purchase credits to begin.
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={() => { setFilter('all'); setSearchTerm(''); }}
-                                        className={`px-8 py-3 rounded-full text-xs font-black uppercase tracking-[0.2em] transition-all ${isDark ? 'bg-white text-slate-900 hover:bg-slate-200' : 'bg-slate-900 text-white hover:bg-slate-800'
-                                            }`}
-                                    >
-                                        Clear Investigation
-                                    </button>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                                                    {tx.status}
+                                                </span>
+                                            </td>
+                                            <td className={`p-5 text-right font-black text-lg ${isCreditEntry(tx) ? 'text-emerald-500' : (isDark ? 'text-white' : 'text-slate-900')}`}>
+                                                {isCreditEntry(tx) ? '+' : '-'}{
+                                                    parseFloat(tx.amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+                                                }
+                                                <span className="text-[10px] opacity-50 ml-1">{tx.currency === 'CREDITS' ? 'CR' : tx.currency}</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="p-12 text-center opacity-40">
+                            <History className="mx-auto mb-4" size={48} />
+                            <p>No transactions found matching your filters.</p>
+                        </div>
+                    )}
                 </div>
 
-                {/* Secure Footer */}
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 }}
-                    className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-6 px-4"
-                >
-                    <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
-                        <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse" />
-                        Live Synchronized Ledger • <span className="text-blue-500">{filteredTransactions?.length ?? 0}</span> audit points
-                    </div>
-
-                    <div className={`flex items-center gap-6 text-[10px] font-black uppercase tracking-[0.2em] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-                        <div className="flex items-center gap-2">
-                            <ArrowDownLeft size={12} className="text-emerald-500" />
-                            <span>Inbound Credits</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <ArrowUpRight size={12} className="text-blue-500" />
-                            <span>Outbound Usage</span>
-                        </div>
-                    </div>
-                </motion.div>
             </div>
         </div>
     );

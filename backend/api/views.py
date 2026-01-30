@@ -165,8 +165,21 @@ class ProfileDetailView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
-        # This view is for the user's own profile, so we fetch it via the request.user
-        # Optimize query with prefetching to prevent N+1 queries
+        # This view is for the user's own profile.
+        # We use get_or_create to ensure that users (like admins or legacy users)
+        # who might not have a profile record yet can still use this endpoint
+        # without hitting a 404.
+        user = self.request.user
+        profile, created = Profile.objects.get_or_create(
+            user=user,
+            defaults={
+                'name': user.get_full_name() or user.username,
+                'email': user.email,
+                'gender': 'male'  # Default required field
+            }
+        )
+        
+        # Optimize query with prefetching
         queryset = Profile.objects.select_related('user').prefetch_related(
             'work_experience',
             'education',
@@ -175,7 +188,7 @@ class ProfileDetailView(generics.RetrieveUpdateAPIView):
             'sent_interests',
             'received_interests'
         )
-        return get_object_or_404(queryset, user=self.request.user)
+        return get_object_or_404(queryset, user=user)
 
 
 class ProfileViewSet(viewsets.ModelViewSet):
@@ -368,7 +381,7 @@ class InterestViewSet(viewsets.ModelViewSet):
             currency='CREDITS',
             gateway='admin',
             status='completed',
-            purpose='chat_unlock',
+            purpose='interest_fee',
             metadata={
                 'action': 'interest_request_sent',
                 'receiver_id': receiver.id,
@@ -422,6 +435,10 @@ class InterestViewSet(viewsets.ModelViewSet):
 
         interest.status = 'rejected'
         interest.save()
+        
+        # Process refund for the sender
+        interest.process_refund()
+        
         return Response({'status': 'Interest rejected'})
 
     def destroy(self, request, *args, **kwargs):

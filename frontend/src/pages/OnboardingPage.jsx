@@ -81,49 +81,56 @@ const OnboardingPage = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [countriesRes, professionsRes, degreesRes, profileRes, verifRes, plansRes] = await Promise.all([
+                const [countriesRes, professionsRes, degreesRes, verifRes, plansRes] = await Promise.all([
                     api.get('/countries/'),
                     api.get('/professions/'),
                     api.get('/education-degrees/'),
-                    api.get('/profile/'),
-                    api.get('/verification-documents/'),
-                    api.get('/subscription/plans/')
+                    api.get('/verification-documents/').catch(e => { console.warn("Verification fetch failed:", e); return { data: [] }; }),
+                    api.get('/subscription/plans/').catch(e => { console.error("Plans fetch failed:", e); return { data: [] }; })
                 ]);
 
                 setCountries((countriesRes.data || []).map(c => ({ label: c.name, value: c.code })));
                 setProfessions((professionsRes.data || []).map(p => ({ label: p, value: p })));
                 setDegrees((degreesRes.data || []).map(d => ({ label: d, value: d })));
 
-                const actPlan = (plansRes.data || []).find(p => p.slug === 'activation');
+                const allPlans = plansRes.data || [];
+                const actPlan = allPlans.find(p => p.slug === 'activation');
+                console.log("DEBUG: Activation Plan found:", actPlan);
                 setActivationPlan(actPlan);
 
                 if (verifRes.data && verifRes.data.length > 0) {
                     setVerificationStatus(verifRes.data[0].status);
                 }
 
-                if (profileRes.data) {
-                    setFormData(prev => ({
-                        ...prev,
-                        name: profileRes.data.name || '',
-                        gender: profileRes.data.gender || '',
-                        date_of_birth: profileRes.data.date_of_birth || '',
-                        profile_for: profileRes.data.profile_for || 'self',
-                        religion: profileRes.data.religion || '',
-                        marital_status: profileRes.data.marital_status || '',
-                        height_inches: profileRes.data.height_inches || '',
-                        current_city: profileRes.data.current_city || '',
-                        current_country: profileRes.data.current_country || '',
-                        education: profileRes.data.education?.[0]?.degree || '', // Simplified for onboarding
-                        profession: profileRes.data.work_experience?.[0]?.title || '',
-                        phone: profileRes.data.phone || '',
-                    }));
-                    setActivationStatus(profileRes.data.is_activated);
-                    if (profileRes.data.onboarding_completed && !profileRes.data.is_activated) {
-                        setStep(4);
+                // Fetch profile separately so it doesn't block plans if it 404s
+                try {
+                    const profileRes = await api.get('/profile/');
+                    if (profileRes.data) {
+                        setFormData(prev => ({
+                            ...prev,
+                            name: profileRes.data.name || '',
+                            gender: profileRes.data.gender || '',
+                            date_of_birth: profileRes.data.date_of_birth || '',
+                            profile_for: profileRes.data.profile_for || 'self',
+                            religion: profileRes.data.religion || '',
+                            marital_status: profileRes.data.marital_status || '',
+                            height_inches: profileRes.data.height_inches || '',
+                            current_city: profileRes.data.current_city || '',
+                            current_country: profileRes.data.current_country || '',
+                            education: profileRes.data.education?.[0]?.degree || '',
+                            profession: profileRes.data.work_experience?.[0]?.title || '',
+                            phone: profileRes.data.phone || '',
+                        }));
+                        setActivationStatus(profileRes.data.is_activated);
+                        if (profileRes.data.onboarding_completed && !profileRes.data.is_activated) {
+                            setStep(4);
+                        }
                     }
+                } catch (profErr) {
+                    console.error("Profile fetch error:", profErr);
                 }
             } catch (error) {
-                console.error("Error fetching onboarding data:", error);
+                console.error("Critical error in Onboarding fetchData:", error);
             }
         };
         fetchData();

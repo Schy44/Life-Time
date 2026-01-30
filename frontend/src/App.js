@@ -47,8 +47,8 @@ const ActivationRoute = ({ children }) => {
       return response.data;
     },
     enabled: !!user,
-    staleTime: 1000 * 60 * 5, // 5 minutes cache
-    refetchOnWindowFocus: false, // Prevent refetch on window focus
+    staleTime: 1000 * 30, // 30 seconds cache
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
   });
 
   console.log("DEBUG: ActivationRoute Check", { user: !!user, isLoading, profile });
@@ -158,9 +158,9 @@ function App() {
               <Route
                 path="/upgrade"
                 element={
-                  <ActivationRoute>
+                  <PrivateRoute>
                     <PricingPage />
-                  </ActivationRoute>
+                  </PrivateRoute>
                 }
               />
               <Route

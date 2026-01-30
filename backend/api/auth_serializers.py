@@ -70,10 +70,13 @@ class UserSerializer(serializers.ModelSerializer):
     """Serializer for user data in auth responses"""
     profile_id = serializers.SerializerMethodField()
     onboarding_completed = serializers.SerializerMethodField()
+    is_activated = serializers.SerializerMethodField()
+    is_staff = serializers.BooleanField(read_only=True)
+    is_superuser = serializers.BooleanField(read_only=True)
     
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'profile_id', 'onboarding_completed', 'is_staff', 'is_superuser']
+        fields = ['id', 'username', 'email', 'profile_id', 'onboarding_completed', 'is_activated', 'is_staff', 'is_superuser']
     
     def get_profile_id(self, obj):
         """Get profile ID if exists"""
@@ -86,5 +89,12 @@ class UserSerializer(serializers.ModelSerializer):
         """Get onboarding status if exists"""
         try:
             return obj.profile.onboarding_completed
+        except Profile.DoesNotExist:
+            return False
+
+    def get_is_activated(self, obj):
+        """Get activation status if exists"""
+        try:
+            return obj.profile.is_activated
         except Profile.DoesNotExist:
             return False

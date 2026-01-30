@@ -40,8 +40,8 @@ export const sendInterest = async (receiverId) => {
     return response.data;
 };
 
-export const acceptInterest = async (interestId) => {
-    const response = await apiClient.post(`/interests/${interestId}/accept/`);
+export const acceptInterest = async (interestId, shareType = 'full') => {
+    const response = await apiClient.post(`/interests/${interestId}/accept/`, { share_type: shareType });
     return response.data;
 };
 

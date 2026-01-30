@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import GlassCard from './GlassCard';
 import { CheckCircle, XCircle, Star, Zap, Loader2, Clock } from 'lucide-react';
 import apiClient from '../lib/api';
+import { getProfile } from '../services/api';
+import { useQuery } from '@tanstack/react-query';
 import PaymentMethodModal from './PaymentMethodModal';
 import { useNavigate } from 'react-router-dom';
 
@@ -178,7 +180,6 @@ const FEATURE_MAPPING = {
   see_who_viewed_me: { label: 'See Who Viewed Me', format: (val) => val ? 'Included' : 'No' },
   support: { label: 'Support', format: (val) => val },
   ad_free: { label: 'Ad-Free Experience', format: (val) => val ? 'Yes' : 'No' },
-  can_initiate_chat: { label: 'Initiate Chat', format: (val) => val ? 'Yes' : 'No' },
   profile_spotlight: { label: 'Profile Spotlight', format: (val) => val }
 };
 
@@ -278,6 +279,13 @@ const PricingPage = () => {
   const [planToBuy, setPlanToBuy] = useState(null);
   const [creditToBuy, setCreditToBuy] = useState(null);
 
+  const { data: profile } = useQuery({
+    queryKey: ['me'],
+    queryFn: getProfile,
+    staleTime: 1000 * 30,
+    refetchOnWindowFocus: true,
+  });
+
   useEffect(() => {
     const fetchPlans = async () => {
       try {
@@ -348,6 +356,21 @@ const PricingPage = () => {
             Activate your profile to start connecting, then use credits to unlock full profile details.
           </motion.p>
         </div>
+
+        {/* Main Plans (Activation or Subscriptions) */}
+        {profile && !profile.is_activated && plans.find(p => p.slug === 'activation') && (
+          <div className="max-w-md mx-auto mb-20">
+            <div className="text-center mb-12">
+              <h3 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Required Activation</h3>
+              <p className="text-gray-600 dark:text-gray-400">One-time payment for lifetime platform access</p>
+            </div>
+            <PricingCard
+              plan={plans.find(p => p.slug === 'activation')}
+              onSelect={handlePlanSelect}
+              isFeatured={true}
+            />
+          </div>
+        )}
 
         {/* Credit Bundles */}
         <div className="max-w-6xl mx-auto">

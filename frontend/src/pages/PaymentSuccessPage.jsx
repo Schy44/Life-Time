@@ -85,7 +85,7 @@ const PaymentSuccessPage = () => {
                 {verifying ? (
                     <div className="flex flex-col items-center justify-center min-h-[40vh]">
                         <Loader2 className="w-12 h-12 text-indigo-500 animate-spin mb-6" />
-                        <h2 className="text-xl font-bold">Connecting to Bank...</h2>
+                        <h2 className="text-xl font-bold">Verifying Transaction...</h2>
                     </div>
                 ) : verified ? (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">

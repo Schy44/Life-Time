@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { jsPDF } from 'jspdf';
+import api from '../lib/api';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Socials from '../components/Socials';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -15,6 +17,7 @@ import {
   acceptInterest,
   rejectInterest,
   cancelInterest,
+  getCountries,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { FaCheckCircle, FaMapMarkerAlt, FaGraduationCap, FaBriefcase, FaHeart, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
@@ -171,28 +174,10 @@ export default function PublicProfilePage() {
       }
     }
   };
-  const handleAccept = async () => { try { await acceptInterest(interestStatus.id); setInterestStatus(prev => ({ ...prev, status: 'accepted' })); } catch (err) { console.error(err); safeAlert('Failed to accept'); } };
+  const handleAccept = async (shareType) => { try { await acceptInterest(interestStatus.id, shareType); setInterestStatus(prev => ({ ...prev, status: 'accepted' })); } catch (err) { console.error(err); safeAlert('Failed to accept'); } };
   const handleReject = async () => { try { await rejectInterest(interestStatus.id); setInterestStatus(prev => ({ ...prev, status: 'rejected' })); } catch (err) { console.error(err); safeAlert('Failed to reject'); } };
   const handleCancelInterest = async () => { try { await cancelInterest(interestStatus.id); setInterestStatus(null); } catch (err) { console.error(err); safeAlert('Failed to cancel'); } };
-  const handleUnlockProfile = async () => {
-    if (!profileData) return;
-    try {
-      const res = await api.post('/profiles/unlock/', { profile_id: profileData.id });
-      if (res.data.unlocked) {
-        safeAlert('Profile unlocked successfully!');
-        window.location.reload();
-      }
-    } catch (err) {
-      console.error(err);
-      if (err.response?.status === 400 && err.response?.data?.error?.includes('credits')) {
-        if (window.confirm('Insufficient credits. Would you like to buy more?')) {
-          navigate('/upgrade');
-        }
-      } else {
-        safeAlert(err.response?.data?.error || 'Failed to unlock profile');
-      }
-    }
-  };
+
 
 
   const renderInterestControls = () => {
@@ -236,16 +221,22 @@ export default function PublicProfilePage() {
       }
       if (isReceiver) {
         return (
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 w-full">
             <button
-              onClick={handleAccept}
-              className="px-6 py-2.5 bg-emerald-500 text-white font-black text-xs uppercase tracking-widest rounded-full shadow-lg shadow-emerald-200 hover:bg-emerald-600 transition-all active:scale-95"
+              onClick={() => handleAccept('full')}
+              className="w-full px-4 py-2 bg-emerald-500 text-white font-bold text-xs uppercase tracking-widest rounded-full shadow-lg hover:bg-emerald-600 transition-all active:scale-95"
             >
-              Accept
+              Accept with Photo
+            </button>
+            <button
+              onClick={() => handleAccept('bio_only')}
+              className="w-full px-4 py-2 bg-emerald-100 text-emerald-700 font-bold text-xs uppercase tracking-widest rounded-full border border-emerald-200 hover:bg-emerald-200 transition-all active:scale-95"
+            >
+              Accept (Bio Only)
             </button>
             <button
               onClick={handleReject}
-              className="px-6 py-2.5 bg-gray-100 text-gray-600 font-black text-xs uppercase tracking-widest rounded-full border border-gray-200 hover:bg-gray-200 transition-all active:scale-95"
+              className="w-full px-4 py-2 bg-gray-100 text-gray-600 font-bold text-xs uppercase tracking-widest rounded-full border border-gray-200 hover:bg-gray-200 transition-all active:scale-95 mt-1"
             >
               Reject
             </button>
@@ -724,15 +715,7 @@ export default function PublicProfilePage() {
 
                         <div className="flex flex-col gap-2">
 
-                          {!is_unlocked && interestStatus?.status === 'accepted' && (
-                            <button
-                              onClick={handleUnlockProfile}
-                              className="px-6 py-2.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs shadow-lg hover:shadow-orange-200 transition-all flex items-center justify-center gap-2"
-                            >
-                              <Lock size={12} />
-                              Unlock Full Access (10 Credits)
-                            </button>
-                          )}
+
 
                           {interestStatus?.status !== 'accepted' && renderInterestControls()}
 

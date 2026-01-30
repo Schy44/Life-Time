@@ -313,7 +313,7 @@ class Interest(models.Model):
             currency='CREDITS',
             gateway='admin',
             status='completed',
-            purpose='chat_unlock', # Reusing same purpose or descriptive one
+            purpose='interest_fee', # Reusing same purpose or descriptive one
             metadata={
                 'action': 'interest_refund',
                 'interest_id': self.id,

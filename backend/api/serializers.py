@@ -591,5 +591,5 @@ class VerificationDocumentSerializer(serializers.ModelSerializer):
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
-        fields = ('id', 'amount', 'currency', 'gateway', 'status', 'purpose', 'metadata', 'created_at')
+        fields = ('id', 'transaction_id', 'amount', 'currency', 'gateway', 'status', 'purpose', 'metadata', 'created_at')
         read_only_fields = ('created_at',)
