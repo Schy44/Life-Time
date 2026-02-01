@@ -1,7 +1,7 @@
 // frontend/src/components/NotificationsDropdown.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, Check, ThumbsUp, Mail, Bookmark, User } from 'lucide-react';
+import { Bell, Check, ThumbsUp, Mail, Bookmark, User, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   getNotifications,
@@ -32,12 +32,14 @@ const NotificationIcon = ({ verb }) => {
     'liked': <ThumbsUp size={14} className="text-white fill-current" />,
     'favorited': <Bookmark size={14} className="text-white fill-current" />,
     'viewed your profile': <User size={14} className="text-white" />,
+    'sent you an interest request': <Heart size={14} className="text-white fill-current" />,
   };
 
   const bgMap = {
     'liked': 'bg-blue-500',
     'favorited': 'bg-yellow-500',
     'viewed your profile': 'bg-purple-500',
+    'sent you an interest request': 'bg-pink-500',
   }
 
   return (
@@ -201,6 +203,7 @@ const NotificationsDropdown = () => {
             <Link
               to={n.actor_profile_url || '#'}
               key={n.id}
+              onClick={() => setIsOpen(false)}
               className={`block px-4 py-3 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors relative group ${n.unread ? 'bg-black/[0.02] dark:bg-white/[0.02]' : ''}`}
             >
               <div className="flex items-start space-x-3">

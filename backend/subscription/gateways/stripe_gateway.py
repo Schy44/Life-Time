@@ -16,7 +16,16 @@ class StripeGateway(BasePaymentGateway):
         if settings.DEBUG:
             domain = "http://localhost:3000"
         else:
-            domain = settings.RENDER_EXTERNAL_HOSTNAME or (settings.CORS_ALLOWED_ORIGINS[0] if settings.CORS_ALLOWED_ORIGINS else "http://localhost:3000")
+            # Check for explicit FRONTEND_URL or use the first CORS origin (Main Vercel App)
+            # We avoid RENDER_EXTERNAL_HOSTNAME because it points to Backend (and lacks https://)
+            if hasattr(settings, 'CORS_ALLOWED_ORIGINS') and settings.CORS_ALLOWED_ORIGINS:
+                domain = settings.CORS_ALLOWED_ORIGINS[0]
+            else:
+                domain = settings.RENDER_EXTERNAL_HOSTNAME or "http://localhost:3000"
+
+        # Ensure scheme (Stripe Requirement: https://)
+        if domain and not domain.startswith('http'):
+            domain = f"https://{domain}"
         
         # Append Stripe Session ID template for verification
         success_url = f"{domain}/payment/success?txn_id={transaction.transaction_id}&session_id={{CHECKOUT_SESSION_ID}}"
