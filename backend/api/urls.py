@@ -7,7 +7,8 @@ from .views import (
     VerificationDocumentViewSet, AdminVerificationDocumentViewSet,
     RecommendedMatchesView, EducationDegreeListView, TransactionListView,
     # Analytics views
-    get_basic_stats, who_viewed_me, get_advanced_analytics, get_profile_strength
+    get_basic_stats, who_viewed_me, get_advanced_analytics, get_profile_strength,
+    DebugEmailView
 )
 from .views_analytics import AdminDashboardAnalyticsView
 
@@ -38,5 +39,6 @@ urlpatterns = [
     path('analytics/strength/', get_profile_strength, name='analytics-strength'),
     path('analytics/admin/', AdminDashboardAnalyticsView.as_view(), name='admin-analytics'),
     path('transactions/', TransactionListView.as_view(), name='transaction-list'),
+    path('debug-email/', DebugEmailView.as_view(), name='debug-email'),
     path('', include(router.urls)),
 ]

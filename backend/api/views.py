@@ -1,6 +1,6 @@
-from rest_framework.views import APIView
 from rest_framework.response import Response
 import logging
+import smtplib
 
 logger = logging.getLogger(__name__)
 from rest_framework import status
@@ -22,12 +22,51 @@ from django.db.models import Q
 from .models import Profile, Interest, WorkExperience, Education, Notification, VerificationDocument
 from subscription.models import Transaction
 from .utils.country_utils import COUNTRY_MASTER_LIST
+from rest_framework.views import APIView
 
 
 class EducationDegreeListView(APIView):
     def get(self, request):
         # Fetch distinct degrees already in the system
         degrees = Education.objects.values_list('degree', flat=True).distinct()
+        return Response(list(degrees))
+
+class DebugEmailView(APIView):
+    """
+    A temporary endpoint to debug SMTP issues in production.
+    Accessed via: /api/debug-email/?email=your-email@gmail.com
+    Requires staff/admin privileges for security.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.is_staff:
+            return Response({"error": "Admin only"}, status=403)
+            
+        test_email = request.query_params.get('email', request.user.email)
+        
+        try:
+            from django.core.mail import send_mail
+            self.send_test_direct(test_email)
+            return Response({"status": "Success", "message": f"SMTP test passed. Check {test_email}"})
+        except Exception as e:
+            logger.exception("SMTP DEBUG FAILED")
+            return Response({
+                "status": "Failed",
+                "error": str(e),
+                "type": type(e).__name__,
+                "suggestion": "Check Render Logs for full Traceback"
+            }, status=400)
+
+    def send_test_direct(self, recipient):
+        from django.core.mail import EmailMessage
+        email = EmailMessage(
+            'Stripe/SMTP Production Test',
+            f'This is a diagnostic email from Life-Time Production.\nHost: {settings.EMAIL_HOST}\nUser: {settings.EMAIL_HOST_USER}',
+            settings.DEFAULT_FROM_EMAIL,
+            [recipient],
+        )
+        email.send(fail_silently=False)
         # Fallback to some common ones if none exist yet
         if not degrees:
             degrees = [
@@ -405,10 +444,9 @@ class InterestViewSet(viewsets.ModelViewSet):
         # Interactive Email Notification
         try:
             EmailService.send_interest_request_email(interest)
-        except Exception as e:
-            # Log error but do not fail the request - prevents 500 error in production if SMTP fails
-            logger.error(f"Error sending interest email: {e}")
-            print(f"Error sending interest email: {e}")
+        except Exception:
+            # Captures full traceback in Render Logs
+            logger.exception("Error sending interest request email")
 
         # --- 4. Success Response ---
         serializer = self.get_serializer(interest)
