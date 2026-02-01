@@ -406,6 +406,8 @@ class InterestViewSet(viewsets.ModelViewSet):
         try:
             EmailService.send_interest_request_email(interest)
         except Exception as e:
+            # Log error but do not fail the request - prevents 500 error in production if SMTP fails
+            logger.error(f"Error sending interest email: {e}")
             print(f"Error sending interest email: {e}")
 
         # --- 4. Success Response ---
