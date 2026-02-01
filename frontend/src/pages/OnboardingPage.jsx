@@ -22,7 +22,9 @@ import {
     FileUp,
     Clock,
     AlertCircle,
-    CheckCircle
+    CheckCircle,
+    Sun,
+    Moon
 } from 'lucide-react';
 import api from '../lib/api';
 import CreatableSelect from 'react-select/creatable';
@@ -30,9 +32,11 @@ import UnifiedActivationModal from '../components/UnifiedActivationModal';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import '../styles/datepicker-custom.css'; // We will create this for custom overrides if needed
+import { useTheme } from '../context/ThemeContext';
 
 const OnboardingPage = () => {
     const navigate = useNavigate();
+    const { theme, toggleTheme } = useTheme();
     const [step, setStep] = useState(1);
     const [direction, setDirection] = useState(0);
     const [loading, setLoading] = useState(false);
@@ -255,11 +259,11 @@ const OnboardingPage = () => {
 
     const getStepBadge = () => {
         switch (step) {
-            case 1: return { icon: <User className="w-4 h-4" />, text: "Basic Identity", color: "bg-blue-100 text-blue-700" };
-            case 2: return { icon: <Heart className="w-4 h-4" />, text: "Social & Status", color: "bg-rose-100 text-rose-700" };
-            case 3: return { icon: <Briefcase className="w-4 h-4" />, text: "Career & Location", color: "bg-emerald-100 text-emerald-700" };
-            case 4: return { icon: <ShieldCheck className="w-4 h-4" />, text: "Final Verification", color: "bg-amber-100 text-amber-700" };
-            default: return { icon: <Sparkles className="w-4 h-4" />, text: "Onboarding", color: "bg-gray-100 text-gray-700" };
+            case 1: return { icon: <User className="w-4 h-4" />, text: "Basic Identity", color: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400" };
+            case 2: return { icon: <Heart className="w-4 h-4" />, text: "Social & Status", color: "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400" };
+            case 3: return { icon: <Briefcase className="w-4 h-4" />, text: "Career & Location", color: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400" };
+            case 4: return { icon: <ShieldCheck className="w-4 h-4" />, text: "Final Verification", color: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" };
+            default: return { icon: <Sparkles className="w-4 h-4" />, text: "Onboarding", color: "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300" };
         }
     };
 
@@ -274,18 +278,27 @@ const OnboardingPage = () => {
             ...base,
             padding: '8px',
             borderRadius: '12px',
-            border: state.isFocused ? '2px solid #60a5fa' : '2px solid #f3f4f6',
+            border: state.isFocused ? '2px solid #60a5fa' : theme === 'dark' ? '2px solid #1e293b' : '2px solid #f3f4f6',
             boxShadow: 'none',
             '&:hover': {
                 border: '2px solid #60a5fa',
             },
             fontSize: '14px',
-            backgroundColor: 'white',
+            backgroundColor: theme === 'dark' ? '#0f172a' : 'white',
+            color: theme === 'dark' ? 'white' : '#1f2937',
+        }),
+        input: (base) => ({
+            ...base,
+            color: theme === 'dark' ? 'white' : '#1f2937',
+        }),
+        singleValue: (base) => ({
+            ...base,
+            color: theme === 'dark' ? 'white' : '#1f2937',
         }),
         option: (base, state) => ({
             ...base,
-            backgroundColor: state.isSelected ? '#2563eb' : state.isFocused ? '#eff6ff' : 'white',
-            color: state.isSelected ? 'white' : '#1f2937',
+            backgroundColor: state.isSelected ? '#2563eb' : state.isFocused ? (theme === 'dark' ? '#1e293b' : '#eff6ff') : (theme === 'dark' ? '#0f172a' : 'white'),
+            color: state.isSelected ? 'white' : (theme === 'dark' ? 'white' : '#1f2937'),
             padding: '12px',
             fontSize: '14px',
             cursor: 'pointer',
@@ -296,8 +309,8 @@ const OnboardingPage = () => {
             overflow: 'hidden',
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
             zIndex: 999999,
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
+            backgroundColor: theme === 'dark' ? '#0f172a' : 'white',
+            border: theme === 'dark' ? '1px solid #1e293b' : '1px solid #e5e7eb',
         }),
         menuPortal: (base) => ({ ...base, zIndex: 999999 }),
     };
@@ -313,7 +326,7 @@ const OnboardingPage = () => {
                         className="space-y-8 max-w-xl mx-auto text-left"
                     >
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-4 text-center italic">I am creating this profile for...</label>
+                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-4 text-center italic transition-colors">I am creating this profile for...</label>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                 {['self', 'son', 'daughter', 'brother', 'sister', 'friend'].map((option) => (
                                     <button
@@ -321,8 +334,8 @@ const OnboardingPage = () => {
                                         onClick={() => handleOptionSelect('profile_for', option)}
                                         className={`p-4 rounded-xl border-2 transition-all text-sm font-semibold capitalize
                                             ${formData.profile_for === option
-                                                ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-md'
-                                                : 'border-gray-100 bg-white text-gray-500 hover:border-blue-100'}`}
+                                                ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 shadow-md'
+                                                : 'border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-500 dark:text-gray-400 hover:border-blue-100 dark:hover:border-blue-900/30'}`}
                                     >
                                         {option}
                                     </button>
@@ -332,24 +345,24 @@ const OnboardingPage = () => {
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Full Name</label>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2 ml-1 transition-colors">Full Name</label>
                                 <input
                                     type="text"
                                     value={formData.name}
                                     onChange={(e) => handleOptionSelect('name', e.target.value)}
                                     placeholder="Enter your full name"
                                     maxLength={100}
-                                    className="w-full p-4 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none transition-all"
+                                    className="w-full p-4 rounded-xl border-2 border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:border-blue-400 outline-none transition-all placeholder-gray-400 dark:placeholder-gray-600"
                                 />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Gender</label>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2 ml-1 transition-colors">Gender</label>
                                     <select
                                         value={formData.gender}
                                         onChange={(e) => handleOptionSelect('gender', e.target.value)}
-                                        className="w-full p-4 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none transition-all bg-white"
+                                        className="w-full p-4 rounded-xl border-2 border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:border-blue-400 outline-none transition-all"
                                     >
                                         <option value="">Select Gender</option>
                                         <option value="male">Male</option>
@@ -357,7 +370,7 @@ const OnboardingPage = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Date of Birth</label>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2 ml-1 transition-colors">Date of Birth</label>
                                     <DatePicker
                                         selected={formData.date_of_birth ? new Date(formData.date_of_birth) : null}
                                         onChange={(date) => handleOptionSelect('date_of_birth', formatDateObj(date))}
@@ -368,7 +381,7 @@ const OnboardingPage = () => {
                                         showYearDropdown
                                         dropdownMode="select"
                                         placeholderText="Select Date of Birth"
-                                        className="w-full p-4 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none transition-all bg-white"
+                                        className="w-full p-4 rounded-xl border-2 border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:border-blue-400 outline-none transition-all"
                                         wrapperClassName="w-full"
                                         onKeyDown={(e) => e.preventDefault()}
                                     />
@@ -376,7 +389,7 @@ const OnboardingPage = () => {
                             </div>
 
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Contact Number</label>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2 ml-1 transition-colors">Contact Number</label>
                                 <input
                                     type="tel"
                                     value={formData.phone}
@@ -385,9 +398,9 @@ const OnboardingPage = () => {
                                         if (val.length <= 15) handleOptionSelect('phone', val);
                                     }}
                                     placeholder="+880 1XXX XXXXXX"
-                                    className="w-full p-4 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none transition-all"
+                                    className="w-full p-4 rounded-xl border-2 border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:border-blue-400 outline-none transition-all placeholder-gray-400 dark:placeholder-gray-600"
                                 />
-                                <p className="text-[10px] text-gray-400 mt-1 ml-1">Required so others can connect with you.</p>
+                                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 ml-1 transition-colors">Required so others can connect with you.</p>
                             </div>
                         </div>
                     </motion.div>
@@ -402,7 +415,7 @@ const OnboardingPage = () => {
                     >
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Religion</label>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2 ml-1 transition-colors">Religion</label>
                                 <div className="grid grid-cols-1 gap-2">
                                     {['muslim', 'hindu', 'christian', 'buddhist', 'other'].map((rel) => (
                                         <button
@@ -410,8 +423,8 @@ const OnboardingPage = () => {
                                             onClick={() => handleOptionSelect('religion', rel)}
                                             className={`p-3 rounded-xl border-2 transition-all text-sm font-semibold capitalize
                                                 ${formData.religion === rel
-                                                    ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm'
-                                                    : 'border-gray-100 bg-white text-gray-500 hover:border-blue-100'}`}
+                                                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 shadow-sm'
+                                                    : 'border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-500 dark:text-gray-400 hover:border-blue-100 dark:hover:border-blue-900/30'}`}
                                         >
                                             {rel}
                                         </button>
@@ -421,7 +434,7 @@ const OnboardingPage = () => {
 
                             <div className="space-y-6">
                                 <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Marital Status</label>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2 ml-1 transition-colors">Marital Status</label>
                                     <div className="grid grid-cols-1 gap-2">
                                         {['never_married', 'divorced', 'widowed', 'awaiting_divorce'].map((status) => (
                                             <button
@@ -429,8 +442,8 @@ const OnboardingPage = () => {
                                                 onClick={() => handleOptionSelect('marital_status', status)}
                                                 className={`p-3 rounded-xl border-2 transition-all text-sm font-semibold capitalize
                                                     ${formData.marital_status === status
-                                                        ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm'
-                                                        : 'border-gray-100 bg-white text-gray-500 hover:border-blue-100'}`}
+                                                        ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 shadow-sm'
+                                                        : 'border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-500 dark:text-gray-400 hover:border-blue-100 dark:hover:border-blue-900/30'}`}
                                             >
                                                 {status.replace('_', ' ')}
                                             </button>
@@ -439,7 +452,7 @@ const OnboardingPage = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1 flex items-center gap-2">
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2 ml-1 flex items-center gap-2 transition-colors">
                                         <Ruler size={14} /> Height (Inches)
                                     </label>
                                     <input
@@ -449,9 +462,9 @@ const OnboardingPage = () => {
                                         placeholder="e.g. 68"
                                         min="30"
                                         max="100"
-                                        className="w-full p-4 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none transition-all"
+                                        className="w-full p-4 rounded-xl border-2 border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:border-blue-400 outline-none transition-all placeholder-gray-400 dark:placeholder-gray-600"
                                     />
-                                    <p className="text-[10px] text-gray-400 mt-1 ml-1">5'0" = 60, 5'6" = 66, 6'0" = 72</p>
+                                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 ml-1 transition-colors">5'0" = 60, 5'6" = 66, 6'0" = 72</p>
                                 </div>
                             </div>
                         </div>
@@ -467,7 +480,7 @@ const OnboardingPage = () => {
                     >
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Current Country</label>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2 ml-1 transition-colors">Current Country</label>
                                 <CreatableSelect
                                     isClearable
                                     options={countries}
@@ -482,20 +495,20 @@ const OnboardingPage = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Current City</label>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2 ml-1 transition-colors">Current City</label>
                                 <input
                                     type="text"
                                     value={formData.current_city}
                                     onChange={(e) => handleOptionSelect('current_city', e.target.value)}
                                     placeholder="Dhaka, London, etc."
                                     maxLength={100}
-                                    className="w-full p-4 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none transition-all text-sm"
+                                    className="w-full p-4 rounded-xl border-2 border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:border-blue-400 outline-none transition-all text-sm placeholder-gray-400 dark:placeholder-gray-600"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Highest Education</label>
+                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2 ml-1 transition-colors">Highest Education</label>
                             <CreatableSelect
                                 isClearable
                                 options={degrees}
@@ -511,7 +524,7 @@ const OnboardingPage = () => {
                         </div>
 
                         <div>
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Current Profession</label>
+                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2 ml-1 transition-colors">Current Profession</label>
                             <CreatableSelect
                                 isClearable
                                 options={professions}
@@ -526,9 +539,9 @@ const OnboardingPage = () => {
                             />
                         </div>
 
-                        <div className="p-5 bg-white rounded-2xl border border-slate-100 flex items-start gap-4 shadow-sm">
-                            <Sparkles className="text-slate-300 flex-shrink-0 mt-1" size={20} />
-                            <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                        <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-start gap-4 shadow-sm transition-colors">
+                            <Sparkles className="text-slate-300 dark:text-slate-600 flex-shrink-0 mt-1" size={20} />
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed transition-colors">
                                 Great! Once you complete this step, you'll be one step away from finding your perfect match.
                             </p>
                         </div>
@@ -546,8 +559,8 @@ const OnboardingPage = () => {
                         transition={{ duration: 0.3, ease: 'easeOut' }}
                     >
                         <div className="text-center space-y-2 mb-8">
-                            <h2 className="text-4xl font-black text-slate-900 tracking-tight">Complete your journey</h2>
-                            <p className="text-slate-500 text-base font-medium max-w-2xl mx-auto">
+                            <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight transition-colors">Complete your journey</h2>
+                            <p className="text-slate-500 dark:text-slate-400 text-base font-medium max-w-2xl mx-auto transition-colors">
                                 You're moments away from unlocking your profile.
                             </p>
                         </div>
@@ -558,18 +571,18 @@ const OnboardingPage = () => {
                             <div
                                 className={`flex flex-col p-8 sm:p-10 rounded-[2.5rem] border-2 transition-all duration-700 relative overflow-hidden group/card
                                     ${verificationStatus === 'approved'
-                                        ? 'bg-slate-50 border-slate-200'
-                                        : 'bg-white border-slate-100 shadow-xl shadow-slate-200/50 hover:border-indigo-200 hover:shadow-2xl hover:shadow-slate-300/60'}`}
+                                        ? 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800'
+                                        : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none hover:border-indigo-200 dark:hover:border-indigo-900 hover:shadow-2xl hover:shadow-slate-300/60 dark:hover:shadow-indigo-900/20'}`}
                             >
                                 <div className="flex items-start justify-between mb-10">
-                                    <div className={`p-5 rounded-2xl transition-all duration-500 ${verificationStatus === 'approved' ? 'bg-indigo-100 text-indigo-600' :
-                                        verificationStatus === 'pending' ? 'bg-slate-200 text-slate-500 shadow-sm' :
-                                            'bg-slate-100 text-slate-500 group-hover/card:bg-indigo-600 group-hover/card:text-white group-hover/card:shadow-lg transition-colors'
+                                    <div className={`p-5 rounded-2xl transition-all duration-500 ${verificationStatus === 'approved' ? 'bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' :
+                                        verificationStatus === 'pending' ? 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 shadow-sm' :
+                                            'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover/card:bg-indigo-600 group-hover/card:text-white group-hover/card:shadow-lg transition-colors'
                                         }`}>
                                         {verificationStatus === 'approved' ? <ShieldCheck size={32} /> : <Shield size={32} />}
                                     </div>
-                                    <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${verificationStatus === 'approved' ? 'bg-indigo-50 border-indigo-100 text-indigo-700' :
-                                        'bg-slate-100 border-slate-200 text-slate-500'
+                                    <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${verificationStatus === 'approved' ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/30 text-indigo-700 dark:text-indigo-400' :
+                                        'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
                                         }`}>
                                         {verificationStatus === 'approved' ? 'Verified' :
                                             verificationStatus === 'pending' ? 'In Review' : 'Required'}
@@ -577,26 +590,26 @@ const OnboardingPage = () => {
                                 </div>
 
                                 <div className="flex-grow text-left">
-                                    <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Verify Identity</h3>
-                                    <p className="text-slate-500 font-medium leading-relaxed mb-8">
-                                        Submit a government ID to earn your <span className="text-indigo-600 font-bold">Verified Badge</span> and build trust with members.
+                                    <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2 tracking-tight transition-colors">Verify Identity</h3>
+                                    <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed mb-8 transition-colors">
+                                        Submit a government ID to earn your <span className="text-indigo-600 dark:text-indigo-400 font-bold">Verified Badge</span> and build trust with members.
                                     </p>
                                 </div>
 
                                 <div className="mt-auto">
                                     {verificationStatus === 'approved' ? (
-                                        <div className="flex items-center gap-3 py-3 px-5 bg-indigo-50 rounded-2xl border border-indigo-100">
+                                        <div className="flex items-center gap-3 py-3 px-5 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-900/30">
                                             <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                                            <span className="text-sm font-bold text-indigo-700 uppercase tracking-tight"> Verified</span>
+                                            <span className="text-sm font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-tight"> Verified</span>
                                         </div>
                                     ) : verificationStatus === 'pending' ? (
-                                        <div className="flex items-center gap-3 py-3 px-5 bg-slate-100 rounded-2xl border border-slate-200">
+                                        <div className="flex items-center gap-3 py-3 px-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
                                             <div className="w-2 h-2 rounded-full bg-slate-400 animate-pulse" />
-                                            <span className="text-sm font-bold text-slate-600 uppercase tracking-tight">Reviewing Stats</span>
+                                            <span className="text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight">Reviewing Stats</span>
                                         </div>
                                     ) : (
                                         <label className="cursor-pointer">
-                                            <div className="w-full py-4 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-2xl font-black text-sm uppercase tracking-widest transition-all hover:shadow-lg text-center">
+                                            <div className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all hover:shadow-lg text-center">
                                                 {loading ? "Processing..." : "Submit Identity"}
                                             </div>
                                             <input type="file" className="hidden" onChange={handleFileUpload} disabled={loading} accept="image/*,.pdf" />
@@ -608,33 +621,33 @@ const OnboardingPage = () => {
                             {/* Activation Card */}
                             <div
                                 className={`flex flex-col p-8 sm:p-10 rounded-[2.5rem] border-2 transition-all duration-700 relative overflow-hidden group/card
-                                    ${activationStatus ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-100 shadow-xl shadow-slate-200/50 hover:border-indigo-200 hover:shadow-2xl hover:shadow-indigo-500/10'}`}
+                                    ${activationStatus ? 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none hover:border-indigo-200 dark:hover:border-indigo-900 hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:shadow-indigo-900/20'}`}
                             >
                                 <div className="flex items-start justify-between mb-10">
                                     <div className={`p-5 rounded-2xl transition-all duration-500 ${activationStatus ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' :
-                                        'bg-slate-100 text-slate-500 group-hover/card:bg-indigo-600 group-hover/card:text-white group-hover/card:shadow-lg transition-colors'
+                                        'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover/card:bg-indigo-600 group-hover/card:text-white group-hover/card:shadow-lg transition-colors'
                                         }`}>
                                         <Zap size={32} className={activationStatus ? "fill-current" : ""} />
                                     </div>
-                                    <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${activationStatus ? 'bg-indigo-50 border-indigo-100 text-indigo-700' :
-                                        'bg-slate-100 border-slate-200 text-slate-500'
+                                    <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${activationStatus ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/30 text-indigo-700 dark:text-indigo-400' :
+                                        'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
                                         }`}>
                                         {activationStatus ? 'Active' : 'Account'}
                                     </div>
                                 </div>
 
                                 <div className="flex-grow text-left">
-                                    <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Profile Activation</h3>
-                                    <p className="text-slate-500 font-medium leading-relaxed mb-8">
+                                    <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2 tracking-tight transition-colors">Profile Activation</h3>
+                                    <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed mb-8 transition-colors">
                                         Unlock full communication features and appear in platform-wide searches forever.
                                     </p>
                                 </div>
 
                                 <div className="mt-auto">
                                     {activationStatus ? (
-                                        <div className="flex items-center gap-3 py-3 px-5 bg-indigo-50 rounded-2xl border border-indigo-100">
+                                        <div className="flex items-center gap-3 py-3 px-5 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-900/30">
                                             <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                                            <span className="text-sm font-bold text-indigo-700 uppercase tracking-tight">Lifetime Access Active</span>
+                                            <span className="text-sm font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-tight">Lifetime Access Active</span>
                                         </div>
                                     ) : (
                                         <button
@@ -649,9 +662,9 @@ const OnboardingPage = () => {
                         </div>
 
                         {!activationStatus && (
-                            <div className="mt-12 p-6 bg-rose-50 rounded-2xl border border-rose-100 flex items-start gap-4 mx-auto max-w-2xl">
-                                <AlertCircle className="text-rose-500 flex-shrink-0 mt-1" size={20} />
-                                <p className="text-xs text-rose-800 font-bold leading-relaxed text-left">
+                            <div className="mt-12 p-6 bg-rose-50 dark:bg-rose-900/20 rounded-2xl border border-rose-100 dark:border-rose-900/30 flex items-start gap-4 mx-auto max-w-2xl">
+                                <AlertCircle className="text-rose-500 dark:text-rose-400 flex-shrink-0 mt-1" size={20} />
+                                <p className="text-xs text-rose-800 dark:text-rose-300 font-bold leading-relaxed text-left">
                                     **Profile Activation** is required to see and connected with other users.
                                 </p>
                             </div>
@@ -673,12 +686,20 @@ const OnboardingPage = () => {
     const badge = getStepBadge();
 
     return (
-        <div className="min-h-screen bg-white font-sans text-gray-900 selection:bg-blue-100 selection:text-blue-900">
+        <div className="min-h-screen bg-white dark:bg-slate-950 font-sans text-gray-900 dark:text-white selection:bg-blue-100 selection:text-blue-900 transition-colors duration-300">
+            {/* Theme Toggle */}
+            <button
+                onClick={toggleTheme}
+                className="fixed top-6 right-6 z-50 p-3 rounded-full bg-white/80 dark:bg-slate-800/80 backdrop-blur border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:scale-105 transition-all shadow-sm"
+            >
+                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+
             <div className="flex flex-col items-center justify-center min-h-screen px-6 py-12 text-center">
                 {/* Status Bar */}
                 <div className="w-full max-w-lg mb-8 flex gap-2">
                     {[1, 2, 3, 4].map(i => (
-                        <div key={i} className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${step >= i ? 'bg-blue-600' : 'bg-gray-100'}`} />
+                        <div key={i} className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${step >= i ? 'bg-blue-600' : 'bg-gray-100 dark:bg-slate-800'}`} />
                     ))}
                 </div>
 
@@ -701,10 +722,10 @@ const OnboardingPage = () => {
                     transition={{ delay: 0.1 }}
                     className={step === 4 ? "hidden" : "mb-8"}
                 >
-                    <h1 className="text-4xl font-black tracking-tight mb-3 text-gray-900 max-w-xl leading-tight">
+                    <h1 className="text-4xl font-black tracking-tight mb-3 text-gray-900 dark:text-white max-w-xl leading-tight transition-colors">
                         {step === 1 ? "Start your journey here" : step === 2 ? "Tell us who you are" : step === 3 ? "Career & Home" : ""}
                     </h1>
-                    <p className="text-gray-400 text-base font-medium max-w-sm mx-auto">
+                    <p className="text-gray-400 dark:text-gray-500 text-base font-medium max-w-sm mx-auto transition-colors">
                         {"These details help us introduce you to the right people."}
                     </p>
                 </motion.div>
@@ -721,7 +742,7 @@ const OnboardingPage = () => {
                     {step > 1 && step !== 4 && (
                         <button
                             onClick={prevStep}
-                            className="px-8 py-4 rounded-xl text-sm font-bold text-gray-400 hover:text-gray-600 transition-all border-2 border-gray-50 hover:border-gray-100"
+                            className="px-8 py-4 rounded-xl text-sm font-bold text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-all border-2 border-gray-50 dark:border-slate-800 hover:border-gray-100 dark:hover:border-slate-700"
                         >
                             Back
                         </button>
@@ -730,7 +751,7 @@ const OnboardingPage = () => {
                     {step < 3 ? (
                         <button
                             onClick={nextStep}
-                            className="px-12 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black shadow-xl shadow-blue-200 transition-all flex items-center gap-2 group"
+                            className="px-12 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black shadow-xl shadow-blue-200 dark:shadow-blue-900/20 transition-all flex items-center gap-2 group"
                         >
                             Continue
                             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -739,7 +760,7 @@ const OnboardingPage = () => {
                         <button
                             onClick={handleSubmit}
                             disabled={loading}
-                            className="px-16 py-4 bg-gray-900 hover:bg-black text-white rounded-xl text-sm font-black shadow-xl shadow-gray-200 transition-all disabled:opacity-50 flex items-center gap-2 group"
+                            className="px-16 py-4 bg-gray-900 dark:bg-white hover:bg-black dark:hover:bg-slate-200 text-white dark:text-gray-900 rounded-xl text-sm font-black shadow-xl shadow-gray-200 dark:shadow-none transition-all disabled:opacity-50 flex items-center gap-2 group"
                         >
                             {loading ? "Saving..." : "Verify & Activate"}
                             {!loading && <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />}
@@ -748,7 +769,7 @@ const OnboardingPage = () => {
                         activationStatus && (
                             <button
                                 onClick={handleSubmit}
-                                className="px-16 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black shadow-xl shadow-blue-200 transition-all flex items-center gap-2 group"
+                                className="px-16 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black shadow-xl shadow-blue-200 dark:shadow-blue-900/20 transition-all flex items-center gap-2 group"
                             >
                                 View Your Top Matches
                                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

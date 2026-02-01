@@ -717,7 +717,7 @@ export default function PublicProfilePage() {
 
 
 
-                          {interestStatus?.status !== 'accepted' && renderInterestControls()}
+                          {renderInterestControls()}
 
                           {interestStatus?.status === 'accepted' && !is_unlocked && (
                             <Link

@@ -15,12 +15,7 @@ class EmailService:
         """Returns common context variables for all emails"""
         frontend_url = settings.CORS_ALLOWED_ORIGINS[0] if settings.CORS_ALLOWED_ORIGINS else "http://localhost:3000"
         # Use the logo from Supabase Storage for better reliability
-        try:
-            # Use the specific logo requested by the user
-            # Assuming frontend is hosted and public folder is accessible at root
-            logo_url = f"{frontend_url}/EmailLogo.png"
-        except Exception:
-             logo_url = f"{frontend_url}/EmailLogo.png"
+        logo_url = "https://airogkqmcjqvvipdwnwh.supabase.co/storage/v1/object/public/LT_Images/assets/EmailLogo.png"
         return {
             'frontend_url': frontend_url,
             'logo_url': logo_url,

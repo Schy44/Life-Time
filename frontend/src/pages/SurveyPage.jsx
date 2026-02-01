@@ -13,12 +13,16 @@ import {
     Sparkles,
     Ruler,
     Calendar,
-    Users2
+    Users2,
+    Sun,
+    Moon
 } from 'lucide-react';
 import api from '../lib/api';
+import { useTheme } from '../context/ThemeContext';
 
 const SurveyPage = () => {
     const navigate = useNavigate();
+    const { theme, toggleTheme } = useTheme();
     const [step, setStep] = useState(1);
     const [direction, setDirection] = useState(0);
     const [loading, setLoading] = useState(false);
@@ -119,11 +123,11 @@ const SurveyPage = () => {
 
     const getStepBadge = () => {
         switch (step) {
-            case 1: return { icon: <Users2 className="w-5 h-5" />, text: "Identity", color: "bg-blue-100/80 text-blue-700" };
-            case 2: return { icon: <Heart className="w-5 h-5" />, text: "Selection", color: "bg-rose-100/80 text-rose-700" };
-            case 3: return { icon: <Sparkles className="w-5 h-5" />, text: "Profile", color: "bg-indigo-100/80 text-indigo-700" };
-            case 4: return { icon: <MessageCircle className="w-5 h-5" />, text: "Aspiration", color: "bg-amber-100/80 text-amber-700" };
-            default: return { icon: <Monitor className="w-5 h-5" />, text: "Survey", color: "bg-slate-100/80 text-slate-700" };
+            case 1: return { icon: <Users2 className="w-5 h-5" />, text: "Identity", color: "bg-blue-100/80 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300" };
+            case 2: return { icon: <Heart className="w-5 h-5" />, text: "Selection", color: "bg-rose-100/80 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300" };
+            case 3: return { icon: <Sparkles className="w-5 h-5" />, text: "Profile", color: "bg-indigo-100/80 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300" };
+            case 4: return { icon: <MessageCircle className="w-5 h-5" />, text: "Aspiration", color: "bg-amber-100/80 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300" };
+            default: return { icon: <Monitor className="w-5 h-5" />, text: "Survey", color: "bg-slate-100/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300" };
         }
     };
 
@@ -159,7 +163,7 @@ const SurveyPage = () => {
                         className="space-y-12 max-w-xl mx-auto flex flex-col items-center justify-center h-full"
                     >
                         <div className="w-full">
-                            <h4 className="text-gray-900 font-bold mb-10 text-center text-2xl italic">I am looking for a partner who is...</h4>
+                            <h4 className="text-gray-900 dark:text-white font-bold mb-10 text-center text-2xl italic">I am looking for a partner who is...</h4>
                             <div className="flex flex-col sm:flex-row justify-center gap-6">
                                 {[
                                     { id: 'bride', label: 'A Woman / Bride' },
@@ -172,14 +176,14 @@ const SurveyPage = () => {
                                         onClick={() => handleOptionSelect('looking_for_gender', option.id)}
                                         className={`px-12 py-8 rounded-[2rem] border-4 transition-all text-lg font-black
                                             ${formData.looking_for_gender === option.id
-                                                ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-2xl shadow-blue-200'
-                                                : 'border-gray-50 bg-white text-gray-400 hover:border-blue-100 hover:bg-gray-50 shadow-sm'}`}
+                                                ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 shadow-2xl shadow-blue-200 dark:shadow-blue-900/20'
+                                                : 'border-gray-50 dark:border-slate-800 bg-white dark:bg-slate-800 text-gray-400 dark:text-slate-500 hover:border-blue-100 dark:hover:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 shadow-sm'}`}
                                     >
                                         {option.label}
                                     </motion.button>
                                 ))}
                             </div>
-                            <p className="text-center text-sm text-gray-400 mt-10 font-medium">
+                            <p className="text-center text-sm text-gray-400 dark:text-slate-500 mt-10 font-medium">
                                 This helps us filter the most relevant profiles for you.
                             </p>
                         </div>
@@ -198,7 +202,7 @@ const SurveyPage = () => {
                         className="space-y-12 max-w-3xl mx-auto w-full"
                     >
                         <div>
-                            <h4 className="text-gray-900 font-bold mb-6 text-center text-lg flex items-center justify-center gap-2">
+                            <h4 className="text-gray-900 dark:text-white font-bold mb-6 text-center text-lg flex items-center justify-center gap-2">
                                 <Heart className="text-rose-500" size={20} />
                                 Marital Status Preference
                             </h4>
@@ -217,8 +221,8 @@ const SurveyPage = () => {
                                         }}
                                         className={`p-4 rounded-2xl border-2 transition-all text-sm font-bold
                                             ${(formData.marital_statuses || []).includes(option.value)
-                                                ? 'border-rose-600 bg-rose-50 text-rose-700 shadow-md'
-                                                : 'border-gray-50 bg-white text-gray-400 hover:border-rose-100'}`}
+                                                ? 'border-rose-600 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 shadow-md'
+                                                : 'border-gray-50 dark:border-slate-800 bg-white dark:bg-slate-800 text-gray-400 dark:text-slate-500 hover:border-rose-100 dark:hover:border-slate-700'}`}
                                     >
                                         {option.label}
                                     </motion.button>
@@ -226,9 +230,9 @@ const SurveyPage = () => {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-gray-50">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-gray-50 dark:border-slate-800">
                             <div>
-                                <h4 className="text-gray-900 font-bold mb-4 flex items-center gap-2">
+                                <h4 className="text-gray-900 dark:text-white font-bold mb-4 flex items-center gap-2">
                                     <Calendar className="w-5 h-5 text-indigo-500" />
                                     Minimum Age
                                 </h4>
@@ -238,13 +242,13 @@ const SurveyPage = () => {
                                         value={formData.min_age}
                                         onChange={(e) => handleOptionSelect('min_age', e.target.value)}
                                         placeholder="e.g. 24"
-                                        className="w-full p-4 pl-12 rounded-2xl border-2 border-gray-100 focus:border-indigo-400 outline-none transition-all font-bold text-lg"
+                                        className="w-full p-4 pl-12 rounded-2xl border-2 border-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white focus:border-indigo-400 outline-none transition-all font-bold text-lg"
                                     />
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 font-bold">Age</span>
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 dark:text-slate-500 font-bold">Age</span>
                                 </div>
                             </div>
                             <div>
-                                <h4 className="text-gray-900 font-bold mb-4 flex items-center gap-2">
+                                <h4 className="text-gray-900 dark:text-white font-bold mb-4 flex items-center gap-2">
                                     <Ruler className="w-5 h-5 text-emerald-500" />
                                     Minimum Height
                                 </h4>
@@ -254,11 +258,11 @@ const SurveyPage = () => {
                                         value={formData.min_height_inches}
                                         onChange={(e) => handleOptionSelect('min_height_inches', e.target.value)}
                                         placeholder="e.g. 66"
-                                        className="w-full p-4 pl-14 rounded-2xl border-2 border-gray-100 focus:border-emerald-400 outline-none transition-all font-bold text-lg"
+                                        className="w-full p-4 pl-14 rounded-2xl border-2 border-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white focus:border-emerald-400 outline-none transition-all font-bold text-lg"
                                     />
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 font-bold">Inch</span>
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 dark:text-slate-500 font-bold">Inch</span>
                                 </div>
-                                <p className="text-[10px] text-gray-400 mt-2 font-medium">5'0" = 60, 5'6" = 66, 6'0" = 72</p>
+                                <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-2 font-medium">5'0" = 60, 5'6" = 66, 6'0" = 72</p>
                             </div>
                         </div>
                     </motion.div>
@@ -279,14 +283,14 @@ const SurveyPage = () => {
                             {/* Left Column: Location & Education */}
                             <div className="flex flex-col gap-8">
                                 {/* Location Section */}
-                                <div className="bg-white/80 backdrop-blur-xl p-6 sm:p-10 rounded-[3rem] border border-slate-200/50 shadow-sm transition-all hover:shadow-md">
+                                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-6 sm:p-10 rounded-[3rem] border border-slate-200/50 dark:border-slate-800/50 shadow-sm transition-all hover:shadow-md">
                                     <div className="flex items-center gap-4 mb-8">
-                                        <div className="p-3 bg-emerald-100 rounded-2xl text-emerald-600">
+                                        <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl text-emerald-600 dark:text-emerald-400">
                                             <Globe size={24} />
                                         </div>
                                         <div className="text-left">
-                                            <h4 className="text-xl font-black text-slate-900 tracking-tight">Location Goal</h4>
-                                            <p className="text-xs text-slate-500 font-medium">Where would you prefer them to be?</p>
+                                            <h4 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Location Goal</h4>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Where would you prefer them to be?</p>
                                         </div>
                                     </div>
 
@@ -302,8 +306,8 @@ const SurveyPage = () => {
                                                 onClick={() => handleOptionSelect('location_preference', option.id)}
                                                 className={`p-5 rounded-2xl border-2 transition-all text-sm font-black tracking-tight
                                                     ${formData.location_preference === option.id
-                                                        ? 'border-emerald-600 bg-emerald-50 text-emerald-700 shadow-sm'
-                                                        : 'border-slate-100 bg-slate-50/50 text-slate-400 hover:border-emerald-100 hover:bg-white'}`}
+                                                        ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 shadow-sm'
+                                                        : 'border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 text-slate-400 hover:border-emerald-100 dark:hover:border-emerald-900/30 hover:bg-white dark:hover:bg-slate-800'}`}
                                             >
                                                 {option.label}
                                             </motion.button>
@@ -321,7 +325,7 @@ const SurveyPage = () => {
                                                 <select
                                                     value={formData.country || ""}
                                                     onChange={(e) => handleOptionSelect('country', e.target.value)}
-                                                    className="w-full p-5 rounded-2xl border-2 border-slate-100 bg-white text-sm font-black text-slate-900 focus:border-emerald-400 outline-none transition-all shadow-sm appearance-none"
+                                                    className="w-full p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-black text-slate-900 dark:text-white focus:border-emerald-400 outline-none transition-all shadow-sm appearance-none"
                                                 >
                                                     <option value="">Select Target Country...</option>
                                                     {countries.map(c => (
@@ -334,14 +338,14 @@ const SurveyPage = () => {
                                 </div>
 
                                 {/* Education Section */}
-                                <div className="bg-white/80 backdrop-blur-xl p-6 sm:p-10 rounded-[3rem] border border-slate-200/50 shadow-sm transition-all hover:shadow-md">
+                                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-6 sm:p-10 rounded-[3rem] border border-slate-200/50 dark:border-slate-800/50 shadow-sm transition-all hover:shadow-md">
                                     <div className="flex items-center gap-4 mb-8">
-                                        <div className="p-3 bg-blue-100 rounded-2xl text-blue-600">
+                                        <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-2xl text-blue-600 dark:text-blue-400">
                                             <GraduationCap size={24} />
                                         </div>
                                         <div className="text-left">
-                                            <h4 className="text-xl font-black text-slate-900 tracking-tight">Academic Level</h4>
-                                            <p className="text-xs text-slate-500 font-medium">Minimum educational qualification</p>
+                                            <h4 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Academic Level</h4>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Minimum educational qualification</p>
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-3">
@@ -357,8 +361,8 @@ const SurveyPage = () => {
                                                 onClick={() => handleOptionSelect('min_education', option.id)}
                                                 className={`p-4 rounded-2xl border-2 transition-all text-[10px] font-black uppercase tracking-widest
                                                     ${formData.min_education === option.id
-                                                        ? 'border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-200'
-                                                        : 'border-slate-100 bg-slate-50/50 text-slate-400 hover:border-blue-200 hover:bg-white'}`}
+                                                        ? 'border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-blue-900/20'
+                                                        : 'border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 text-slate-400 hover:border-blue-200 dark:hover:border-blue-900/30 hover:bg-white dark:hover:bg-slate-800'}`}
                                             >
                                                 {option.label}
                                             </motion.button>
@@ -369,14 +373,14 @@ const SurveyPage = () => {
 
                             {/* Right Column: Career Fields */}
                             <div className="h-full">
-                                <div className="bg-white/80 backdrop-blur-xl p-6 sm:p-10 rounded-[3rem] border border-slate-200/50 shadow-sm transition-all hover:shadow-md h-full flex flex-col">
+                                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-6 sm:p-10 rounded-[3rem] border border-slate-200/50 dark:border-slate-800/50 shadow-sm transition-all hover:shadow-md h-full flex flex-col">
                                     <div className="flex items-center gap-4 mb-8">
-                                        <div className="p-3 bg-indigo-100 rounded-2xl text-indigo-600">
+                                        <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl text-indigo-600 dark:text-indigo-400">
                                             <Briefcase size={24} />
                                         </div>
                                         <div className="text-left">
-                                            <h4 className="text-xl font-black text-slate-900 tracking-tight">Career Fields</h4>
-                                            <p className="text-xs text-slate-500 font-medium">Potential professional backgrounds</p>
+                                            <h4 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Career Fields</h4>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Potential professional backgrounds</p>
                                         </div>
                                     </div>
                                     <div className="flex flex-wrap gap-2 max-h-[500px] lg:max-h-none overflow-y-auto lg:overflow-visible no-scrollbar">
@@ -394,8 +398,8 @@ const SurveyPage = () => {
                                                 }}
                                                 className={`px-6 py-3 rounded-full border-2 transition-all text-xs font-black
                                                     ${Array.isArray(formData.profession) && formData.profession.includes(option)
-                                                        ? 'border-indigo-600 bg-indigo-600 text-white shadow-md shadow-indigo-100'
-                                                        : 'border-slate-100 bg-slate-50/50 text-slate-500 hover:border-indigo-200 hover:bg-white'}`}
+                                                        ? 'border-indigo-600 bg-indigo-600 text-white shadow-md shadow-indigo-100 dark:shadow-indigo-900/20'
+                                                        : 'border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 hover:border-indigo-200 dark:hover:border-indigo-900/30 hover:bg-white dark:hover:bg-slate-800'}`}
                                             >
                                                 {option}
                                             </motion.button>
@@ -418,8 +422,8 @@ const SurveyPage = () => {
                         transition={{ duration: 0.3, ease: 'easeOut' }}
                         className="space-y-10 max-w-4xl mx-auto w-full"
                     >
-                        <div className="bg-white/80 backdrop-blur-xl p-8 sm:p-12 rounded-[3.5rem] border border-slate-200/50 shadow-xl shadow-slate-200/20">
-                            <label className="block text-slate-900 font-black mb-8 text-center text-2xl tracking-tight leading-tight">
+                        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-8 sm:p-12 rounded-[3.5rem] border border-slate-200/50 dark:border-slate-800/50 shadow-xl shadow-slate-200/20 dark:shadow-none">
+                            <label className="block text-slate-900 dark:text-white font-black mb-8 text-center text-2xl tracking-tight leading-tight">
                                 Anything else on your mind? <br />
                                 <span className="text-slate-400 font-medium text-lg italic">We listen to every detail.</span>
                             </label>
@@ -427,16 +431,16 @@ const SurveyPage = () => {
                                 value={formData.looking_for}
                                 onChange={(e) => handleOptionSelect('looking_for', e.target.value)}
                                 placeholder="Example: Character traits, family values, or lifestyle habits..."
-                                className="w-full p-8 rounded-[2.5rem] border-2 border-slate-100 bg-slate-50/50 focus:bg-white focus:border-blue-400 focus:ring-8 focus:ring-blue-50/50 outline-none transition-all min-h-[220px] text-lg text-slate-700 placeholder-slate-300 shadow-inner scrollbar-none"
+                                className="w-full p-8 rounded-[2.5rem] border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-400 focus:ring-8 focus:ring-blue-50/50 dark:focus:ring-blue-900/20 outline-none transition-all min-h-[220px] text-lg text-slate-700 dark:text-slate-200 placeholder-slate-300 dark:placeholder-slate-600 shadow-inner scrollbar-none"
                             />
                         </div>
 
-                        <div className="flex items-center gap-6 p-8 bg-blue-50/30 rounded-[2.5rem] border border-blue-100/50 backdrop-blur-sm">
-                            <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-xl shadow-blue-200 rotate-3">
+                        <div className="flex items-center gap-6 p-8 bg-blue-50/30 dark:bg-blue-900/10 rounded-[2.5rem] border border-blue-100/50 dark:border-blue-900/30 backdrop-blur-sm">
+                            <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-xl shadow-blue-200 dark:shadow-none rotate-3">
                                 <Shield className="w-7 h-7 text-white" />
                             </div>
-                            <p className="text-sm text-blue-900/70 font-bold leading-relaxed text-left">
-                                These details are <span className="text-blue-600">strictly private</span>. They power our proprietary matching engine to find your perfect alignment.
+                            <p className="text-sm text-blue-900/70 dark:text-blue-200/70 font-bold leading-relaxed text-left">
+                                These details are <span className="text-blue-600 dark:text-blue-400">strictly private</span>. They power our proprietary matching engine to find your perfect alignment.
                             </p>
                         </div>
                     </motion.div>
@@ -447,12 +451,20 @@ const SurveyPage = () => {
     const badge = getStepBadge();
 
     return (
-        <div className="min-h-screen bg-[#FDFDFF] font-sans text-slate-900 selection:bg-blue-100 selection:text-blue-900 relative overflow-x-hidden">
+        <div className="min-h-screen bg-[#FDFDFF] dark:bg-slate-950 font-sans text-slate-900 dark:text-white selection:bg-blue-100 dark:selection:bg-blue-900 selection:text-blue-900 dark:selection:text-white relative overflow-x-hidden transition-colors duration-300">
+            {/* Theme Toggle Button - Absolute Top Right */}
+            <button
+                onClick={toggleTheme}
+                className="absolute top-6 right-6 z-50 p-3 rounded-full bg-white/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 backdrop-blur-sm transition-all shadow-sm"
+            >
+                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+
             {/* Mesh Background Effects */}
             <div className="fixed inset-0 pointer-events-none overflow-hidden">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-100/30 blur-[120px] rounded-full" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-100/30 blur-[120px] rounded-full" />
-                <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-rose-50/40 blur-[100px] rounded-full" />
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-100/30 dark:bg-blue-900/10 blur-[120px] rounded-full" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-100/30 dark:bg-indigo-900/10 blur-[120px] rounded-full" />
+                <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-rose-50/40 dark:bg-rose-900/10 blur-[100px] rounded-full" />
             </div>
 
             <div className="relative flex flex-col items-center justify-between min-h-screen px-4 sm:px-6 pt-12 sm:pt-20 pb-10 sm:pb-16 max-w-[1400px] mx-auto w-full">
@@ -476,10 +488,10 @@ const SurveyPage = () => {
                         transition={{ delay: 0.1, duration: 0.6 }}
                         className="text-center"
                     >
-                        <h1 className="text-3xl sm:text-5xl font-black tracking-tight mb-4 text-slate-900 max-w-3xl mx-auto leading-[1.1]">
+                        <h1 className="text-3xl sm:text-5xl font-black tracking-tight mb-4 text-slate-900 dark:text-white max-w-3xl mx-auto leading-[1.1]">
                             Tell us your preferences
                         </h1>
-                        <p className="text-slate-400 text-sm sm:text-lg mb-8 font-medium max-w-2xl mx-auto px-4">
+                        <p className="text-slate-400 dark:text-slate-500 text-sm sm:text-lg mb-8 font-medium max-w-2xl mx-auto px-4">
                             Your selections help us find the perfect match for your lifetime journey.
                         </p>
                     </motion.div>
@@ -507,7 +519,7 @@ const SurveyPage = () => {
                                 className={`flex-1 sm:flex-none px-8 sm:px-12 py-4 sm:py-5 rounded-[1.5rem] text-sm font-black transition-all border-2
                                     ${step === 1
                                         ? 'border-transparent text-transparent pointer-events-none'
-                                        : 'border-slate-100 text-slate-400 hover:border-slate-200 hover:text-slate-600 bg-white/50 backdrop-blur-sm'}`}
+                                        : 'border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-200 dark:hover:border-slate-700 hover:text-slate-600 dark:hover:text-slate-300 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm'}`}
                             >
                                 Back
                             </button>
@@ -517,7 +529,7 @@ const SurveyPage = () => {
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                     onClick={nextStep}
-                                    className="flex-1 sm:flex-none px-12 sm:px-20 py-4 sm:py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-[1.5rem] text-sm sm:text-lg font-black shadow-2xl shadow-blue-200/50 transition-all flex items-center justify-center gap-3 group"
+                                    className="flex-1 sm:flex-none px-12 sm:px-20 py-4 sm:py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-[1.5rem] text-sm sm:text-lg font-black shadow-2xl shadow-blue-200/50 dark:shadow-none transition-all flex items-center justify-center gap-3 group"
                                 >
                                     Continue
                                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -528,7 +540,7 @@ const SurveyPage = () => {
                                     whileTap={{ scale: 0.98 }}
                                     onClick={handleSubmit}
                                     disabled={loading}
-                                    className="flex-1 sm:flex-none px-12 sm:px-20 py-4 sm:py-5 bg-slate-900 hover:bg-black text-white rounded-[1.5rem] text-sm sm:text-lg font-black shadow-2xl shadow-slate-300/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 group"
+                                    className="flex-1 sm:flex-none px-12 sm:px-20 py-4 sm:py-5 bg-slate-900 hover:bg-black dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white rounded-[1.5rem] text-sm sm:text-lg font-black shadow-2xl shadow-slate-300/40 dark:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 group"
                                 >
                                     {loading ? "Discovering..." : "Finalize Profile"}
                                     {!loading && <Sparkles className="w-6 h-6 group-hover:rotate-12 transition-all duration-500" />}
@@ -537,14 +549,14 @@ const SurveyPage = () => {
                         </div>
 
                         {/* Pagination Progress Dots */}
-                        <div className="flex gap-4 p-2 bg-slate-100/30 backdrop-blur-sm rounded-full">
+                        <div className="flex gap-4 p-2 bg-slate-100/30 dark:bg-slate-800/30 backdrop-blur-sm rounded-full">
                             {[1, 2, 3, 4].map(i => (
                                 <motion.div
                                     key={i}
                                     initial={false}
                                     animate={{
                                         width: step === i ? 40 : 10,
-                                        backgroundColor: step === i ? '#2563eb' : '#cbd5e1'
+                                        backgroundColor: step === i ? '#2563eb' : (theme === 'dark' ? '#475569' : '#cbd5e1')
                                     }}
                                     className="h-2.5 rounded-full transition-all duration-700 ease-out"
                                 />
